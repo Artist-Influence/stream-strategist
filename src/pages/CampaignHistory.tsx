@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Table,
   TableBody,
@@ -45,12 +46,15 @@ import {
   Download
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import Papa from "papaparse";
 
 interface Campaign {
   id: string;
   name: string;
   client: string;
+  client_name?: string;
   track_url: string;
+  track_name?: string;
   stream_goal: number;
   remaining_streams: number;
   budget: number;
@@ -63,6 +67,9 @@ interface Campaign {
   totals: any;
   created_at: string;
   updated_at: string;
+  daily_streams?: number;
+  weekly_streams?: number;
+  playlists?: Array<{ name: string; url?: string; vendor_name?: string }>;
 }
 
 export default function CampaignHistory() {
@@ -155,6 +162,34 @@ export default function CampaignHistory() {
     setDetailsModal({ open: true, campaign });
   };
 
+  const exportCampaigns = () => {
+    if (!campaigns || campaigns.length === 0) return;
+    
+    const data = campaigns.map(campaign => ({
+      'Campaign Name': campaign.name,
+      'Client': campaign.client_name || campaign.client,
+      'Status': campaign.status,
+      'Budget': campaign.budget,
+      'Stream Goal': campaign.stream_goal,
+      'Daily Streams': campaign.daily_streams || 0,
+      'Weekly Streams': campaign.weekly_streams || 0,
+      'Remaining Streams': campaign.remaining_streams || campaign.stream_goal,
+      'Start Date': new Date(campaign.start_date).toLocaleDateString(),
+      'Playlists': campaign.playlists?.map(p => 
+        typeof p === 'string' ? p : p.name
+      ).join(', ') || ''
+    }));
+    
+    const csv = Papa.unparse(data);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `campaigns_export_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const getStatusVariant = (status: Campaign['status']) => {
     switch (status) {
       case 'active': return 'default';
@@ -215,7 +250,7 @@ export default function CampaignHistory() {
           </div>
 
           <div className="flex space-x-3">
-            <Button variant="outline">
+            <Button variant="outline" onClick={exportCampaigns}>
               <Download className="w-4 h-4 mr-2" />
               Export CSV
             </Button>
@@ -358,16 +393,9 @@ export default function CampaignHistory() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>{campaign.client}</TableCell>
+                        <TableCell>{campaign.client_name || campaign.client}</TableCell>
                         <TableCell>
-                          <Badge className={`
-                            ${campaign.status === 'active' ? 'bg-green-500/10 text-green-500 border-green-500/20' : ''}
-                            ${campaign.status === 'draft' ? 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' : ''}
-                            ${campaign.status === 'paused' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : ''}
-                            ${campaign.status === 'completed' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : ''}
-                          `}>
-                            {campaign.status}
-                          </Badge>
+                          <StatusBadge status={campaign.status} />
                         </TableCell>
                         <TableCell>${campaign.budget.toLocaleString()}</TableCell>
                         <TableCell>{campaign.stream_goal.toLocaleString()}</TableCell>
@@ -481,22 +509,50 @@ export default function CampaignHistory() {
                   </div>
                 </div>
                 
-                <div>
-                  <Label>Track URL</Label>
-                  <a 
-                    href={detailsModal.campaign.track_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-blue-400 hover:underline text-sm block"
-                  >
-                    {detailsModal.campaign.track_url}
-                  </a>
-                </div>
-                
-                <div>
-                  <Label>Created</Label>
-                  <p className="text-sm">{new Date(detailsModal.campaign.created_at).toLocaleDateString()}</p>
-                </div>
+                 <div>
+                   <Label>Track URL</Label>
+                   <a 
+                     href={detailsModal.campaign.track_url} 
+                     target="_blank" 
+                     rel="noopener noreferrer"
+                     className="text-blue-400 hover:underline text-sm block"
+                   >
+                     {detailsModal.campaign.track_url}
+                   </a>
+                 </div>
+                 
+                 {/* PLAYLISTS SECTION */}
+                 <div>
+                   <Label className="text-lg font-semibold mb-3">Campaign Playlists</Label>
+                   <div className="border rounded-lg p-4 bg-card/30">
+                     {detailsModal.campaign.playlists && detailsModal.campaign.playlists.length > 0 ? (
+                       <div className="space-y-2">
+                         {detailsModal.campaign.playlists.map((playlist, idx) => (
+                           <div key={idx} className="flex items-center justify-between p-2 bg-background/50 rounded">
+                              <a 
+                                href={typeof playlist === 'string' ? '#' : (playlist.url || '#')} 
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-400 hover:underline font-medium"
+                              >
+                                {typeof playlist === 'string' ? playlist : playlist.name}
+                              </a>
+                              <Badge variant="secondary">
+                                {typeof playlist === 'string' ? 'Unknown Vendor' : (playlist.vendor_name || 'Unknown Vendor')}
+                              </Badge>
+                           </div>
+                         ))}
+                       </div>
+                     ) : (
+                       <p className="text-muted-foreground text-center py-4">No playlists assigned yet</p>
+                     )}
+                   </div>
+                 </div>
+                 
+                 <div>
+                   <Label>Created</Label>
+                   <p className="text-sm">{new Date(detailsModal.campaign.created_at).toLocaleDateString()}</p>
+                 </div>
               </div>
             )}
           </DialogContent>

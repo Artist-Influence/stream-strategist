@@ -319,12 +319,13 @@ export default function Vendors() {
   };
 
   const exportVendorsCSV = () => {
-    if (!vendors || vendors.length === 0) return;
+    if (!playlists || playlists.length === 0) return;
     
-    const csvData = vendors.map(vendor => ({
-      vendor_name: vendor.name,
-      cost_per_1k_streams: vendor.cost_per_1k_streams || 0,
-      created_at: vendor.created_at
+    // Export format matching import format: vendor_name, cost_per_1k_streams, playlist_url
+    const csvData = playlists.map(playlist => ({
+      vendor_name: selectedVendorData?.name || '',
+      cost_per_1k_streams: selectedVendorData?.cost_per_1k_streams || 0,
+      playlist_url: playlist.url
     }));
     
     const csv = Papa.unparse(csvData);
@@ -332,7 +333,7 @@ export default function Vendors() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'vendors.csv';
+    a.download = `${selectedVendorData?.name || 'vendor'}_playlists.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -369,6 +370,14 @@ export default function Vendors() {
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Playlist
+            </Button>
+            
+            <Button 
+              variant="outline"
+              onClick={exportVendorsCSV}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
             </Button>
             
             <TooltipProvider>

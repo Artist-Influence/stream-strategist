@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { UNIFIED_GENRES } from "@/lib/constants";
+import { AddPlaylistForm } from "@/components/AddPlaylistForm";
 
 interface AddPlaylistModalProps {
   open: boolean;
@@ -122,80 +123,95 @@ export default function AddPlaylistModal({ open, onOpenChange, vendorId, editing
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Add New Playlist</DialogTitle>
+          <DialogTitle>
+            {editingPlaylist ? "Edit Playlist" : "Add New Playlist"}
+          </DialogTitle>
+          <DialogDescription>
+            {editingPlaylist ? "Update playlist information" : "Enter Spotify URL to auto-fetch playlist data"}
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="url">Spotify Playlist URL *</Label>
-            <Input
-              id="url"
-              value={formData.url}
-              onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-              onBlur={(e) => handleUrlPaste(e.target.value)}
-              placeholder="https://open.spotify.com/playlist/..."
-              disabled={isLoading}
-            />
-            {isLoading && <p className="text-sm text-muted-foreground">Loading playlist data...</p>}
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="name">Playlist Name *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Enter playlist name"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Genres * (max 4)</Label>
-            <MultiSelect
-              options={UNIFIED_GENRES}
-              selected={formData.genres}
-              onChange={(genres) => setFormData({ ...formData, genres })}
-              placeholder="Select up to 4 genres"
-              max={4}
-            />
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
+        {editingPlaylist ? (
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="streams">Avg Daily Streams</Label>
+              <Label htmlFor="url">Spotify Playlist URL *</Label>
               <Input
-                id="streams"
-                type="number"
-                value={formData.avg_daily_streams}
-                onChange={(e) => setFormData({ ...formData, avg_daily_streams: e.target.value })}
-                placeholder="e.g. 5000"
+                id="url"
+                value={formData.url}
+                onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                onBlur={(e) => handleUrlPaste(e.target.value)}
+                placeholder="https://open.spotify.com/playlist/..."
+                disabled={isLoading}
               />
+              {isLoading && <p className="text-sm text-muted-foreground">Loading playlist data...</p>}
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="followers">Followers</Label>
+              <Label htmlFor="name">Playlist Name *</Label>
               <Input
-                id="followers"
-                type="number"
-                value={formData.follower_count}
-                onChange={(e) => setFormData({ ...formData, follower_count: e.target.value })}
-                placeholder="e.g. 50000"
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Enter playlist name"
               />
             </div>
-          </div>
-          
-          <div className="flex justify-end space-x-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={addPlaylistMutation.isPending || isLoading}>
-              {addPlaylistMutation.isPending ? "Adding..." : "Add Playlist"}
-            </Button>
-          </div>
-        </form>
+
+            <div className="space-y-2">
+              <Label>Genres * (max 4)</Label>
+              <MultiSelect
+                options={UNIFIED_GENRES}
+                selected={formData.genres}
+                onChange={(genres) => setFormData({ ...formData, genres })}
+                placeholder="Select up to 4 genres"
+                max={4}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="streams">Avg Daily Streams</Label>
+                <Input
+                  id="streams"
+                  type="number"
+                  value={formData.avg_daily_streams}
+                  onChange={(e) => setFormData({ ...formData, avg_daily_streams: e.target.value })}
+                  placeholder="e.g. 5000"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="followers">Followers</Label>
+                <Input
+                  id="followers"
+                  type="number"
+                  value={formData.follower_count}
+                  onChange={(e) => setFormData({ ...formData, follower_count: e.target.value })}
+                  placeholder="e.g. 50000"
+                />
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={addPlaylistMutation.isPending || isLoading}>
+                {addPlaylistMutation.isPending ? "Adding..." : "Add Playlist"}
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <AddPlaylistForm
+            vendorId={vendorId}
+            onSuccess={() => {
+              onOpenChange(false);
+              queryClient.invalidateQueries({ queryKey: ["vendor-playlists"] });
+            }}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

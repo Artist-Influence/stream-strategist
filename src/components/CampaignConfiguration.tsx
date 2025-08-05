@@ -89,17 +89,19 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
       try {
         const trackId = url.split('/track/')[1]?.split('?')[0];
         if (trackId) {
-          const { data } = await supabase.functions.invoke('spotify-playlist-fetch', {
+          const { data } = await supabase.functions.invoke('spotify-fetch', {
             body: { trackId, type: 'track' }
           });
           
-          if (data?.name) {
+          if (data?.name && data?.artists?.[0]?.name) {
+            const campaignName = `${data.artists[0].name} - ${data.name}`;
             setTrackName(data.name);
             setValue("track_name", data.name);
+            setValue("name", campaignName); // Auto-populate campaign name
           }
         }
       } catch (error) {
-        console.log("Could not auto-fetch track name:", error);
+        console.log("Could not auto-fetch track data:", error);
       }
     }
   };
@@ -140,18 +142,18 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Campaign Name *</Label>
-                    <Input
-                      id="name"
-                      {...register("name")}
-                      placeholder="Summer 2024 Single Launch"
-                      className={errors.name ? "border-destructive" : ""}
-                    />
-                    {errors.name && (
-                      <p className="text-sm text-destructive">{errors.name.message}</p>
-                    )}
-                  </div>
+                   <div className="space-y-2">
+                     <Label htmlFor="name">Campaign Name *</Label>
+                     <Input
+                       id="name"
+                       {...register("name")}
+                       placeholder="Will auto-populate from Spotify URL"
+                       className={errors.name ? "border-destructive" : ""}
+                     />
+                     {errors.name && (
+                       <p className="text-sm text-destructive">{errors.name.message}</p>
+                     )}
+                   </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="client">Client/Artist Name *</Label>
