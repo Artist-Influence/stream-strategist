@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,9 +24,10 @@ const campaignSchema = z.object({
   name: z.string().min(1, "Campaign name is required"),
   client: z.string().min(1, "Client name is required"),
   track_url: z.string().url("Please enter a valid Spotify URL"),
+  track_name: z.string().optional(),
   stream_goal: z.number().min(1, "Stream goal must be greater than 0"),
   budget: z.number().min(1, "Budget must be greater than 0"),
-  sub_genre: z.string().min(1, "Sub-genre is required"),
+  sub_genres: z.array(z.string()).min(1, "At least one genre is required").max(3, "Maximum 3 genres allowed"),
   start_date: z.string().min(1, "Start date is required"),
   duration_days: z.number().min(1, "Duration must be at least 1 day").max(365, "Duration cannot exceed 365 days"),
 });
@@ -46,7 +48,8 @@ const popularGenres = [
 ];
 
 export default function CampaignConfiguration({ onNext, onBack, initialData }: CampaignBuilderProps) {
-  const [selectedGenre, setSelectedGenre] = useState(initialData?.sub_genre || "");
+  const [selectedGenres, setSelectedGenres] = useState<string[]>(initialData?.sub_genres || []);
+  const [trackName, setTrackName] = useState(initialData?.track_name || "");
   
   const {
     register,
@@ -65,7 +68,40 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
   const watchedValues = watch();
 
   const onSubmit = (data: CampaignFormData) => {
-    onNext({ ...data, sub_genre: selectedGenre });
+    onNext({ ...data, sub_genres: selectedGenres, track_name: trackName });
+  };
+
+  const toggleGenre = (genre: string) => {
+    setSelectedGenres(prev => {
+      if (prev.includes(genre)) {
+        return prev.filter(g => g !== genre);
+      } else if (prev.length < 3) {
+        return [...prev, genre];
+      }
+      return prev;
+    });
+  };
+
+  const handleTrackUrlChange = async (url: string) => {
+    setValue("track_url", url);
+    
+    if (url.includes('spotify.com/track/')) {
+      try {
+        const trackId = url.split('/track/')[1]?.split('?')[0];
+        if (trackId) {
+          const { data } = await supabase.functions.invoke('spotify-playlist-fetch', {
+            body: { trackId, type: 'track' }
+          });
+          
+          if (data?.name) {
+            setTrackName(data.name);
+            setValue("track_name", data.name);
+          }
+        }
+      } catch (error) {
+        console.log("Could not auto-fetch track name:", error);
+      }
+    }
   };
 
   const calculateCPSt = () => {
@@ -135,12 +171,16 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
                   <Label htmlFor="track_url">Spotify Track URL *</Label>
                   <Input
                     id="track_url"
-                    {...register("track_url")}
                     placeholder="https://open.spotify.com/track/..."
                     className={errors.track_url ? "border-destructive" : ""}
+                    onChange={(e) => handleTrackUrlChange(e.target.value)}
+                    defaultValue={initialData?.track_url}
                   />
                   {errors.track_url && (
                     <p className="text-sm text-destructive">{errors.track_url.message}</p>
+                  )}
+                  {trackName && (
+                    <p className="text-sm text-accent">✓ Track: {trackName}</p>
                   )}
                 </div>
               </CardContent>
@@ -225,34 +265,35 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Sparkles className="w-5 h-5 text-accent" />
-                  <span>Sub-Genre Selection</span>
+                  <span>Genre Selection (1-3 genres)</span>
                 </CardTitle>
                 <CardDescription>
-                  Choose the primary sub-genre for AI playlist matching
+                  Choose up to 3 genres for AI playlist matching
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex flex-wrap gap-2">
                   {popularGenres.map((genre) => (
-                    <Badge
+                    <button
                       key={genre}
-                      variant={selectedGenre === genre ? "default" : "secondary"}
-                      className={`cursor-pointer transition-all hover:scale-105 ${
-                        selectedGenre === genre 
-                          ? "bg-primary text-primary-foreground shadow-neon" 
-                          : "hover:bg-accent/20 hover:text-accent-foreground"
+                      type="button"
+                      onClick={() => toggleGenre(genre)}
+                      className={`px-3 py-1 rounded-full text-sm transition-all hover:scale-105 ${
+                        selectedGenres.includes(genre)
+                          ? 'bg-primary text-primary-foreground shadow-neon'
+                          : 'bg-muted hover:bg-accent/20 text-muted-foreground hover:text-accent-foreground'
                       }`}
-                      onClick={() => {
-                        setSelectedGenre(genre);
-                        setValue("sub_genre", genre);
-                      }}
+                      disabled={!selectedGenres.includes(genre) && selectedGenres.length >= 3}
                     >
                       {genre}
-                    </Badge>
+                    </button>
                   ))}
                 </div>
-                {!selectedGenre && (
-                  <p className="text-sm text-destructive">Please select a sub-genre</p>
+                <p className="text-sm text-muted-foreground">
+                  Selected genres ({selectedGenres.length}/3): {selectedGenres.join(', ') || 'None'}
+                </p>
+                {selectedGenres.length === 0 && (
+                  <p className="text-sm text-destructive">Please select at least one genre</p>
                 )}
               </CardContent>
             </Card>
@@ -298,10 +339,25 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
                   </div>
                   
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Sub-Genre</span>
-                    <Badge variant="outline" className="text-xs">
-                      {selectedGenre || "Not selected"}
-                    </Badge>
+                    <span className="text-sm text-muted-foreground">Cost per 1k Streams</span>
+                    <span className="font-mono text-sm text-accent">
+                      ${((parseFloat(calculateCPSt()) || 0) * 1000).toFixed(2)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Genres</span>
+                    <div className="flex flex-wrap gap-1">
+                      {selectedGenres.length > 0 ? selectedGenres.map(genre => (
+                        <Badge key={genre} variant="outline" className="text-xs">
+                          {genre}
+                        </Badge>
+                      )) : (
+                        <Badge variant="outline" className="text-xs">
+                          None selected
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -324,7 +380,7 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
           <Button 
             type="submit" 
             className="bg-gradient-primary hover:opacity-80 shadow-glow"
-            disabled={!selectedGenre}
+            disabled={selectedGenres.length === 0}
           >
             Continue to AI Recommendations
             <Zap className="w-4 h-4 ml-2" />

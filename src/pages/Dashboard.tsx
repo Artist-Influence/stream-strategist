@@ -295,36 +295,36 @@ export default function Dashboard() {
             <CardContent className="p-6">
               <div className="flex items-center space-x-2 mb-6">
                 <Activity className="w-5 h-5 text-primary" />
-                <h3 className="text-lg font-semibold">Playlist Performance</h3>
+                <h3 className="text-lg font-semibold">Campaign Performance</h3>
               </div>
               <div className="space-y-4">
                 <div>
                   <div className="flex justify-between text-sm mb-1">
-                    <span>High Performers (5%+ engagement)</span>
-                    <span className="text-muted-foreground">{Math.floor((stats?.totalPlaylists || 0) * 0.53)} playlists</span>
+                    <span>High Performers (completes &lt;75 days)</span>
+                    <span className="text-muted-foreground">{Math.floor((stats?.activeCampaigns || 0) * 0.3)} campaigns</span>
                   </div>
                   <div className="w-full bg-muted h-2 rounded-full">
-                    <div className="bg-accent h-2 rounded-full" style={{ width: '53%' }}></div>
+                    <div className="bg-accent h-2 rounded-full" style={{ width: '30%' }}></div>
                   </div>
                 </div>
                 
                 <div>
                   <div className="flex justify-between text-sm mb-1">
-                    <span>Medium Performers (2-5% engagement)</span>
-                    <span className="text-muted-foreground">{Math.floor((stats?.totalPlaylists || 0) * 0.37)} playlists</span>
+                    <span>On Track (completes 75-90 days)</span>
+                    <span className="text-muted-foreground">{Math.floor((stats?.activeCampaigns || 0) * 0.55)} campaigns</span>
                   </div>
                   <div className="w-full bg-muted h-2 rounded-full">
-                    <div className="bg-primary h-2 rounded-full" style={{ width: '37%' }}></div>
+                    <div className="bg-primary h-2 rounded-full" style={{ width: '55%' }}></div>
                   </div>
                 </div>
                 
                 <div>
                   <div className="flex justify-between text-sm mb-1">
-                    <span>Developing Performers (&lt;2% engagement)</span>
-                    <span className="text-muted-foreground">{Math.floor((stats?.totalPlaylists || 0) * 0.10)} playlists</span>
+                    <span>Under-Performers (&gt;90 days)</span>
+                    <span className="text-muted-foreground">{Math.floor((stats?.activeCampaigns || 0) * 0.15)} campaigns</span>
                   </div>
                   <div className="w-full bg-muted h-2 rounded-full">
-                    <div className="bg-destructive h-2 rounded-full" style={{ width: '10%' }}></div>
+                    <div className="bg-destructive h-2 rounded-full" style={{ width: '15%' }}></div>
                   </div>
                 </div>
               </div>

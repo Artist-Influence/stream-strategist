@@ -128,8 +128,8 @@ export default function Vendors() {
     },
   });
 
-  // CSV Import functionality
-  const handleVendorImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // CSV Import functionality - Updated format
+  const handleVendorPlaylistImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -139,27 +139,72 @@ export default function Vendors() {
         try {
           let importCount = 0;
           for (const row of results.data as any[]) {
-            if (row.vendor_name?.trim()) {
-              const { error } = await supabase
-                .from("vendors")
+            if (!row.vendor_name || !row.playlist_url) continue;
+            
+            // Find or create vendor
+            let { data: vendor } = await supabase
+              .from('vendors')
+              .select('*')
+              .eq('name', row.vendor_name.trim())
+              .single();
+            
+            if (!vendor) {
+              const { data: newVendor } = await supabase
+                .from('vendors')
                 .insert({
                   name: row.vendor_name.trim(),
                   cost_per_1k_streams: parseFloat(row.cost_per_1k_streams) || 0
+                })
+                .select()
+                .single();
+              vendor = newVendor;
+            }
+            
+            if (vendor) {
+              // Fetch playlist data from Spotify
+              try {
+                const playlistId = row.playlist_url.split('/playlist/')[1]?.split('?')[0];
+                if (playlistId) {
+                  const { data: spotifyData } = await supabase.functions.invoke('spotify-playlist-fetch', {
+                    body: { playlistId }
+                  });
+                  
+                  // Create playlist with auto-fetched data
+                  await supabase.from('playlists').insert({
+                    vendor_id: vendor.id,
+                    name: spotifyData?.name || 'Unknown Playlist',
+                    url: row.playlist_url,
+                    genres: spotifyData?.genres || [],
+                    avg_daily_streams: parseInt(row.avg_daily_streams) || 0,
+                    follower_count: spotifyData?.followers?.total || 0
+                  });
+                  importCount++;
+                }
+              } catch (spotifyError) {
+                // Fallback to manual data if Spotify API fails
+                await supabase.from('playlists').insert({
+                  vendor_id: vendor.id,
+                  name: row.playlist_name || 'Unknown Playlist',
+                  url: row.playlist_url,
+                  genres: row.genres ? row.genres.split(',').map((g: string) => g.trim()) : [],
+                  avg_daily_streams: parseInt(row.avg_daily_streams) || 0,
+                  follower_count: parseInt(row.follower_count) || 0
                 });
-              
-              if (!error) importCount++;
+                importCount++;
+              }
             }
           }
           
           queryClient.invalidateQueries({ queryKey: ["vendors"] });
+          queryClient.invalidateQueries({ queryKey: ["vendor-playlists"] });
           toast({
             title: "Success",
-            description: `Imported ${importCount} vendors successfully`,
+            description: `Processed ${importCount} vendor/playlist entries`,
           });
         } catch (error) {
           toast({
             title: "Error",
-            description: "Failed to import vendors",
+            description: "Failed to import data. Please check the format.",
             variant: "destructive",
           });
         }
@@ -533,7 +578,7 @@ export default function Vendors() {
             ref={vendorFileInputRef}
             type="file"
             accept=".csv"
-            onChange={handleVendorImport}
+            onChange={handleVendorPlaylistImport}
             className="hidden"
           />
           
