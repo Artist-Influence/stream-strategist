@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { 
   Home, 
   Database, 
@@ -10,7 +11,8 @@ import {
   Search,
   Settings,
   Music,
-  Zap
+  Menu,
+  X
 } from "lucide-react";
 
 interface LayoutProps {
@@ -25,7 +27,7 @@ const navItems = [
     hotkey: "Ctrl+1"
   },
   {
-    title: "Vendors & Playlists", 
+    title: "Browse Playlists", 
     href: "/vendors",
     icon: Database,
     hotkey: "Ctrl+2"
@@ -37,7 +39,7 @@ const navItems = [
     hotkey: "Ctrl+3"
   },
   {
-    title: "Campaign History",
+    title: "View Campaigns",
     href: "/campaigns",
     icon: History,
     hotkey: "Ctrl+4"
@@ -46,7 +48,8 @@ const navItems = [
 
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Handle global keyboard shortcuts
   useEffect(() => {
@@ -55,7 +58,8 @@ export default function Layout({ children }: LayoutProps) {
         switch (e.key) {
           case 'k':
             e.preventDefault();
-            setSearchOpen(true);
+            // Focus search input
+            document.getElementById('global-search')?.focus();
             break;
           case '1':
             e.preventDefault();
@@ -83,84 +87,115 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Cyberpunk Header */}
-      <header className="border-b border-border/40 bg-card/50 backdrop-blur-xl sticky top-0 z-50">
+      {/* Artist Influence Style Header */}
+      <header className="border-b border-border bg-background sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded bg-gradient-primary flex items-center justify-center neon-glow">
+            {/* Left: Brand */}
+            <div className="flex items-center space-x-8">
+              <Link to="/" className="flex items-center space-x-2">
+                <div className="w-8 h-8 rounded bg-gradient-primary flex items-center justify-center">
                   <Music className="w-4 h-4 text-white" />
                 </div>
-                <span className="text-xl font-bold gradient-primary bg-clip-text text-transparent">
-                  Stream Strategist
+                <span className="text-xl font-bold text-foreground">
+                  ARTIST <span className="text-primary">INFLUENCE</span>
                 </span>
-              </div>
-              <span className="text-xs text-muted-foreground px-2 py-1 bg-accent/20 rounded border border-accent/30">
-                <Zap className="w-3 h-3 inline mr-1" />
-                Campaign Builder
-              </span>
+              </Link>
+              
+              {/* Desktop Navigation */}
+              <nav className="hidden lg:flex space-x-8">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.href;
+                  
+                  return (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      className={cn(
+                        "flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-smooth",
+                        isActive 
+                          ? "text-primary" 
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
             </div>
 
+            {/* Right: Search & Actions */}
             <div className="flex items-center space-x-4">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setSearchOpen(true)}
-                className="text-muted-foreground hover:text-foreground transition-neon"
-              >
-                <Search className="w-4 h-4 mr-2" />
-                Search... 
-                <kbd className="ml-2 text-xs bg-muted/50 px-1 rounded">Ctrl+K</kbd>
-              </Button>
-              <Button variant="outline" size="sm">
+              {/* Search */}
+              <div className="hidden md:flex relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="global-search"
+                  placeholder="Search"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-64 pl-10 pr-16 bg-input border-border"
+                />
+                <kbd className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                  Ctrl+K
+                </kbd>
+              </div>
+
+              {/* Settings */}
+              <Button variant="ghost" size="sm" className="hidden md:flex">
                 <Settings className="w-4 h-4" />
+              </Button>
+
+              {/* Mobile Menu Toggle */}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="lg:hidden"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              >
+                {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
               </Button>
             </div>
           </div>
+
+          {/* Mobile Navigation */}
+          {mobileMenuOpen && (
+            <div className="lg:hidden mt-4 pb-4 border-t border-border pt-4">
+              <nav className="space-y-2">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.href;
+                  
+                  return (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={cn(
+                        "flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-smooth",
+                        isActive 
+                          ? "bg-primary/10 text-primary border-l-2 border-primary" 
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      )}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+          )}
         </div>
       </header>
 
-      <div className="flex">
-        {/* Cyberpunk Sidebar */}
-        <aside className="w-64 border-r border-border/40 bg-card/30 backdrop-blur-sm min-h-[calc(100vh-73px)]">
-          <nav className="p-6 space-y-2">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.href;
-              
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={cn(
-                    "flex items-center justify-between w-full px-4 py-3 rounded-lg transition-neon group",
-                    isActive 
-                      ? "bg-primary/20 text-primary border border-primary/30 shadow-neon" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent/20 hover:border hover:border-accent/30"
-                  )}
-                >
-                  <div className="flex items-center space-x-3">
-                    <Icon className={cn(
-                      "w-5 h-5 transition-neon",
-                      isActive && "drop-shadow-[0_0_8px_hsl(var(--primary))]"
-                    )} />
-                    <span className="font-medium">{item.title}</span>
-                  </div>
-                  <kbd className="text-xs text-muted-foreground/70 bg-muted/30 px-1.5 py-0.5 rounded border">
-                    {item.hotkey.replace('Ctrl+', '⌘')}
-                  </kbd>
-                </Link>
-              );
-            })}
-          </nav>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 min-h-[calc(100vh-73px)]">
-          {children}
-        </main>
-      </div>
+      {/* Main Content */}
+      <main className="min-h-[calc(100vh-73px)]">
+        {children}
+      </main>
     </div>
   );
 }

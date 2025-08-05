@@ -2,103 +2,101 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Cyberpunk Spotify Campaign Builder Design System */
+/* Artist Influence Design System - Spotify Campaign Builder */
 
 @layer base {
   :root {
-    /* Cyberpunk Dark Theme - Base Colors */
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    /* Artist Influence Dark Theme - Base Colors */
+    --background: 222 14% 8%;
+    --foreground: 0 0% 95%;
 
-    --card: 240 10% 6%;
-    --card-foreground: 0 0% 98%;
+    --card: 222 14% 12%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 240 10% 6%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 222 14% 12%;
+    --popover-foreground: 0 0% 95%;
 
-    /* Neon Red Primary */
-    --primary: 0 84% 60%;
+    /* Coral Red Primary (matching Artist Influence) */
+    --primary: 11 93% 60%;
     --primary-foreground: 0 0% 98%;
-    --primary-glow: 0 100% 70%;
+    --primary-glow: 11 100% 70%;
 
-    /* Electric Blue Secondary */
-    --secondary: 240 100% 70%;
-    --secondary-foreground: 240 10% 3.9%;
+    /* Muted Red Secondary */
+    --secondary: 11 50% 45%;
+    --secondary-foreground: 0 0% 98%;
 
-    /* Muted Dark Tones */
-    --muted: 240 5% 15%;
-    --muted-foreground: 240 5% 64.9%;
+    /* Dark Muted Tones */
+    --muted: 222 14% 20%;
+    --muted-foreground: 0 0% 65%;
 
-    /* Cyan Accent */
-    --accent: 180 100% 50%;
-    --accent-foreground: 240 10% 3.9%;
+    /* Green Accent for positive metrics */
+    --accent: 142 71% 45%;
+    --accent-foreground: 0 0% 98%;
 
     /* Destructive */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
     /* Borders & Inputs */
-    --border: 240 5% 20%;
-    --input: 240 5% 18%;
-    --ring: 0 84% 60%;
+    --border: 222 14% 25%;
+    --input: 222 14% 18%;
+    --ring: 11 93% 60%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    /* Gradients */
+    /* Artist Influence specific gradients */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
-    --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--accent)));
-    --gradient-dark: linear-gradient(135deg, hsl(240 10% 3.9%), hsl(240 5% 15%));
-    --gradient-glow: linear-gradient(135deg, hsl(var(--primary) / 0.1), hsl(var(--secondary) / 0.1));
+    --gradient-card: linear-gradient(135deg, hsl(222 14% 12%), hsl(222 14% 15%));
+    --gradient-feature: linear-gradient(135deg, hsl(222 14% 15%), hsl(222 14% 18%));
 
     /* Shadows & Glows */
-    --shadow-neon: 0 0 20px hsl(var(--primary) / 0.5);
-    --shadow-glow: 0 0 40px hsl(var(--primary-glow) / 0.3);
-    --shadow-subtle: 0 10px 25px -5px hsl(240 10% 3.9% / 0.5);
+    --shadow-card: 0 4px 20px hsl(222 14% 5% / 0.5);
+    --shadow-feature: 0 2px 10px hsl(222 14% 5% / 0.3);
+    --glow-primary: 0 0 20px hsl(var(--primary) / 0.3);
 
-    /* Animations */
-    --transition-neon: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --pulse-duration: 2s;
+    /* Animation timing */
+    --transition-smooth: all 0.2s ease-out;
 
-    /* Sidebar (keeping consistent) */
-    --sidebar-background: 240 10% 3.9%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 0 84% 60%;
+    /* Sidebar (consistent with theme) */
+    --sidebar-background: 222 14% 8%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 11 93% 60%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 5% 15%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 5% 20%;
-    --sidebar-ring: 0 84% 60%;
+    --sidebar-accent: 222 14% 20%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 222 14% 25%;
+    --sidebar-ring: 11 93% 60%;
   }
 
   .dark {
-    /* Inherit from root since we're already dark-themed */
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 6%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 6%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 84% 60%;
+    /* Inherit from root since we're using Artist Influence dark theme */
+    --background: 222 14% 8%;
+    --foreground: 0 0% 95%;
+    --card: 222 14% 12%;
+    --card-foreground: 0 0% 95%;
+    --popover: 222 14% 12%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 11 93% 60%;
     --primary-foreground: 0 0% 98%;
-    --secondary: 240 100% 70%;
-    --secondary-foreground: 240 10% 3.9%;
-    --muted: 240 5% 15%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 180 100% 50%;
-    --accent-foreground: 240 10% 3.9%;
+    --secondary: 11 50% 45%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 222 14% 20%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 142 71% 45%;
+    --accent-foreground: 0 0% 98%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5% 20%;
-    --input: 240 5% 18%;
-    --ring: 0 84% 60%;
-    --sidebar-background: 240 10% 3.9%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 0 84% 60%;
+    --border: 222 14% 25%;
+    --input: 222 14% 18%;
+    --ring: 11 93% 60%;
+    --sidebar-background: 222 14% 8%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 11 93% 60%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 5% 15%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 5% 20%;
-    --sidebar-ring: 0 84% 60%;
+    --sidebar-accent: 222 14% 20%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 222 14% 25%;
+    --sidebar-ring: 11 93% 60%;
   }
 }
 
@@ -108,90 +106,72 @@
   }
 
   body {
-    @apply bg-background text-foreground font-mono;
-    background-image: 
-      radial-gradient(circle at 20% 80%, hsl(var(--primary) / 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, hsl(var(--secondary) / 0.1) 0%, transparent 50%);
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
 
-  /* Cyberpunk utility classes */
+  /* Artist Influence utility classes */
+  .gradient-card {
+    background: var(--gradient-card);
+    box-shadow: var(--shadow-card);
+  }
+
+  .gradient-feature {
+    background: var(--gradient-feature);
+    box-shadow: var(--shadow-feature);
+  }
+
   .gradient-primary {
     background: var(--gradient-primary);
   }
 
-  .gradient-secondary {
-    background: var(--gradient-secondary);
+  .glow-primary {
+    box-shadow: var(--glow-primary);
   }
 
-  .gradient-dark {
-    background: var(--gradient-dark);
+  .transition-smooth {
+    transition: var(--transition-smooth);
   }
 
-  .gradient-glow {
-    background: var(--gradient-glow);
+  /* Feature card styles matching Artist Influence */
+  .feature-card {
+    background: var(--gradient-feature);
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    transition: var(--transition-smooth);
   }
 
-  .shadow-neon {
-    box-shadow: var(--shadow-neon);
+  .feature-card:hover {
+    border-color: hsl(var(--primary) / 0.3);
+    box-shadow: var(--glow-primary);
+    transform: translateY(-2px);
   }
 
-  .shadow-glow {
-    box-shadow: var(--shadow-glow);
+  /* Metric cards */
+  .metric-card {
+    background: var(--gradient-card);
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
   }
 
-  .shadow-subtle {
-    box-shadow: var(--shadow-subtle);
+  /* Typography matching Artist Influence */
+  .hero-title {
+    font-size: 3rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
   }
 
-  .transition-neon {
-    transition: var(--transition-neon);
-  }
-
-  .neon-glow {
-    box-shadow: 
-      0 0 5px hsl(var(--primary)),
-      0 0 10px hsl(var(--primary)),
-      0 0 15px hsl(var(--primary));
-  }
-
-  .neon-text {
-    text-shadow: 
-      0 0 5px hsl(var(--primary)),
-      0 0 10px hsl(var(--primary)),
-      0 0 15px hsl(var(--primary));
-  }
-
-  .pulse-neon {
-    animation: pulse-neon var(--pulse-duration) ease-in-out infinite alternate;
-  }
-
-  @keyframes pulse-neon {
-    from {
-      box-shadow: 
-        0 0 5px hsl(var(--primary)),
-        0 0 10px hsl(var(--primary)),
-        0 0 15px hsl(var(--primary));
-    }
-    to {
-      box-shadow: 
-        0 0 10px hsl(var(--primary)),
-        0 0 20px hsl(var(--primary)),
-        0 0 30px hsl(var(--primary));
-    }
-  }
-
-  @keyframes glow-pulse {
-    0%, 100% {
-      opacity: 0.8;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 1;
-      transform: scale(1.05);
-    }
-  }
-
-  .glow-pulse {
-    animation: glow-pulse 3s ease-in-out infinite;
+  .hero-subtitle {
+    font-size: 1.25rem;
+    color: hsl(var(--muted-foreground));
+    text-align: center;
+    margin-top: 1rem;
   }
 }

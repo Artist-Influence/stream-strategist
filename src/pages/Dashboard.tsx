@@ -2,8 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { insertSampleData } from "@/lib/sampleData";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { 
   TrendingUp, 
   Target, 
@@ -12,7 +13,12 @@ import {
   Plus,
   Zap,
   Music2,
-  Database
+  Database,
+  Eye,
+  BarChart3,
+  TrendingDown,
+  TrendingUp as TrendingUpIcon,
+  Users
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -24,6 +30,8 @@ interface DashboardStats {
   completedCampaigns: number;
   totalVendors: number;
   totalPlaylists: number;
+  totalReach: number;
+  algorithmAccuracy: number;
 }
 
 export default function Dashboard() {
@@ -31,18 +39,21 @@ export default function Dashboard() {
   useEffect(() => {
     insertSampleData();
   }, []);
+
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async (): Promise<DashboardStats> => {
       const [campaignsRes, vendorsRes, playlistsRes] = await Promise.all([
         supabase.from('campaigns').select('status, stream_goal, budget'),
         supabase.from('vendors').select('id'),
-        supabase.from('playlists').select('id')
+        supabase.from('playlists').select('id, avg_daily_streams')
       ]);
 
       const campaigns = campaignsRes.data || [];
       const vendors = vendorsRes.data || [];
       const playlists = playlistsRes.data || [];
+
+      const totalReach = playlists.reduce((sum, p) => sum + (p.avg_daily_streams || 0), 0);
 
       return {
         totalCampaigns: campaigns.length,
@@ -52,177 +63,275 @@ export default function Dashboard() {
         totalBudget: campaigns.reduce((sum, c) => sum + (c.budget || 0), 0),
         totalVendors: vendors.length,
         totalPlaylists: playlists.length,
+        totalReach: totalReach,
+        algorithmAccuracy: 95.0, // Mock data
       };
     }
   });
 
-  const statCards = [
-    {
-      title: "Total Campaigns",
-      value: stats?.totalCampaigns || 0,
-      description: `${stats?.activeCampaigns || 0} active • ${stats?.completedCampaigns || 0} completed`,
-      icon: Target,
-      trend: "+12% from last month",
-      color: "text-primary"
-    },
-    {
-      title: "Stream Goals",
-      value: (stats?.totalStreamsGoal || 0).toLocaleString(),
-      description: "Combined stream targets",
-      icon: TrendingUp,
-      trend: "+8.2% from last month",
-      color: "text-secondary"
-    },
-    {
-      title: "Total Budget", 
-      value: `$${(stats?.totalBudget || 0).toLocaleString()}`,
-      description: "Allocated campaign budgets",
-      icon: DollarSign,
-      trend: "+15.3% from last month", 
-      color: "text-accent"
-    },
-    {
-      title: "Active Vendors",
-      value: stats?.totalVendors || 0,
-      description: `${stats?.totalPlaylists || 0} total playlists`,
-      icon: Database,
-      trend: "+2 new this week",
-      color: "text-primary"
-    }
-  ];
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+    return num.toString();
+  };
 
   return (
-    <div className="p-8 space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold gradient-primary bg-clip-text text-transparent">
-            Campaign Dashboard
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Monitor your Spotify playlisting campaigns and track performance
-          </p>
-        </div>
-        <div className="flex space-x-3">
-          <Button variant="outline" asChild>
-            <Link to="/vendors">
-              <Database className="w-4 h-4 mr-2" />
-              Manage Playlists
-            </Link>
-          </Button>
-          <Button className="bg-gradient-primary hover:opacity-80 transition-all shadow-glow" asChild>
+    <div className="space-y-12">
+      {/* Hero Section */}
+      <section className="text-center pt-16 pb-8">
+        <h1 className="hero-title">
+          SPOTIFY PLAYLISTING
+        </h1>
+        <h2 className="text-2xl font-bold text-foreground mt-2">
+          CAMPAIGN BUILDER
+        </h2>
+        <p className="hero-subtitle">
+          Internal operator dashboard for campaign management and playlist analytics
+        </p>
+      </section>
+
+      {/* Action Buttons */}
+      <section className="container mx-auto px-6">
+        <div className="flex flex-col sm:flex-row justify-center gap-4 max-w-4xl mx-auto">
+          <Button 
+            className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-4 h-auto text-base font-medium glow-primary transition-smooth"
+            asChild
+          >
             <Link to="/campaign/new">
-              <Plus className="w-4 h-4 mr-2" />
-              New Campaign
+              <Plus className="w-5 h-5 mr-2" />
+              BUILD CAMPAIGN
+            </Link>
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            className="px-8 py-4 h-auto text-base font-medium border-border hover:border-primary/50 transition-smooth"
+            asChild
+          >
+            <Link to="/vendors">
+              <Database className="w-5 h-5 mr-2" />
+              BROWSE PLAYLISTS
+            </Link>
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            className="px-8 py-4 h-auto text-base font-medium border-border hover:border-primary/50 transition-smooth"
+            asChild
+          >
+            <Link to="/campaigns">
+              <BarChart3 className="w-5 h-5 mr-2" />
+              VIEW CAMPAIGNS
             </Link>
           </Button>
         </div>
-      </div>
+      </section>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statCards.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <Card key={stat.title} className="bg-card/50 border-border/50 backdrop-blur-sm hover:bg-card/70 transition-all hover:shadow-subtle group">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {stat.title}
-                </CardTitle>
-                <Icon className={`h-5 w-5 ${stat.color} group-hover:drop-shadow-[0_0_8px_currentColor] transition-all`} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold mb-1">
-                  {isLoading ? (
-                    <div className="h-8 w-20 bg-muted/50 rounded animate-pulse" />
-                  ) : (
-                    <span className={stat.color}>{stat.value}</span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mb-2">
-                  {stat.description}
-                </p>
-                <p className="text-xs text-secondary font-medium">
-                  {stat.trend}
-                </p>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="bg-gradient-glow border-primary/20 hover:border-primary/40 transition-all">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Zap className="w-5 h-5 text-primary" />
-              <span>Quick Campaign Builder</span>
-            </CardTitle>
-            <CardDescription>
-              Launch a new playlisting campaign with AI-powered recommendations
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex space-x-3">
-              <Button className="flex-1 bg-gradient-primary hover:opacity-80" asChild>
-                <Link to="/campaign/new">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Build Campaign
-                </Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link to="/campaigns">
-                  View History
-                </Link>
-              </Button>
+      {/* Feature Cards */}
+      <section className="container mx-auto px-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+          <div className="feature-card">
+            <div className="flex items-center justify-center w-12 h-12 bg-primary/20 rounded-lg mb-4">
+              <Zap className="w-6 h-6 text-primary" />
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-glow border-secondary/20 hover:border-secondary/40 transition-all">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Music2 className="w-5 h-5 text-secondary" />
-              <span>Playlist Network</span>
-            </CardTitle>
-            <CardDescription>
-              Manage your vendor relationships and playlist database
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex space-x-3">
-              <Button variant="secondary" className="flex-1" asChild>
-                <Link to="/vendors">
-                  <Database className="w-4 h-4 mr-2" />
-                  Manage Network
-                </Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link to="/import">
-                  Import Data
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Activity Placeholder */}
-      <Card className="bg-card/30 border-border/30">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Activity className="w-5 h-5" />
-            <span>Recent Activity</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>Recent campaigns and updates will appear here</p>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Smart Algorithms</h3>
+            <p className="text-sm text-muted-foreground">
+              AI-powered playlist matching based on genre, territory, and performance data
+            </p>
           </div>
-        </CardContent>
-      </Card>
+          
+          <div className="feature-card">
+            <div className="flex items-center justify-center w-12 h-12 bg-accent/20 rounded-lg mb-4">
+              <Target className="w-6 h-6 text-accent" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Budget Optimization</h3>
+            <p className="text-sm text-muted-foreground">
+              Maximize reach within budget using cost-per-stream analysis and efficiency scoring
+            </p>
+          </div>
+          
+          <div className="feature-card">
+            <div className="flex items-center justify-center w-12 h-12 bg-secondary/20 rounded-lg mb-4">
+              <Users className="w-6 h-6 text-secondary" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Playlist Database</h3>
+            <p className="text-sm text-muted-foreground">
+              Performance tracking and analytics for continuous algorithm improvement
+            </p>
+          </div>
+          
+          <div className="feature-card">
+            <div className="flex items-center justify-center w-12 h-12 bg-primary/20 rounded-lg mb-4">
+              <Activity className="w-6 h-6 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Campaign Analytics</h3>
+            <p className="text-sm text-muted-foreground">
+              Track actual performance vs predictions to improve future recommendations
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="container mx-auto px-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+          <div className="metric-card p-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm text-muted-foreground">Total Playlists</h3>
+              <Users className="w-4 h-4 text-primary" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-2xl font-bold text-foreground">
+                {isLoading ? "..." : stats?.totalPlaylists || 0}
+              </p>
+              <div className="flex items-center space-x-1 text-xs">
+                <TrendingUpIcon className="w-3 h-3 text-accent" />
+                <span className="text-accent">+12%</span>
+                <span className="text-muted-foreground">vs last month</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="metric-card p-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm text-muted-foreground">Total Reach</h3>
+              <TrendingUp className="w-4 h-4 text-accent" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-2xl font-bold text-foreground">
+                {isLoading ? "..." : formatNumber(stats?.totalReach || 0)}
+              </p>
+              <div className="flex items-center space-x-1 text-xs">
+                <TrendingUpIcon className="w-3 h-3 text-accent" />
+                <span className="text-accent">+8%</span>
+                <span className="text-muted-foreground">streams available</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="metric-card p-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm text-muted-foreground">Active Campaigns</h3>
+              <Target className="w-4 h-4 text-primary" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-2xl font-bold text-foreground">
+                {isLoading ? "..." : stats?.activeCampaigns || 0}
+              </p>
+              <div className="flex items-center space-x-1 text-xs">
+                <TrendingUpIcon className="w-3 h-3 text-accent" />
+                <span className="text-accent">+15%</span>
+                <span className="text-muted-foreground">of {stats?.totalCampaigns || 0} total</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="metric-card p-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm text-muted-foreground">Algorithm Accuracy</h3>
+              <Zap className="w-4 h-4 text-primary" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-2xl font-bold text-foreground">
+                {isLoading ? "..." : `${stats?.algorithmAccuracy || 0}%`}
+              </p>
+              <div className="flex items-center space-x-1 text-xs">
+                <TrendingUpIcon className="w-3 h-3 text-accent" />
+                <span className="text-accent">+2%</span>
+                <span className="text-muted-foreground">prediction rate</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Charts Section Placeholder */}
+      <section className="container mx-auto px-6 pb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
+          <Card className="metric-card">
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-2 mb-6">
+                <BarChart3 className="w-5 h-5 text-primary" />
+                <h3 className="text-lg font-semibold">All Genres by Reach</h3>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Electronic</span>
+                    <span className="text-muted-foreground">29.0M reach</span>
+                  </div>
+                  <div className="w-full bg-muted h-2 rounded-full">
+                    <div className="bg-primary h-2 rounded-full" style={{ width: '85%' }}></div>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">74 playlists</div>
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Hip-Hop</span>
+                    <span className="text-muted-foreground">28.0M reach</span>
+                  </div>
+                  <div className="w-full bg-muted h-2 rounded-full">
+                    <div className="bg-primary h-2 rounded-full" style={{ width: '82%' }}></div>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">66 playlists</div>
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Indie</span>
+                    <span className="text-muted-foreground">22.5M reach</span>
+                  </div>
+                  <div className="w-full bg-muted h-2 rounded-full">
+                    <div className="bg-primary h-2 rounded-full" style={{ width: '65%' }}></div>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">45 playlists</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="metric-card">
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-2 mb-6">
+                <Activity className="w-5 h-5 text-primary" />
+                <h3 className="text-lg font-semibold">Playlist Performance</h3>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>High Performers (5%+ engagement)</span>
+                    <span className="text-muted-foreground">{Math.floor((stats?.totalPlaylists || 0) * 0.53)} playlists</span>
+                  </div>
+                  <div className="w-full bg-muted h-2 rounded-full">
+                    <div className="bg-accent h-2 rounded-full" style={{ width: '53%' }}></div>
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Medium Performers (2-5% engagement)</span>
+                    <span className="text-muted-foreground">{Math.floor((stats?.totalPlaylists || 0) * 0.37)} playlists</span>
+                  </div>
+                  <div className="w-full bg-muted h-2 rounded-full">
+                    <div className="bg-primary h-2 rounded-full" style={{ width: '37%' }}></div>
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Developing Performers (&lt;2% engagement)</span>
+                    <span className="text-muted-foreground">{Math.floor((stats?.totalPlaylists || 0) * 0.10)} playlists</span>
+                  </div>
+                  <div className="w-full bg-muted h-2 rounded-full">
+                    <div className="bg-destructive h-2 rounded-full" style={{ width: '10%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
     </div>
   );
 }
