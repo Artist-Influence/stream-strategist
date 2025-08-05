@@ -2,6 +2,7 @@ import { useState } from "react";
 import Layout from "@/components/Layout";
 import CampaignConfiguration from "@/components/CampaignConfiguration";
 import AIRecommendations from "@/components/AIRecommendations";
+import CampaignReview from "@/components/CampaignReview";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -131,11 +132,12 @@ export default function CampaignBuilder() {
             />
           )}
           
-          {currentStep === "review" && (
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-bold mb-4">Review & Launch</h2>
-              <p className="text-muted-foreground">Review component coming soon...</p>
-            </div>
+          {currentStep === "review" && campaignData.stream_goal && allocationsData && (
+            <CampaignReview
+              campaignData={campaignData as CampaignData}
+              allocationsData={allocationsData}
+              onBack={handleBack}
+            />
           )}
         </div>
       </div>
