@@ -115,8 +115,8 @@ export default function BrowsePlaylists() {
         <div className="container mx-auto px-6 space-y-6">
           <Tabs defaultValue="all" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="vendors">By Vendor</TabsTrigger>
               <TabsTrigger value="all">All Playlists</TabsTrigger>
+              <TabsTrigger value="vendors">By Vendor</TabsTrigger>
             </TabsList>
 
             <TabsContent value="vendors" className="space-y-4">

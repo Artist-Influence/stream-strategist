@@ -385,8 +385,8 @@ export default function Vendors() {
                 </TooltipTrigger>
                 <TooltipContent>
                   <div className="text-xs max-w-xs">
-                    <p className="font-semibold mb-1">Playlist CSV Format:</p>
-                    <pre className="text-xs">vendor_name,playlist_name,playlist_url,genres,avg_daily_streams{'\n'}"Electronic Vibes","Future Bass Central","https://...","electronic,edm",22000</pre>
+                    <p className="font-semibold mb-1">Required Format:</p>
+                    <pre className="text-xs">vendor_name,cost_per_1k_streams,playlist_url{'\n'}"Electronic Vibes",0.05,"https://open.spotify.com/playlist/..."</pre>
                   </div>
                 </TooltipContent>
               </Tooltip>
@@ -567,8 +567,8 @@ export default function Vendors() {
               </TooltipTrigger>
               <TooltipContent>
                 <div className="text-xs">
-                  <p className="font-semibold mb-1">Vendor CSV Format:</p>
-                  <pre className="text-xs">vendor_name,cost_per_1k_streams{'\n'}"Electronic Vibes",0.05{'\n'}"Hip-Hop Central",0.04</pre>
+                  <p className="font-semibold mb-1">Required Format:</p>
+                  <pre className="text-xs">vendor_name,cost_per_1k_streams,playlist_url{'\n'}"Electronic Vibes",0.05,"https://open.spotify.com/playlist/..."</pre>
                 </div>
               </TooltipContent>
             </Tooltip>

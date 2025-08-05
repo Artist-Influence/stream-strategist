@@ -175,3 +175,51 @@
     margin-top: 1rem;
   }
 }
+
+/* Calendar styling for dark theme */
+.rdp-root {
+  --rdp-cell-size: 36px;
+  --rdp-accent-color: hsl(11 93% 60%);
+  --rdp-background-color: hsl(222 14% 8%);
+}
+
+.rdp-day_selected {
+  background-color: var(--rdp-accent-color) !important;
+  color: white !important;
+}
+
+.rdp-day:hover:not(.rdp-day_selected) {
+  background-color: hsl(222 14% 20%) !important;
+}
+
+.rdp-months {
+  background: hsl(222 14% 12%);
+  border: 1px solid hsl(222 14% 25%);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.rdp-head_cell {
+  color: hsl(0 0% 65%);
+  font-weight: normal;
+}
+
+.rdp-day {
+  color: hsl(0 0% 95%);
+}
+
+.rdp-day_outside {
+  color: hsl(0 0% 65%);
+}
+
+.rdp-nav_button {
+  color: hsl(0 0% 95%);
+}
+
+.rdp-nav_button:hover {
+  background-color: hsl(222 14% 20%);
+}
+
+.rdp-caption_label {
+  color: hsl(0 0% 95%);
+}

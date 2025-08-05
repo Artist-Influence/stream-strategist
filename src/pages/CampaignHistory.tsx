@@ -20,6 +20,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { 
   Plus, 
   Search, 
@@ -61,6 +68,7 @@ interface Campaign {
 export default function CampaignHistory() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [detailsModal, setDetailsModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -140,6 +148,11 @@ export default function CampaignHistory() {
     if (confirm("Are you sure you want to delete this campaign? This action cannot be undone.")) {
       deleteCampaignMutation.mutate(campaignId);
     }
+  };
+
+  const handleViewDetails = (campaignId: string) => {
+    const campaign = campaigns?.find(c => c.id === campaignId);
+    setDetailsModal({ open: true, campaign });
   };
 
   const getStatusVariant = (status: Campaign['status']) => {
@@ -313,6 +326,9 @@ export default function CampaignHistory() {
                     <TableHead>Status</TableHead>
                     <TableHead>Budget</TableHead>
                     <TableHead>Stream Goal</TableHead>
+                    <TableHead>Daily Streams</TableHead>
+                    <TableHead>Weekly Streams</TableHead>
+                    <TableHead>Remaining Streams</TableHead>
                     <TableHead>Progress</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead className="w-12"></TableHead>
@@ -344,12 +360,20 @@ export default function CampaignHistory() {
                         </TableCell>
                         <TableCell>{campaign.client}</TableCell>
                         <TableCell>
-                          <Badge variant={getStatusVariant(campaign.status)} className={getStatusColor(campaign.status)}>
+                          <Badge className={`
+                            ${campaign.status === 'active' ? 'bg-green-500/10 text-green-500 border-green-500/20' : ''}
+                            ${campaign.status === 'draft' ? 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' : ''}
+                            ${campaign.status === 'paused' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : ''}
+                            ${campaign.status === 'completed' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : ''}
+                          `}>
                             {campaign.status}
                           </Badge>
                         </TableCell>
                         <TableCell>${campaign.budget.toLocaleString()}</TableCell>
                         <TableCell>{campaign.stream_goal.toLocaleString()}</TableCell>
+                        <TableCell>{0}</TableCell>
+                        <TableCell>{0}</TableCell>
+                        <TableCell>{campaign.remaining_streams?.toLocaleString() || campaign.stream_goal.toLocaleString()}</TableCell>
                         <TableCell>
                           <div className="space-y-1">
                             <div className="flex justify-between text-xs">
@@ -379,7 +403,7 @@ export default function CampaignHistory() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleViewDetails(campaign.id)}>
                                 <Eye className="w-4 h-4 mr-2" />
                                 View Details
                               </DropdownMenuItem>
@@ -420,6 +444,63 @@ export default function CampaignHistory() {
             )}
           </CardContent>
         </Card>
+
+        {/* Campaign Details Modal */}
+        <Dialog open={detailsModal.open} onOpenChange={(open) => setDetailsModal({ open })}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>{detailsModal.campaign?.name}</DialogTitle>
+            </DialogHeader>
+            
+            {detailsModal.campaign && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Client</Label>
+                    <p className="text-sm">{detailsModal.campaign.client}</p>
+                  </div>
+                  <div>
+                    <Label>Status</Label>
+                    <p className="text-sm capitalize">{detailsModal.campaign.status}</p>
+                  </div>
+                  <div>
+                    <Label>Budget</Label>
+                    <p className="text-sm">${detailsModal.campaign.budget.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <Label>Stream Goal</Label>
+                    <p className="text-sm">{detailsModal.campaign.stream_goal.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <Label>Remaining Streams</Label>
+                    <p className="text-sm">{(detailsModal.campaign.remaining_streams || detailsModal.campaign.stream_goal).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <Label>Genre</Label>
+                    <p className="text-sm">{detailsModal.campaign.sub_genre}</p>
+                  </div>
+                </div>
+                
+                <div>
+                  <Label>Track URL</Label>
+                  <a 
+                    href={detailsModal.campaign.track_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:underline text-sm block"
+                  >
+                    {detailsModal.campaign.track_url}
+                  </a>
+                </div>
+                
+                <div>
+                  <Label>Created</Label>
+                  <p className="text-sm">{new Date(detailsModal.campaign.created_at).toLocaleDateString()}</p>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
