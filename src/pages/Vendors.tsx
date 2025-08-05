@@ -21,13 +21,19 @@ import {
   Music,
   Users,
   TrendingUp,
-  Eye
+  Eye,
+  Edit,
+  Trash2
 } from "lucide-react";
 import { Vendor, Playlist } from "@/types";
+import AddVendorModal from "@/components/AddVendorModal";
+import AddPlaylistModal from "@/components/AddPlaylistModal";
 
 export default function Vendors() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
+  const [showAddVendorModal, setShowAddVendorModal] = useState(false);
+  const [showAddPlaylistModal, setShowAddPlaylistModal] = useState(false);
 
   // Fetch vendors
   const { data: vendors, isLoading: vendorsLoading } = useQuery({
@@ -90,7 +96,10 @@ export default function Vendors() {
             </div>
           </div>
           <div className="flex space-x-3">
-            <Button variant="outline">
+            <Button 
+              variant="outline"
+              onClick={() => setShowAddPlaylistModal(true)}
+            >
               <Plus className="w-4 h-4 mr-2" />
               Add Playlist
             </Button>
@@ -123,6 +132,7 @@ export default function Vendors() {
                     <TableHead>Playlist Name</TableHead>
                     <TableHead>Genres</TableHead>
                     <TableHead>Daily Streams</TableHead>
+                    <TableHead>Followers</TableHead>
                     <TableHead>URL</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -154,6 +164,12 @@ export default function Vendors() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Users className="w-4 h-4 text-muted-foreground" />
+                          <span>{playlist.follower_count?.toLocaleString() || 'N/A'}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <Button variant="outline" size="sm" asChild>
                           <a href={playlist.url} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="w-3 h-3 mr-1" />
@@ -162,9 +178,14 @@ export default function Vendors() {
                         </Button>
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="sm">
-                          Edit
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive">
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -194,7 +215,10 @@ export default function Vendors() {
             <Filter className="w-4 h-4 mr-2" />
             Import CSV
           </Button>
-          <Button className="bg-gradient-primary hover:opacity-80">
+          <Button 
+            className="bg-gradient-primary hover:opacity-80"
+            onClick={() => setShowAddVendorModal(true)}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Add Vendor
           </Button>
@@ -253,6 +277,11 @@ export default function Vendors() {
                 </div>
                 
                 <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Cost per 1k</span>
+                  <span className="font-medium">${vendor.cost_per_1k_streams || '0.00'}</span>
+                </div>
+                
+                <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Created</span>
                   <span>{new Date(vendor.created_at).toLocaleDateString()}</span>
                 </div>
@@ -281,13 +310,23 @@ export default function Vendors() {
             <p className="text-muted-foreground mb-4">
               {searchTerm ? "Try adjusting your search terms" : "Get started by adding your first vendor"}
             </p>
-            <Button className="bg-gradient-primary hover:opacity-80">
+            <Button 
+              className="bg-gradient-primary hover:opacity-80"
+              onClick={() => setShowAddVendorModal(true)}
+            >
               <Plus className="w-4 h-4 mr-2" />
               Add First Vendor
             </Button>
           </CardContent>
         </Card>
       )}
+      
+      <AddVendorModal open={showAddVendorModal} onOpenChange={setShowAddVendorModal} />
+      <AddPlaylistModal 
+        open={showAddPlaylistModal} 
+        onOpenChange={setShowAddPlaylistModal}
+        vendorId={selectedVendor || ""}
+      />
     </div>
   );
 }

@@ -16,9 +16,11 @@ export type Database = {
     Tables: {
       campaigns: {
         Row: {
+          allocated_streams: number | null
           brand_name: string
           budget: number
           client: string
+          client_name: string | null
           content_types: string[]
           created_at: string
           creator_count: number
@@ -36,16 +38,20 @@ export type Database = {
           status: string
           stream_goal: number
           sub_genre: string
+          sub_genres: string[] | null
           territory_preferences: string[]
           totals: Json | null
+          track_name: string | null
           track_url: string
           updated_at: string
           vendor_allocations: Json
         }
         Insert: {
+          allocated_streams?: number | null
           brand_name: string
           budget: number
           client?: string
+          client_name?: string | null
           content_types?: string[]
           created_at?: string
           creator_count?: number
@@ -63,16 +69,20 @@ export type Database = {
           status?: string
           stream_goal?: number
           sub_genre?: string
+          sub_genres?: string[] | null
           territory_preferences?: string[]
           totals?: Json | null
+          track_name?: string | null
           track_url?: string
           updated_at?: string
           vendor_allocations?: Json
         }
         Update: {
+          allocated_streams?: number | null
           brand_name?: string
           budget?: number
           client?: string
+          client_name?: string | null
           content_types?: string[]
           created_at?: string
           creator_count?: number
@@ -90,8 +100,10 @@ export type Database = {
           status?: string
           stream_goal?: number
           sub_genre?: string
+          sub_genres?: string[] | null
           territory_preferences?: string[]
           totals?: Json | null
+          track_name?: string | null
           track_url?: string
           updated_at?: string
           vendor_allocations?: Json
@@ -158,10 +170,53 @@ export type Database = {
         }
         Relationships: []
       }
+      performance_entries: {
+        Row: {
+          campaign_id: string | null
+          created_at: string | null
+          daily_streams: number
+          date_recorded: string | null
+          id: string
+          playlist_id: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string | null
+          daily_streams: number
+          date_recorded?: string | null
+          id?: string
+          playlist_id?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string | null
+          daily_streams?: number
+          date_recorded?: string | null
+          id?: string
+          playlist_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_entries_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_entries_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "playlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       playlists: {
         Row: {
           avg_daily_streams: number
           created_at: string
+          follower_count: number | null
           genres: string[]
           id: string
           name: string
@@ -172,6 +227,7 @@ export type Database = {
         Insert: {
           avg_daily_streams?: number
           created_at?: string
+          follower_count?: number | null
           genres?: string[]
           id?: string
           name: string
@@ -182,6 +238,7 @@ export type Database = {
         Update: {
           avg_daily_streams?: number
           created_at?: string
+          follower_count?: number | null
           genres?: string[]
           id?: string
           name?: string
@@ -222,6 +279,7 @@ export type Database = {
       }
       vendors: {
         Row: {
+          cost_per_1k_streams: number | null
           created_at: string
           id: string
           max_daily_streams: number
@@ -229,6 +287,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cost_per_1k_streams?: number | null
           created_at?: string
           id?: string
           max_daily_streams?: number
@@ -236,6 +295,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cost_per_1k_streams?: number | null
           created_at?: string
           id?: string
           max_daily_streams?: number

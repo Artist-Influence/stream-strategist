@@ -4,6 +4,7 @@ export interface Vendor {
   id: string;
   name: string;
   max_daily_streams: number;
+  cost_per_1k_streams?: number;
   created_at: string;
   updated_at: string;
 }
@@ -15,6 +16,7 @@ export interface Playlist {
   url: string;
   genres: string[];
   avg_daily_streams: number;
+  follower_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -23,11 +25,15 @@ export interface Campaign {
   id: string;
   name: string;
   client: string;
+  client_name?: string;
   track_url: string;
+  track_name?: string;
   stream_goal: number;
   remaining_streams: number;
+  allocated_streams?: number;
   budget: number;
   sub_genre: string;
+  sub_genres?: string[];
   start_date: string;
   duration_days: number;
   status: 'draft' | 'active' | 'completed';
