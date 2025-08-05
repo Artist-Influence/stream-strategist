@@ -13,9 +13,10 @@ interface AddPlaylistModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   vendorId: string;
+  editingPlaylist?: any;
 }
 
-export default function AddPlaylistModal({ open, onOpenChange, vendorId }: AddPlaylistModalProps) {
+export default function AddPlaylistModal({ open, onOpenChange, vendorId, editingPlaylist }: AddPlaylistModalProps) {
   const [formData, setFormData] = useState({
     name: "",
     url: "",

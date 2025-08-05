@@ -3,6 +3,7 @@ import { useLocation, Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { 
   Home, 
   Database, 
@@ -12,8 +13,10 @@ import {
   Settings,
   Music,
   Menu,
-  X
+  X,
+  Key
 } from "lucide-react";
+import SpotifySettingsModal from "./SpotifySettingsModal";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -50,6 +53,7 @@ export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showSpotifySettings, setShowSpotifySettings] = useState(false);
 
   // Handle global keyboard shortcuts
   useEffect(() => {
@@ -145,9 +149,68 @@ export default function Layout({ children }: LayoutProps) {
               </div>
 
               {/* Settings */}
-              <Button variant="ghost" size="sm" className="hidden md:flex">
-                <Settings className="w-4 h-4" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="hidden md:flex">
+                    <Settings className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuLabel>Settings</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  
+                  <DropdownMenuItem onClick={() => setShowSpotifySettings(true)}>
+                    <Key className="mr-2 h-4 w-4" />
+                    Spotify API Settings
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Keyboard Shortcuts</DropdownMenuLabel>
+                  
+                  <DropdownMenuItem disabled>
+                    <span className="flex justify-between w-full">
+                      <span>Search</span>
+                      <kbd className="text-xs bg-muted px-1 rounded">Ctrl+K</kbd>
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled>
+                    <span className="flex justify-between w-full">
+                      <span>New Campaign</span>
+                      <kbd className="text-xs bg-muted px-1 rounded">Ctrl+N</kbd>
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled>
+                    <span className="flex justify-between w-full">
+                      <span>Export Data</span>
+                      <kbd className="text-xs bg-muted px-1 rounded">Ctrl+E</kbd>
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled>
+                    <span className="flex justify-between w-full">
+                      <span>Dashboard</span>
+                      <kbd className="text-xs bg-muted px-1 rounded">Ctrl+1</kbd>
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled>
+                    <span className="flex justify-between w-full">
+                      <span>Browse Playlists</span>
+                      <kbd className="text-xs bg-muted px-1 rounded">Ctrl+2</kbd>
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled>
+                    <span className="flex justify-between w-full">
+                      <span>Build Campaign</span>
+                      <kbd className="text-xs bg-muted px-1 rounded">Ctrl+3</kbd>
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled>
+                    <span className="flex justify-between w-full">
+                      <span>View Campaigns</span>
+                      <kbd className="text-xs bg-muted px-1 rounded">Ctrl+4</kbd>
+                    </span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* Mobile Menu Toggle */}
               <Button 
@@ -196,6 +259,11 @@ export default function Layout({ children }: LayoutProps) {
       <main className="min-h-[calc(100vh-73px)]">
         {children}
       </main>
+      
+      <SpotifySettingsModal 
+        open={showSpotifySettings} 
+        onOpenChange={setShowSpotifySettings}
+      />
     </div>
   );
 }
