@@ -18,56 +18,83 @@ export type Database = {
         Row: {
           brand_name: string
           budget: number
+          client: string
           content_types: string[]
           created_at: string
           creator_count: number
           description: string | null
+          duration_days: number
           id: string
           music_genres: string[]
           name: string
           post_types: string[]
+          remaining_streams: number
           results: Json | null
           selected_creators: Json | null
+          selected_playlists: Json
+          start_date: string
           status: string
+          stream_goal: number
+          sub_genre: string
           territory_preferences: string[]
           totals: Json | null
+          track_url: string
           updated_at: string
+          vendor_allocations: Json
         }
         Insert: {
           brand_name: string
           budget: number
+          client?: string
           content_types?: string[]
           created_at?: string
           creator_count?: number
           description?: string | null
+          duration_days?: number
           id?: string
           music_genres?: string[]
           name: string
           post_types?: string[]
+          remaining_streams?: number
           results?: Json | null
           selected_creators?: Json | null
+          selected_playlists?: Json
+          start_date?: string
           status?: string
+          stream_goal?: number
+          sub_genre?: string
           territory_preferences?: string[]
           totals?: Json | null
+          track_url?: string
           updated_at?: string
+          vendor_allocations?: Json
         }
         Update: {
           brand_name?: string
           budget?: number
+          client?: string
           content_types?: string[]
           created_at?: string
           creator_count?: number
           description?: string | null
+          duration_days?: number
           id?: string
           music_genres?: string[]
           name?: string
           post_types?: string[]
+          remaining_streams?: number
           results?: Json | null
           selected_creators?: Json | null
+          selected_playlists?: Json
+          start_date?: string
           status?: string
+          stream_goal?: number
+          sub_genre?: string
           territory_preferences?: string[]
           totals?: Json | null
+          track_url?: string
           updated_at?: string
+          vendor_allocations?: Json
         }
         Relationships: []
       }
@@ -131,6 +158,47 @@ export type Database = {
         }
         Relationships: []
       }
+      playlists: {
+        Row: {
+          avg_daily_streams: number
+          created_at: string
+          genres: string[]
+          id: string
+          name: string
+          updated_at: string
+          url: string
+          vendor_id: string
+        }
+        Insert: {
+          avg_daily_streams?: number
+          created_at?: string
+          genres?: string[]
+          id?: string
+          name: string
+          updated_at?: string
+          url: string
+          vendor_id: string
+        }
+        Update: {
+          avg_daily_streams?: number
+          created_at?: string
+          genres?: string[]
+          id?: string
+          name?: string
+          updated_at?: string
+          url?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playlists_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tags: {
         Row: {
           created_at: string
@@ -151,6 +219,65 @@ export type Database = {
           type?: string
         }
         Relationships: []
+      }
+      vendors: {
+        Row: {
+          created_at: string
+          id: string
+          max_daily_streams: number
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          max_daily_streams?: number
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          max_daily_streams?: number
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      weekly_updates: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          imported_on: string
+          notes: string | null
+          streams: number
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          imported_on?: string
+          notes?: string | null
+          streams?: number
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          imported_on?: string
+          notes?: string | null
+          streams?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_updates_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
