@@ -104,42 +104,21 @@ export default function BrowsePlaylists() {
   };
 
   const handleExportCSV = () => {
-    try {
-      // Create simple CSV data
-      const csvData = [];
-      
-      // Add header row
-      csvData.push(['vendor_name', 'cost_per_1k_streams', 'playlist_url']);
-      
-      // Add data rows from filtered playlists
-      if (filteredPlaylists && filteredPlaylists.length > 0) {
-        filteredPlaylists.forEach((playlist) => {
-          csvData.push([
-            playlist.vendor?.name || '',
-            playlist.vendor?.cost_per_1k_streams || '0',
-            playlist.url || ''
-          ]);
-        });
-      }
-      
-      // Convert array to CSV string
-      const csvString = csvData.map(row => row.join(',')).join('\n');
-      
-      // Create and download file
-      const blob = new Blob([csvString], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'vendors_playlists.csv';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      
-      console.log('CSV exported successfully');
-    } catch (error) {
-      console.error('Export error:', error);
-    }
+    console.log('Export CSV clicked'); // ADD THIS TO TEST
+    
+    // Create simple test data
+    const testData = 'vendor_name,cost_per_1k_streams,playlist_url\nTest Vendor,0.05,https://example.com';
+    
+    // Force download
+    const element = document.createElement('a');
+    element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(testData));
+    element.setAttribute('download', 'test_export.csv');
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+    
+    alert('CSV should have downloaded!'); // ADD THIS TO CONFIRM
   };
 
   const handleDeletePlaylist = async (playlistId: string) => {
@@ -183,6 +162,11 @@ export default function BrowsePlaylists() {
               <Download className="h-4 w-4" />
               Export CSV
             </Button>
+          </div>
+
+          {/* ADD THIS NEW SECTION - VIEW TOGGLE */}
+          <div className="flex gap-2 mb-6 p-4 bg-red-500">
+            <h2 className="text-white">IF YOU SEE THIS RED BOX, THE CODE IS WORKING</h2>
           </div>
 
           <div className="flex gap-2 mb-6">
