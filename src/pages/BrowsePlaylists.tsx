@@ -31,8 +31,11 @@ import {
   Search, 
   Filter,
   ExternalLink,
-  Edit
+  Edit,
+  Download,
+  Trash
 } from "lucide-react";
+import Papa from "papaparse";
 import { UNIFIED_GENRES } from "@/lib/constants";
 
 interface PlaylistWithVendor {
@@ -99,6 +102,44 @@ export default function BrowsePlaylists() {
     console.log("Edit playlist:", playlist);
   };
 
+  const handleExportCSV = () => {
+    if (!playlists || playlists.length === 0) return;
+    
+    const exportData = playlists.map(playlist => ({
+      vendor_name: playlist.vendor?.name || '',
+      cost_per_1k_streams: playlist.vendor?.cost_per_1k_streams || 0,
+      playlist_url: playlist.url || ''
+    }));
+    
+    const csv = Papa.unparse(exportData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `vendors_playlists_${Date.now()}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDeletePlaylist = async (playlistId: string) => {
+    if (!confirm("Are you sure you want to delete this playlist?")) return;
+    
+    try {
+      const { error } = await supabase
+        .from("playlists")
+        .delete()
+        .eq("id", playlistId);
+      
+      if (error) throw error;
+      // Refetch playlists
+      window.location.reload();
+    } catch (error) {
+      console.error("Failed to delete playlist:", error);
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-8">
@@ -113,6 +154,18 @@ export default function BrowsePlaylists() {
         </section>
 
         <div className="container mx-auto px-6 space-y-6">
+          {/* Header Actions */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-semibold">Vendors & Playlists</h2>
+              <p className="text-muted-foreground">Manage vendors and their playlists</p>
+            </div>
+            <Button onClick={handleExportCSV} className="flex items-center gap-2">
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+          </div>
+
           <Tabs defaultValue="vendors" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="vendors">By Vendor</TabsTrigger>
@@ -281,13 +334,22 @@ export default function BrowsePlaylists() {
                               </span>
                             </TableCell>
                             <TableCell>
-                              <Button 
-                                size="sm" 
-                                variant="ghost"
-                                onClick={() => editPlaylist(playlist)}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
+                              <div className="flex gap-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                  onClick={() => editPlaylist(playlist)}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                  onClick={() => handleDeletePlaylist(playlist.id)}
+                                >
+                                  <Trash className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}

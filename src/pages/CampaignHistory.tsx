@@ -43,10 +43,12 @@ import {
   DollarSign,
   Target,
   ExternalLink,
-  Download
+  Download,
+  Edit
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Papa from "papaparse";
+import { EditCampaignModal } from "@/components/EditCampaignModal";
 
 interface Campaign {
   id: string;
@@ -76,6 +78,7 @@ export default function CampaignHistory() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [detailsModal, setDetailsModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
+  const [editModal, setEditModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -162,6 +165,11 @@ export default function CampaignHistory() {
     setDetailsModal({ open: true, campaign });
   };
 
+  const handleEditCampaign = (campaignId: string) => {
+    const campaign = campaigns?.find(c => c.id === campaignId);
+    setEditModal({ open: true, campaign });
+  };
+
   const exportCampaigns = () => {
     if (!campaigns || campaigns.length === 0) return;
     
@@ -223,6 +231,45 @@ export default function CampaignHistory() {
       </section>
 
       <div className="container mx-auto px-6 space-y-6">
+        {/* Status Filter Buttons */}
+        <div className="flex gap-2 mb-6">
+          <Button
+            variant={statusFilter === 'all' ? 'default' : 'outline'}
+            onClick={() => setStatusFilter('all')}
+            size="sm"
+          >
+            All ({campaigns?.length || 0})
+          </Button>
+          <Button
+            variant={statusFilter === 'active' ? 'default' : 'outline'}
+            onClick={() => setStatusFilter('active')}
+            size="sm"
+          >
+            Active ({campaigns?.filter(c => c.status === 'active').length || 0})
+          </Button>
+          <Button
+            variant={statusFilter === 'draft' ? 'default' : 'outline'}
+            onClick={() => setStatusFilter('draft')}
+            size="sm"
+          >
+            Draft ({campaigns?.filter(c => c.status === 'draft').length || 0})
+          </Button>
+          <Button
+            variant={statusFilter === 'paused' ? 'default' : 'outline'}
+            onClick={() => setStatusFilter('paused')}
+            size="sm"
+          >
+            Paused ({campaigns?.filter(c => c.status === 'paused').length || 0})
+          </Button>
+          <Button
+            variant={statusFilter === 'completed' ? 'default' : 'outline'}
+            onClick={() => setStatusFilter('completed')}
+            size="sm"
+          >
+            Completed ({campaigns?.filter(c => c.status === 'completed').length || 0})
+          </Button>
+        </div>
+
         {/* Header Actions */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center space-x-4 flex-1">
@@ -235,18 +282,6 @@ export default function CampaignHistory() {
                 className="pl-10 w-64"
               />
             </div>
-            
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 rounded-md border border-border bg-background text-foreground"
-            >
-              <option value="all">All Status</option>
-              <option value="draft">Draft</option>
-              <option value="active">Active</option>
-              <option value="paused">Paused</option>
-              <option value="completed">Completed</option>
-            </select>
           </div>
 
           <div className="flex space-x-3">
@@ -323,7 +358,9 @@ export default function CampaignHistory() {
         {/* Campaigns Table */}
         <Card className="metric-card">
           <CardHeader>
-            <CardTitle>All Campaigns</CardTitle>
+            <CardTitle>
+              {statusFilter === 'all' ? 'All Campaigns' : `${statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)} Campaigns`}
+            </CardTitle>
             <CardDescription>
               {filteredCampaigns.length} campaigns found
             </CardDescription>
@@ -434,6 +471,10 @@ export default function CampaignHistory() {
                               <DropdownMenuItem onClick={() => handleViewDetails(campaign.id)}>
                                 <Eye className="w-4 h-4 mr-2" />
                                 View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEditCampaign(campaign.id)}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit Campaign
                               </DropdownMenuItem>
                               <DropdownMenuItem>
                                 <Copy className="w-4 h-4 mr-2" />
@@ -549,15 +590,27 @@ export default function CampaignHistory() {
                    </div>
                  </div>
                  
-                 <div>
-                   <Label>Created</Label>
-                   <p className="text-sm">{new Date(detailsModal.campaign.created_at).toLocaleDateString()}</p>
-                 </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-      </div>
-    </div>
-  );
-}
+                  <div>
+                    <Label>Created</Label>
+                    <p className="text-sm">{new Date(detailsModal.campaign.created_at).toLocaleDateString()}</p>
+                  </div>
+               </div>
+             )}
+           </DialogContent>
+         </Dialog>
+
+         {/* Edit Campaign Modal */}
+         {editModal.campaign && (
+           <EditCampaignModal
+             campaign={editModal.campaign}
+             open={editModal.open}
+             onClose={() => setEditModal({ open: false })}
+             onSuccess={() => {
+               queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+             }}
+           />
+         )}
+       </div>
+     </div>
+   );
+ }
