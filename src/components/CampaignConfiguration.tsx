@@ -75,12 +75,18 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
 
   const toggleGenre = (genre: string) => {
     setSelectedGenres(prev => {
+      let newGenres;
       if (prev.includes(genre)) {
-        return prev.filter(g => g !== genre);
+        newGenres = prev.filter(g => g !== genre);
       } else if (prev.length < 3) {
-        return [...prev, genre];
+        newGenres = [...prev, genre];
+      } else {
+        return prev;
       }
-      return prev;
+      
+      // Update the form field with the joined genres
+      setValue("sub_genre", newGenres.join(', '));
+      return newGenres;
     });
   };
 
