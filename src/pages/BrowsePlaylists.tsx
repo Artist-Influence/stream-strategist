@@ -105,40 +105,40 @@ export default function BrowsePlaylists() {
 
   const handleExportCSV = () => {
     try {
-      // Create export data from current playlists
-      const exportRows = filteredPlaylists.map(playlist => ({
-        vendor_name: playlist.vendor?.name || '',
-        cost_per_1k_streams: playlist.vendor?.cost_per_1k_streams || 0,
-        playlist_url: playlist.url || '',
-        playlist_name: playlist.name || '',
-        followers: playlist.follower_count || 0,
-        daily_streams: playlist.avg_daily_streams || 0,
-        genres: playlist.genres?.join('; ') || ''
-      }));
+      // Create simple CSV data
+      const csvData = [];
       
-      if (exportRows.length === 0) {
-        alert('No data to export');
-        return;
+      // Add header row
+      csvData.push(['vendor_name', 'cost_per_1k_streams', 'playlist_url']);
+      
+      // Add data rows from filtered playlists
+      if (filteredPlaylists && filteredPlaylists.length > 0) {
+        filteredPlaylists.forEach((playlist) => {
+          csvData.push([
+            playlist.vendor?.name || '',
+            playlist.vendor?.cost_per_1k_streams || '0',
+            playlist.url || ''
+          ]);
+        });
       }
       
-      // Convert to CSV
-      const csv = Papa.unparse(exportRows);
+      // Convert array to CSV string
+      const csvString = csvData.map(row => row.join(',')).join('\n');
       
       // Create and download file
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const blob = new Blob([csvString], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `playlists_export_${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'vendors_playlists.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       
-      alert('CSV exported successfully!');
+      console.log('CSV exported successfully');
     } catch (error) {
-      console.error('Export failed:', error);
-      alert('Export failed');
+      console.error('Export error:', error);
     }
   };
 
