@@ -44,11 +44,13 @@ import {
   Target,
   ExternalLink,
   Download,
+  Upload,
   Edit
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Papa from "papaparse";
 import { EditCampaignModal } from "@/components/EditCampaignModal";
+import CampaignWeeklyImportModal from "@/components/CampaignWeeklyImportModal";
 
 interface Campaign {
   id: string;
@@ -79,6 +81,7 @@ export default function CampaignHistory() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [detailsModal, setDetailsModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
   const [editModal, setEditModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -311,6 +314,10 @@ export default function CampaignHistory() {
           </div>
 
           <div className="flex space-x-3">
+            <Button variant="outline" onClick={() => setImportModalOpen(true)}>
+              <Upload className="w-4 h-4 mr-2" />
+              Import Updates
+            </Button>
             <Button variant="outline" onClick={exportCampaigns}>
               <Download className="w-4 h-4 mr-2" />
               Export CSV
@@ -429,6 +436,7 @@ export default function CampaignHistory() {
                     <TableHead>Remaining Streams</TableHead>
                     <TableHead>Progress</TableHead>
                     <TableHead>Created</TableHead>
+                    <TableHead>Last Updated</TableHead>
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -484,6 +492,14 @@ export default function CampaignHistory() {
                         <TableCell>
                           <div className="text-sm">
                             {new Date(campaign.created_at).toLocaleDateString()}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {campaign.updated_at 
+                              ? new Date(campaign.updated_at).toLocaleDateString()
+                              : 'Never'
+                            }
                           </div>
                         </TableCell>
                         <TableCell>
@@ -625,17 +641,23 @@ export default function CampaignHistory() {
            </DialogContent>
          </Dialog>
 
-         {/* Edit Campaign Modal */}
-         {editModal.campaign && (
-           <EditCampaignModal
-             campaign={editModal.campaign}
-             open={editModal.open}
-             onClose={() => setEditModal({ open: false })}
-             onSuccess={() => {
-               queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-             }}
-           />
-         )}
+          {/* Edit Campaign Modal */}
+          {editModal.campaign && (
+            <EditCampaignModal
+              campaign={editModal.campaign}
+              open={editModal.open}
+              onClose={() => setEditModal({ open: false })}
+              onSuccess={() => {
+                queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+              }}
+            />
+          )}
+
+          {/* Import Campaign Updates Modal */}
+          <CampaignWeeklyImportModal 
+            open={importModalOpen} 
+            onOpenChange={setImportModalOpen} 
+          />
        </div>
      </div>
    );

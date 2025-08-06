@@ -30,16 +30,10 @@ const navItems = [
     hotkey: "Ctrl+1"
   },
   {
-    title: "Vendors", 
-    href: "/vendors",
+    title: "Vendors & Playlists",
+    href: "/playlists", 
     icon: Database,
     hotkey: "Ctrl+2"
-  },
-  {
-    title: "Browse Playlists",
-    href: "/browse-playlists", 
-    icon: Music,
-    hotkey: "Ctrl+5"
   },
   {
     title: "Build Campaign",
@@ -86,10 +80,6 @@ export default function Layout({ children }: LayoutProps) {
           case '4':
             e.preventDefault();
             window.location.href = '/campaigns';
-            break;
-          case '5':
-            e.preventDefault();
-            window.location.href = '/browse-playlists';
             break;
         }
       }

@@ -4,8 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
-import VendorsPage from "./pages/VendorsPage";
-import BrowsePlaylists from "./pages/BrowsePlaylists";
+import PlaylistsPage from "./pages/PlaylistsPage";
 import CampaignBuilder from "./pages/CampaignBuilder";
 import CampaignHistoryPage from "./pages/CampaignHistoryPage";
 import NotFound from "./pages/NotFound";
@@ -20,8 +19,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/vendors" element={<VendorsPage />} />
-          <Route path="/browse-playlists" element={<BrowsePlaylists />} />
+          <Route path="/playlists" element={<PlaylistsPage />} />
           <Route path="/campaign/new" element={<CampaignBuilder />} />
           <Route path="/campaigns" element={<CampaignHistoryPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
