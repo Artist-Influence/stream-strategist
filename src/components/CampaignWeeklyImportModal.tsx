@@ -50,6 +50,7 @@ export default function CampaignWeeklyImportModal({
             .update({
               stream_goal: parseInt(row['Stream Goal']) || existingCampaign.stream_goal,
               remaining_streams: parseInt(row['Remaining Streams']) || existingCampaign.remaining_streams,
+              track_url: row['Track URL'] || existingCampaign.track_url,
               // updated_at is automatically updated by trigger
             })
             .eq('id', existingCampaign.id);
@@ -69,6 +70,30 @@ export default function CampaignWeeklyImportModal({
           updatedCount++;
         } else {
           // Create new campaign if doesn't exist
+          let genres: string[] = [];
+          let subGenre = '';
+          
+          // Fetch genres from Spotify API if track URL provided
+          if (row['Track URL']) {
+            try {
+              const response = await fetch('/functions/v1/spotify-fetch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: row['Track URL'].trim() })
+              });
+              
+              if (response.ok) {
+                const spotifyData = await response.json();
+                if (spotifyData.genres && spotifyData.genres.length > 0) {
+                  genres = spotifyData.genres.slice(0, 3); // Top 3 genres
+                  subGenre = genres[0] || '';
+                }
+              }
+            } catch (error) {
+              console.warn('Failed to fetch genres from Spotify:', error);
+            }
+          }
+          
           const { data: newCampaign } = await supabase
             .from('campaigns')
             .insert({
@@ -78,11 +103,11 @@ export default function CampaignWeeklyImportModal({
               client_name: row['Client'].trim(),
               stream_goal: parseInt(row['Stream Goal']) || 0,
               remaining_streams: parseInt(row['Remaining Streams']) || 0,
-              budget: parseFloat(row['Budget']) || 0,
+              budget: 0, // Budget to be manually entered later
               status: 'active',
               track_url: row['Track URL'] || '',
-              sub_genre: row['Genres']?.split(',')[0]?.trim() || '',
-              sub_genres: row['Genres']?.split(',').map((g: string) => g.trim()) || [],
+              sub_genre: subGenre,
+              sub_genres: genres,
               start_date: new Date().toISOString().split('T')[0],
               duration_days: 90,
               selected_playlists: [],
@@ -147,8 +172,8 @@ export default function CampaignWeeklyImportModal({
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4">
-          <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+        <div className="space-y-6">
+          <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
             <Input
               type="file"
               accept=".csv"
@@ -157,29 +182,35 @@ export default function CampaignWeeklyImportModal({
               className="hidden"
               id="csv-upload"
             />
-            <Label htmlFor="csv-upload" className="cursor-pointer block">
-              <Upload className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm">
-                {isImporting ? 'Importing...' : 'Click to upload CSV or drag and drop'}
-              </p>
+            <Label htmlFor="csv-upload" className="cursor-pointer block space-y-3">
+              <Upload className="h-12 w-12 mx-auto text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">
+                  {isImporting ? 'Importing campaigns...' : 'Click to upload CSV file'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  or drag and drop your file here
+                </p>
+              </div>
             </Label>
           </div>
           
-          <div className="bg-muted/30 p-4 rounded-lg">
-            <p className="font-semibold mb-2 text-sm">Required CSV Format:</p>
-            <div className="bg-background p-3 rounded text-xs font-mono overflow-x-auto">
-              <div className="whitespace-nowrap">
-                Campaign Name,Client,Stream Goal,Remaining Streams,Daily Streams,Weekly Streams,Budget,Track URL,Genres
+          <div className="bg-muted/30 p-4 rounded-lg space-y-3">
+            <p className="font-semibold text-sm">Required CSV Format:</p>
+            <div className="bg-background p-3 rounded border text-xs font-mono">
+              <div className="text-foreground mb-1">
+                Campaign Name,Client,Stream Goal,Remaining Streams,Daily Streams,Weekly Streams,Track URL
               </div>
-              <div className="whitespace-nowrap text-muted-foreground mt-1">
-                "Jared Rapoza","Slime",20000,18000,200,1400,2500,"https://spotify.com/...","Hip-Hop, Trap"
+              <div className="text-muted-foreground">
+                "Jared Rapoza","Slime",20000,18000,200,1400,"https://open.spotify.com/track/..."
               </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              • Existing campaigns will be updated based on Campaign Name + Client match
-              • New campaigns will be created if no match is found
-              • Weekly updates will be automatically logged for tracking
-            </p>
+            <div className="space-y-2 text-xs text-muted-foreground">
+              <p>• <strong>Budget:</strong> Will be set to $0 and must be manually entered later</p>
+              <p>• <strong>Genres:</strong> Automatically detected from Spotify track URL</p>
+              <p>• <strong>Updates:</strong> Existing campaigns updated by Campaign Name + Client match</p>
+              <p>• <strong>New campaigns:</strong> Created automatically if no match found</p>
+            </div>
           </div>
         </div>
       </DialogContent>
