@@ -35,6 +35,32 @@ export default function CampaignWeeklyImportModal({
       for (const row of data as any[]) {
         if (!row['Campaign Name'] || !row['Client']) continue;
         
+        // Parse playlist data from various potential playlist columns
+        let parsedPlaylists: string[] = [];
+        const playlistColumns = Object.keys(row).filter(key => 
+          key.toLowerCase().includes('playlist') || 
+          key.toLowerCase().includes('placed') ||
+          key.toLowerCase().includes('adds')
+        );
+        
+        for (const column of playlistColumns) {
+          const playlistData = row[column];
+          if (playlistData && typeof playlistData === 'string') {
+            // Parse format: "PLAYLIST NAME - PLAYLIST NAME - PLAYLIST NAME [NEW] -"
+            const playlists = playlistData
+              .split(' - ')
+              .map(name => name.trim())
+              .filter(name => name && name !== '')
+              .map(name => name.replace(/\[NEW\]/gi, '').trim()) // Remove [NEW] tags
+              .filter(name => name);
+            
+            parsedPlaylists = [...parsedPlaylists, ...playlists];
+          }
+        }
+        
+        // Remove duplicates
+        parsedPlaylists = [...new Set(parsedPlaylists)];
+        
         // Find existing campaign by name and client
         const { data: existingCampaign } = await supabase
           .from('campaigns')
@@ -44,6 +70,23 @@ export default function CampaignWeeklyImportModal({
           .maybeSingle();
         
         if (existingCampaign) {
+          // Compare playlists and track additions
+          const existingPlaylists = Array.isArray(existingCampaign.selected_playlists) 
+            ? existingCampaign.selected_playlists 
+            : [];
+          const existingPlaylistNames = existingPlaylists.map((p: any) => 
+            typeof p === 'string' ? p : p.name
+          );
+          
+          const newPlaylists = parsedPlaylists.filter(name => 
+            !existingPlaylistNames.includes(name)
+          );
+          
+          let updateNotes = `Updated via CSV import - Daily: ${row['Daily Streams'] || 0}, Weekly: ${row['Weekly Streams'] || 0}`;
+          if (newPlaylists.length > 0) {
+            updateNotes += ` | New playlists added: ${newPlaylists.join(', ')}`;
+          }
+          
           // Update existing campaign
           await supabase
             .from('campaigns')
@@ -51,6 +94,9 @@ export default function CampaignWeeklyImportModal({
               stream_goal: parseInt(row['Stream Goal']) || existingCampaign.stream_goal,
               remaining_streams: parseInt(row['Remaining Streams']) || existingCampaign.remaining_streams,
               track_url: row['Track URL'] || existingCampaign.track_url,
+              selected_playlists: parsedPlaylists.length > 0 ? 
+                parsedPlaylists.map(name => ({ name, imported: true })) : 
+                existingCampaign.selected_playlists,
               // updated_at is automatically updated by trigger
             })
             .eq('id', existingCampaign.id);
@@ -63,7 +109,7 @@ export default function CampaignWeeklyImportModal({
                 campaign_id: existingCampaign.id,
                 streams: parseInt(row['Weekly Streams']) || parseInt(row['Daily Streams']) * 7 || 0,
                 imported_on: new Date().toISOString().split('T')[0],
-                notes: `Updated via CSV import - Daily: ${row['Daily Streams'] || 0}, Weekly: ${row['Weekly Streams'] || 0}`
+                notes: updateNotes
               });
           }
           
@@ -110,7 +156,8 @@ export default function CampaignWeeklyImportModal({
               sub_genres: genres,
               start_date: new Date().toISOString().split('T')[0],
               duration_days: 90,
-              selected_playlists: [],
+              selected_playlists: parsedPlaylists.length > 0 ? 
+                parsedPlaylists.map(name => ({ name, imported: true })) : [],
               vendor_allocations: {},
               totals: { projected_streams: 0 }
             })
@@ -119,13 +166,16 @@ export default function CampaignWeeklyImportModal({
           
           // Add initial weekly update if provided
           if (newCampaign && (row['Daily Streams'] || row['Weekly Streams'])) {
+            const importNotes = `Initial import - Daily: ${row['Daily Streams'] || 0}, Weekly: ${row['Weekly Streams'] || 0}`;
+            const playlistNotes = parsedPlaylists.length > 0 ? ` | Playlists: ${parsedPlaylists.join(', ')}` : '';
+            
             await supabase
               .from('weekly_updates')
               .insert({
                 campaign_id: newCampaign.id,
                 streams: parseInt(row['Weekly Streams']) || parseInt(row['Daily Streams']) * 7 || 0,
                 imported_on: new Date().toISOString().split('T')[0],
-                notes: `Initial import - Daily: ${row['Daily Streams'] || 0}, Weekly: ${row['Weekly Streams'] || 0}`
+                notes: importNotes + playlistNotes
               });
           }
           

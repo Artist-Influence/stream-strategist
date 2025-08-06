@@ -82,6 +82,7 @@ export default function CampaignHistory() {
   const [detailsModal, setDetailsModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
   const [editModal, setEditModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -133,6 +134,26 @@ export default function CampaignHistory() {
       toast({
         title: "Campaign Deleted",
         description: "Campaign has been successfully removed.",
+      });
+    }
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (campaignIds: string[]) => {
+      const { error } = await supabase
+        .from('campaigns')
+        .delete()
+        .in('id', campaignIds);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, campaignIds) => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      setSelectedCampaigns(new Set());
+      toast({
+        title: "Campaigns Deleted",
+        description: `${campaignIds.length} campaigns have been successfully removed.`,
       });
     }
   });
@@ -227,6 +248,34 @@ export default function CampaignHistory() {
     }
   };
 
+  const handleSelectCampaign = (campaignId: string, checked: boolean) => {
+    setSelectedCampaigns(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(campaignId);
+      } else {
+        newSet.delete(campaignId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedCampaigns(new Set(filteredCampaigns.map(c => c.id)));
+    } else {
+      setSelectedCampaigns(new Set());
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedCampaigns.size === 0) return;
+    
+    if (confirm(`Are you sure you want to delete ${selectedCampaigns.size} campaigns? This action cannot be undone.`)) {
+      bulkDeleteMutation.mutate(Array.from(selectedCampaigns));
+    }
+  };
+
   const getStatusVariant = (status: Campaign['status']) => {
     switch (status) {
       case 'active': return 'default';
@@ -314,6 +363,16 @@ export default function CampaignHistory() {
           </div>
 
           <div className="flex space-x-3">
+            {selectedCampaigns.size > 0 && (
+              <Button 
+                variant="destructive" 
+                onClick={handleBulkDelete}
+                disabled={bulkDeleteMutation.isPending}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Selected ({selectedCampaigns.size})
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setImportModalOpen(true)}>
               <Upload className="w-4 h-4 mr-2" />
               Import Updates
@@ -426,6 +485,14 @@ export default function CampaignHistory() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <input
+                        type="checkbox"
+                        checked={selectedCampaigns.size === filteredCampaigns.length && filteredCampaigns.length > 0}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="rounded"
+                      />
+                    </TableHead>
                     <TableHead>Campaign</TableHead>
                     <TableHead>Client</TableHead>
                     <TableHead>Status</TableHead>
@@ -449,6 +516,14 @@ export default function CampaignHistory() {
 
                     return (
                       <TableRow key={campaign.id} className="hover:bg-accent/10">
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            checked={selectedCampaigns.has(campaign.id)}
+                            onChange={(e) => handleSelectCampaign(campaign.id, e.target.checked)}
+                            className="rounded"
+                          />
+                        </TableCell>
                         <TableCell>
                           <div>
                             <p className="font-medium">{campaign.name}</p>
