@@ -134,13 +134,22 @@ export default function CampaignHistory() {
     }
   });
 
-  // Filter campaigns
+  // Filter campaigns with case-insensitive status matching
   const filteredCampaigns = campaigns?.filter(campaign => {
     const matchesSearch = campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          campaign.client.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || campaign.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || 
+                         campaign.status.toLowerCase() === statusFilter.toLowerCase();
     return matchesSearch && matchesStatus;
   }) || [];
+
+  // Helper function for status counts
+  const getStatusCount = (status: string) => {
+    if (status === 'all') return campaigns?.length || 0;
+    return campaigns?.filter(c => 
+      c.status.toLowerCase() === status.toLowerCase()
+    ).length || 0;
+  };
 
   const handleStatusChange = (campaignId: string, newStatus: Campaign['status']) => {
     updateCampaignMutation.mutate({
@@ -170,32 +179,49 @@ export default function CampaignHistory() {
     setEditModal({ open: true, campaign });
   };
 
-  const exportCampaigns = () => {
-    if (!campaigns || campaigns.length === 0) return;
-    
-    const data = campaigns.map(campaign => ({
-      'Campaign Name': campaign.name,
-      'Client': campaign.client_name || campaign.client,
-      'Status': campaign.status,
-      'Budget': campaign.budget,
-      'Stream Goal': campaign.stream_goal,
-      'Daily Streams': campaign.daily_streams || 0,
-      'Weekly Streams': campaign.weekly_streams || 0,
-      'Remaining Streams': campaign.remaining_streams || campaign.stream_goal,
-      'Start Date': new Date(campaign.start_date).toLocaleDateString(),
-      'Playlists': campaign.playlists?.map(p => 
-        typeof p === 'string' ? p : p.name
-      ).join(', ') || ''
-    }));
-    
-    const csv = Papa.unparse(data);
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `campaigns_export_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const exportCampaigns = async () => {
+    try {
+      if (!campaigns || campaigns.length === 0) return;
+      
+      const csvData = campaigns.map(campaign => ({
+        'Campaign Name': campaign.name,
+        'Client': campaign.client_name || '',
+        'Status': campaign.status,
+        'Budget': campaign.budget,
+        'Stream Goal': campaign.stream_goal,
+        'Daily Streams': campaign.daily_streams || 0,
+        'Weekly Streams': campaign.weekly_streams || 0,
+        'Remaining Streams': campaign.remaining_streams || campaign.stream_goal,
+        'Progress': `${Math.round(((campaign.stream_goal - campaign.remaining_streams) || 0) / campaign.stream_goal * 100)}%`,
+        'Start Date': campaign.start_date,
+        'Playlists': campaign.playlists?.map(p => 
+          typeof p === 'string' ? p : p.name
+        ).join(', ') || ''
+      }));
+      
+      const csv = Papa.unparse(csvData);
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `campaigns_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Export Complete",
+        description: "Campaigns exported successfully",
+      });
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to export campaigns",
+        variant: "destructive",
+      });
+    }
   };
 
   const getStatusVariant = (status: Campaign['status']) => {
@@ -238,35 +264,35 @@ export default function CampaignHistory() {
             onClick={() => setStatusFilter('all')}
             size="sm"
           >
-            All ({campaigns?.length || 0})
+            All ({getStatusCount('all')})
           </Button>
           <Button
             variant={statusFilter === 'active' ? 'default' : 'outline'}
             onClick={() => setStatusFilter('active')}
             size="sm"
           >
-            Active ({campaigns?.filter(c => c.status === 'active').length || 0})
+            Active ({getStatusCount('active')})
           </Button>
           <Button
             variant={statusFilter === 'draft' ? 'default' : 'outline'}
             onClick={() => setStatusFilter('draft')}
             size="sm"
           >
-            Draft ({campaigns?.filter(c => c.status === 'draft').length || 0})
+            Draft ({getStatusCount('draft')})
           </Button>
           <Button
             variant={statusFilter === 'paused' ? 'default' : 'outline'}
             onClick={() => setStatusFilter('paused')}
             size="sm"
           >
-            Paused ({campaigns?.filter(c => c.status === 'paused').length || 0})
+            Paused ({getStatusCount('paused')})
           </Button>
           <Button
             variant={statusFilter === 'completed' ? 'default' : 'outline'}
             onClick={() => setStatusFilter('completed')}
             size="sm"
           >
-            Completed ({campaigns?.filter(c => c.status === 'completed').length || 0})
+            Completed ({getStatusCount('completed')})
           </Button>
         </div>
 
