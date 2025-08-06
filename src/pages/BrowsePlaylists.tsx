@@ -56,6 +56,7 @@ export default function BrowsePlaylists() {
   const [searchTerm, setSearchTerm] = useState("");
   const [genreFilter, setGenreFilter] = useState("all");
   const [vendorFilter, setVendorFilter] = useState("all");
+  const [selectedView, setSelectedView] = useState<'vendors' | 'table'>('vendors');
 
   // Fetch all playlists with vendor data
   const { data: playlists, isLoading } = useQuery({
@@ -103,63 +104,41 @@ export default function BrowsePlaylists() {
   };
 
   const handleExportCSV = () => {
-    // Create a synchronous function that doesn't rely on async Supabase calls
     try {
-      // Gather data from the current playlists in state
-      const exportRows: any[] = [];
+      // Create export data from current playlists
+      const exportRows = filteredPlaylists.map(playlist => ({
+        vendor_name: playlist.vendor?.name || '',
+        cost_per_1k_streams: playlist.vendor?.cost_per_1k_streams || 0,
+        playlist_url: playlist.url || '',
+        playlist_name: playlist.name || '',
+        followers: playlist.follower_count || 0,
+        daily_streams: playlist.avg_daily_streams || 0,
+        genres: playlist.genres?.join('; ') || ''
+      }));
       
-      // Loop through each vendor and their playlists
-      if (vendors && vendors.length > 0) {
-        vendors.forEach(vendor => {
-          const vendorPlaylists = playlists?.filter(p => p.vendor.id === vendor.id) || [];
-          
-          if (vendorPlaylists.length === 0) {
-            // If vendor has no playlists, still export vendor info
-            exportRows.push({
-              vendor_name: vendor.name,
-              cost_per_1k_streams: vendor.cost_per_1k_streams || 0,
-              playlist_url: ''
-            });
-          } else {
-            // Export each playlist with vendor info
-            vendorPlaylists.forEach(playlist => {
-              exportRows.push({
-                vendor_name: vendor.name,
-                cost_per_1k_streams: vendor.cost_per_1k_streams || 0,
-                playlist_url: playlist.url || ''
-              });
-            });
-          }
-        });
-      }
-      
-      // If no data, show error
       if (exportRows.length === 0) {
-        console.error('No data to export');
+        alert('No data to export');
         return;
       }
       
-      // Convert to CSV using Papa Parse
-      const csv = Papa.unparse(exportRows, {
-        header: true,
-        columns: ['vendor_name', 'cost_per_1k_streams', 'playlist_url']
-      });
+      // Convert to CSV
+      const csv = Papa.unparse(exportRows);
       
-      // Create blob and download
+      // Create and download file
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `vendors_playlists_${new Date().getTime()}.csv`);
-      link.style.visibility = 'hidden';
+      link.href = url;
+      link.download = `playlists_export_${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       
-      console.log('CSV exported successfully');
+      alert('CSV exported successfully!');
     } catch (error) {
       console.error('Export failed:', error);
+      alert('Export failed');
     }
   };
 
@@ -206,13 +185,25 @@ export default function BrowsePlaylists() {
             </Button>
           </div>
 
-          <Tabs defaultValue="vendors" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="vendors">By Vendor</TabsTrigger>
-              <TabsTrigger value="all">All Playlists</TabsTrigger>
-            </TabsList>
+          <div className="flex gap-2 mb-6">
+            <Button
+              variant={selectedView === 'vendors' ? 'default' : 'outline'}
+              onClick={() => setSelectedView('vendors')}
+              className={selectedView === 'vendors' ? 'bg-primary hover:bg-primary/90' : ''}
+            >
+              Vendor Cards
+            </Button>
+            <Button
+              variant={selectedView === 'table' ? 'default' : 'outline'}
+              onClick={() => setSelectedView('table')}
+              className={selectedView === 'table' ? 'bg-primary hover:bg-primary/90' : ''}
+            >
+              All Playlists Table
+            </Button>
+          </div>
 
-            <TabsContent value="vendors" className="space-y-4">
+          {selectedView === 'vendors' && (
+            <div className="space-y-4">
               <Card>
                 <CardContent className="p-6">
                   <p className="text-center text-muted-foreground">
@@ -225,9 +216,11 @@ export default function BrowsePlaylists() {
                   </div>
                 </CardContent>
               </Card>
-            </TabsContent>
+            </div>
+          )}
 
-            <TabsContent value="all" className="space-y-6">
+          {selectedView === 'table' && (
+            <div className="space-y-6">
               {/* Filters */}
               <Card>
                 <CardHeader>
@@ -398,8 +391,8 @@ export default function BrowsePlaylists() {
                   )}
                 </CardContent>
               </Card>
-            </TabsContent>
-          </Tabs>
+            </div>
+          )}
         </div>
       </div>
     </Layout>
