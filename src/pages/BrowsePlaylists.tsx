@@ -102,49 +102,64 @@ export default function BrowsePlaylists() {
     console.log("Edit playlist:", playlist);
   };
 
-  const handleExportCSV = async () => {
+  const handleExportCSV = () => {
+    // Create a synchronous function that doesn't rely on async Supabase calls
     try {
-      // Fetch all playlists with vendor data
-      const { data: allPlaylists, error } = await supabase
-        .from('playlists')
-        .select(`
-          *,
-          vendor:vendors(name, cost_per_1k_streams)
-        `)
-        .order('vendor_id');
+      // Gather data from the current playlists in state
+      const exportRows: any[] = [];
       
-      if (error) {
-        console.error('Error fetching data:', error);
-        return;
+      // Loop through each vendor and their playlists
+      if (vendors && vendors.length > 0) {
+        vendors.forEach(vendor => {
+          const vendorPlaylists = playlists?.filter(p => p.vendor.id === vendor.id) || [];
+          
+          if (vendorPlaylists.length === 0) {
+            // If vendor has no playlists, still export vendor info
+            exportRows.push({
+              vendor_name: vendor.name,
+              cost_per_1k_streams: vendor.cost_per_1k_streams || 0,
+              playlist_url: ''
+            });
+          } else {
+            // Export each playlist with vendor info
+            vendorPlaylists.forEach(playlist => {
+              exportRows.push({
+                vendor_name: vendor.name,
+                cost_per_1k_streams: vendor.cost_per_1k_streams || 0,
+                playlist_url: playlist.url || ''
+              });
+            });
+          }
+        });
       }
       
-      if (!allPlaylists || allPlaylists.length === 0) {
+      // If no data, show error
+      if (exportRows.length === 0) {
         console.error('No data to export');
         return;
       }
       
-      // Create CSV data in the correct format
-      const csvData = allPlaylists.map(playlist => ({
-        vendor_name: playlist.vendor?.name || '',
-        cost_per_1k_streams: playlist.vendor?.cost_per_1k_streams || 0,
-        playlist_url: playlist.url || ''
-      }));
+      // Convert to CSV using Papa Parse
+      const csv = Papa.unparse(exportRows, {
+        header: true,
+        columns: ['vendor_name', 'cost_per_1k_streams', 'playlist_url']
+      });
       
-      // Generate CSV
-      const csv = Papa.unparse(csvData);
-      
-      // Create and trigger download
+      // Create blob and download
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `vendors_playlists_${new Date().toISOString().split('T')[0]}.csv`;
-      link.style.display = 'none';
+      link.setAttribute('href', url);
+      link.setAttribute('download', `vendors_playlists_${new Date().getTime()}.csv`);
+      link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
       
+      console.log('CSV exported successfully');
     } catch (error) {
-      console.error('Export error:', error);
+      console.error('Export failed:', error);
     }
   };
 
