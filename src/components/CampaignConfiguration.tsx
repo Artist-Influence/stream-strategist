@@ -27,7 +27,7 @@ const campaignSchema = z.object({
   track_name: z.string().optional(),
   stream_goal: z.number().min(1, "Stream goal must be greater than 0"),
   budget: z.number().min(1, "Budget must be greater than 0"),
-  sub_genres: z.array(z.string()).min(1, "At least one genre is required").max(3, "Maximum 3 genres allowed"),
+  sub_genre: z.string().min(1, "At least one genre is required"),
   start_date: z.string().min(1, "Start date is required"),
   duration_days: z.number().min(1, "Duration must be at least 1 day").max(365, "Duration cannot exceed 365 days"),
 });
@@ -48,7 +48,9 @@ const popularGenres = [
 ];
 
 export default function CampaignConfiguration({ onNext, onBack, initialData }: CampaignBuilderProps) {
-  const [selectedGenres, setSelectedGenres] = useState<string[]>(initialData?.sub_genres || []);
+  const [selectedGenres, setSelectedGenres] = useState<string[]>(
+    initialData?.sub_genre ? initialData.sub_genre.split(', ') : []
+  );
   const [trackName, setTrackName] = useState(initialData?.track_name || "");
   
   const {
@@ -68,7 +70,7 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
   const watchedValues = watch();
 
   const onSubmit = (data: CampaignFormData) => {
-    onNext({ ...data, sub_genres: selectedGenres, track_name: trackName });
+    onNext({ ...data, sub_genre: selectedGenres.join(', '), track_name: trackName });
   };
 
   const toggleGenre = (genre: string) => {
