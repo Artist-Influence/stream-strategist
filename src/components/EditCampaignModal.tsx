@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Plus, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { UNIFIED_GENRES } from '@/lib/constants';
@@ -35,7 +36,7 @@ interface Campaign {
   daily_streams?: number;
   weekly_streams?: number;
   remaining_streams?: number;
-  playlists?: Array<{ name: string; url?: string; vendor_name?: string }>;
+  playlists?: Array<{ id?: string; name: string; url?: string; vendor_name?: string; vendor?: any; genres?: string[] }>;
 }
 
 interface EditCampaignModalProps {
@@ -62,7 +63,33 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
     playlists: campaign.playlists || []
   });
   const [saving, setSaving] = useState(false);
+  const [showPlaylistSelector, setShowPlaylistSelector] = useState(false);
+  const [availablePlaylists, setAvailablePlaylists] = useState<any[]>([]);
+  const [playlistSearch, setPlaylistSearch] = useState('');
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (open) {
+      fetchAvailablePlaylists();
+    }
+  }, [open]);
+
+  const fetchAvailablePlaylists = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('playlists')
+        .select(`
+          *,
+          vendor:vendors(name)
+        `)
+        .order('name');
+      
+      if (error) throw error;
+      setAvailablePlaylists(data || []);
+    } catch (error) {
+      console.error('Failed to fetch playlists:', error);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -214,29 +241,39 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
           
           {/* Playlist Management */}
           <div className="space-y-4 border-t pt-4">
-            <h3 className="font-semibold">Campaign Playlists</h3>
+            <div className="flex justify-between items-center">
+              <Label className="text-base font-semibold">Campaign Playlists</Label>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => setShowPlaylistSelector(true)}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Playlist
+              </Button>
+            </div>
             
-            {formData.playlists.length > 0 ? (
-              <div className="space-y-2">
+            {formData.playlists && formData.playlists.length > 0 ? (
+              <div className="space-y-2 max-h-40 overflow-y-auto">
                 {formData.playlists.map((playlist, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2 bg-muted rounded">
-                    <span>{typeof playlist === 'string' ? playlist : playlist.name}</span>
+                  <div key={idx} className="flex items-center justify-between p-2 bg-zinc-900 rounded">
+                    <span className="text-sm">{typeof playlist === 'string' ? playlist : playlist.name}</span>
                     <Button 
                       size="sm" 
                       variant="ghost"
                       onClick={() => {
-                        const newPlaylists = [...formData.playlists];
-                        newPlaylists.splice(idx, 1);
+                        const newPlaylists = formData.playlists.filter((_, i) => i !== idx);
                         setFormData({...formData, playlists: newPlaylists});
                       }}
                     >
-                      Remove
+                      <X className="h-4 w-4 text-red-400" />
                     </Button>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-muted-foreground">No playlists assigned</p>
+              <p className="text-muted-foreground text-sm">No playlists assigned</p>
             )}
           </div>
           
@@ -276,6 +313,51 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Playlist Selector Modal */}
+      <Dialog open={showPlaylistSelector} onOpenChange={setShowPlaylistSelector}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Select Playlists</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Search playlists..."
+              value={playlistSearch}
+              onChange={(e) => setPlaylistSearch(e.target.value)}
+            />
+            <div className="max-h-96 overflow-y-auto space-y-2">
+              {availablePlaylists
+                .filter(p => !formData.playlists.some(selected => selected.id === p.id || selected.name === p.name))
+                .filter(p => p.name?.toLowerCase().includes(playlistSearch.toLowerCase()))
+                .map(playlist => (
+                  <div 
+                    key={playlist.id}
+                    className="flex items-center justify-between p-3 border rounded hover:bg-zinc-900 cursor-pointer"
+                    onClick={() => {
+                      setFormData({
+                        ...formData,
+                        playlists: [...formData.playlists, playlist]
+                      });
+                      setShowPlaylistSelector(false);
+                      setPlaylistSearch('');
+                    }}
+                  >
+                    <div>
+                      <p className="font-medium">{playlist.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {playlist.vendor?.name} • {playlist.genres?.join(', ')}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="ghost">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

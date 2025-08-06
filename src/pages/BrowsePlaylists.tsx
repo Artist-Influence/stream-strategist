@@ -107,34 +107,44 @@ export default function BrowsePlaylists() {
       // Fetch all playlists with vendor data
       const { data: allPlaylists, error } = await supabase
         .from('playlists')
-        .select('*, vendor:vendors(name, cost_per_1k_streams)')
+        .select(`
+          *,
+          vendor:vendors(name, cost_per_1k_streams)
+        `)
         .order('vendor_id');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching data:', error);
+        return;
+      }
       
-      // Format for CSV export
+      if (!allPlaylists || allPlaylists.length === 0) {
+        console.error('No data to export');
+        return;
+      }
+      
+      // Create CSV data in the correct format
       const csvData = allPlaylists.map(playlist => ({
         vendor_name: playlist.vendor?.name || '',
         cost_per_1k_streams: playlist.vendor?.cost_per_1k_streams || 0,
         playlist_url: playlist.url || ''
       }));
       
-      // Generate CSV string
+      // Generate CSV
       const csv = Papa.unparse(csvData);
       
-      // Force download
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `vendors_playlists_export_${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      // Create and trigger download
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `vendors_playlists_${new Date().toISOString().split('T')[0]}.csv`;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       
     } catch (error) {
-      console.error('Export failed:', error);
+      console.error('Export error:', error);
     }
   };
 
