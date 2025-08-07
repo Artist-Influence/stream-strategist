@@ -25,6 +25,7 @@ export type Database = {
           content_types: string[]
           created_at: string
           creator_count: number
+          daily_streams: number | null
           description: string | null
           duration_days: number
           id: string
@@ -47,6 +48,7 @@ export type Database = {
           track_url: string
           updated_at: string
           vendor_allocations: Json
+          weekly_streams: number | null
         }
         Insert: {
           allocated_streams?: number | null
@@ -58,6 +60,7 @@ export type Database = {
           content_types?: string[]
           created_at?: string
           creator_count?: number
+          daily_streams?: number | null
           description?: string | null
           duration_days?: number
           id?: string
@@ -80,6 +83,7 @@ export type Database = {
           track_url?: string
           updated_at?: string
           vendor_allocations?: Json
+          weekly_streams?: number | null
         }
         Update: {
           allocated_streams?: number | null
@@ -91,6 +95,7 @@ export type Database = {
           content_types?: string[]
           created_at?: string
           creator_count?: number
+          daily_streams?: number | null
           description?: string | null
           duration_days?: number
           id?: string
@@ -113,6 +118,7 @@ export type Database = {
           track_url?: string
           updated_at?: string
           vendor_allocations?: Json
+          weekly_streams?: number | null
         }
         Relationships: []
       }
