@@ -562,7 +562,7 @@ export default function CampaignHistory() {
                     const isExpired = new Date() > endDate;
 
                     return (
-                      <TableRow key={campaign.id} className={`hover:bg-accent/10 ${getCampaignPerformanceColor(campaign)}`}>
+                      <TableRow key={campaign.id} className="hover:bg-accent/10">
                         <TableCell>
                           <input
                             type="checkbox"
@@ -588,12 +588,19 @@ export default function CampaignHistory() {
                         </TableCell>
                         <TableCell>{campaign.client_name || campaign.client}</TableCell>
                         <TableCell>
-                          <div className="flex flex-col space-y-1">
+                          <div className="flex flex-col items-start space-y-1">
                             <StatusBadge status={campaign.status} />
                             {getCampaignPerformanceStatus(campaign) && (
-                              <Badge variant="outline" className={`text-xs ${getCampaignPerformanceStatus(campaign)?.color}`}>
-                                {getCampaignPerformanceStatus(campaign)?.label}
-                              </Badge>
+                              <div className="flex items-center space-x-1">
+                                <div className={`w-2 h-2 rounded-full ${
+                                  getCampaignPerformanceStatus(campaign)?.color === 'text-accent' ? 'bg-accent' :
+                                  getCampaignPerformanceStatus(campaign)?.color === 'text-primary' ? 'bg-primary' :
+                                  'bg-destructive'
+                                }`}></div>
+                                <span className={`text-xs ${getCampaignPerformanceStatus(campaign)?.color}`}>
+                                  {getCampaignPerformanceStatus(campaign)?.label}
+                                </span>
+                              </div>
                             )}
                           </div>
                         </TableCell>
