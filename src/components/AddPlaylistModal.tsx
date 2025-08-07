@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,40 +25,69 @@ export default function AddPlaylistModal({ open, onOpenChange, vendorId, editing
     avg_daily_streams: "",
     follower_count: "",
   });
+
+  // Pre-populate form when editing
+  useEffect(() => {
+    if (editingPlaylist) {
+      setFormData({
+        name: editingPlaylist.name || "",
+        url: editingPlaylist.url || "",
+        genres: editingPlaylist.genres || [],
+        avg_daily_streams: editingPlaylist.avg_daily_streams?.toString() || "",
+        follower_count: editingPlaylist.follower_count?.toString() || "",
+      });
+    } else {
+      setFormData({ name: "", url: "", genres: [], avg_daily_streams: "", follower_count: "" });
+    }
+  }, [editingPlaylist, open]);
   const [isLoading, setIsLoading] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const addPlaylistMutation = useMutation({
+  const playlistMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase.from("playlists").insert({
+      const playlistData = {
         vendor_id: vendorId,
         name: data.name,
         url: data.url,
         genres: data.genres,
-        avg_daily_streams: parseInt(data.avg_daily_streams),
-        follower_count: parseInt(data.follower_count),
-      });
-      
-      if (error) throw error;
+        avg_daily_streams: parseInt(data.avg_daily_streams) || 0,
+        follower_count: parseInt(data.follower_count) || 0,
+      };
+
+      if (editingPlaylist) {
+        // Update existing playlist
+        const { error } = await supabase
+          .from("playlists")
+          .update(playlistData)
+          .eq("id", editingPlaylist.id);
+        if (error) throw error;
+      } else {
+        // Insert new playlist
+        const { error } = await supabase.from("playlists").insert(playlistData);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["playlists", vendorId] });
+      queryClient.invalidateQueries({ queryKey: ["vendor-playlists"] });
       toast({
         title: "Success",
-        description: "Playlist added successfully",
+        description: editingPlaylist ? "Playlist updated successfully" : "Playlist added successfully",
       });
       onOpenChange(false);
-      setFormData({ name: "", url: "", genres: [], avg_daily_streams: "", follower_count: "" });
+      if (!editingPlaylist) {
+        setFormData({ name: "", url: "", genres: [], avg_daily_streams: "", follower_count: "" });
+      }
     },
     onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to add playlist",
+        description: editingPlaylist ? "Failed to update playlist" : "Failed to add playlist",
         variant: "destructive",
       });
-      console.error("Error adding playlist:", error);
+      console.error(`Error ${editingPlaylist ? 'updating' : 'adding'} playlist:`, error);
     },
   });
 
@@ -116,7 +145,7 @@ export default function AddPlaylistModal({ open, onOpenChange, vendorId, editing
       });
       return;
     }
-    addPlaylistMutation.mutate(formData);
+    playlistMutation.mutate(formData);
   };
 
   return (
@@ -198,8 +227,10 @@ export default function AddPlaylistModal({ open, onOpenChange, vendorId, editing
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={addPlaylistMutation.isPending || isLoading}>
-                {addPlaylistMutation.isPending ? "Adding..." : "Add Playlist"}
+              <Button type="submit" disabled={playlistMutation.isPending || isLoading}>
+                {playlistMutation.isPending 
+                  ? (editingPlaylist ? "Updating..." : "Adding...") 
+                  : (editingPlaylist ? "Update Playlist" : "Add Playlist")}
               </Button>
             </div>
           </form>
