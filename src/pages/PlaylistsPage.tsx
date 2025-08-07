@@ -207,8 +207,14 @@ export default function PlaylistsPage() {
     }
   };
 
-  // CSV Import functionality
-  const handleVendorPlaylistImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Helper function to extract playlist ID from Spotify URL
+  const extractPlaylistId = (url: string) => {
+    const match = url.match(/playlist\/([a-zA-Z0-9]+)/);
+    return match ? match[1] : null;
+  };
+
+  // Enhanced CSV Import functionality with Spotify API fetching
+  const handleVendorPlaylistImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -217,8 +223,27 @@ export default function PlaylistsPage() {
       complete: async (results) => {
         try {
           let importCount = 0;
-          for (const row of results.data as any[]) {
-            if (!row.vendor_name || !row.playlist_url) continue;
+          let fetchedCount = 0;
+          const totalRows = results.data.length;
+          
+          toast({
+            title: "Import Started",
+            description: `Processing ${totalRows} playlists with Spotify API fetching...`,
+          });
+
+          for (const [index, row] of (results.data as any[]).entries()) {
+            if (!row.vendor_name || !row.playlist_url) {
+              console.log(`Skipping row ${index + 1}: Missing vendor_name or playlist_url`);
+              continue;
+            }
+            
+            // Progress notification every 5 items
+            if (index % 5 === 0) {
+              toast({
+                title: "Processing...",
+                description: `Processed ${index}/${totalRows} playlists`,
+              });
+            }
             
             // Find or create vendor
             let { data: vendor } = await supabase
@@ -240,30 +265,78 @@ export default function PlaylistsPage() {
             }
             
             if (vendor) {
-              // Create playlist
-              await supabase.from('playlists').insert({
-                vendor_id: vendor.id,
+              let playlistData = {
                 name: row.playlist_name || 'Unknown Playlist',
-                url: row.playlist_url,
+                followers: parseInt(row.followers) || 0,
                 genres: row.genres ? row.genres.split(';').map((g: string) => g.trim()) : [],
-                avg_daily_streams: parseInt(row.avg_daily_streams) || 0,
-                follower_count: parseInt(row.followers) || 0
+                avg_daily_streams: parseInt(row.avg_daily_streams) || 0
+              };
+
+              // Try to fetch data from Spotify API if it's a valid Spotify URL
+              const playlistId = extractPlaylistId(row.playlist_url);
+              if (playlistId) {
+                try {
+                  console.log(`Fetching Spotify data for playlist: ${playlistId}`);
+                  
+                  const { data: spotifyData, error } = await supabase.functions.invoke('spotify-playlist-fetch', {
+                    body: { playlistId }
+                  });
+
+                  if (!error && spotifyData) {
+                    // Use Spotify data if available, otherwise fall back to CSV data
+                    playlistData = {
+                      name: spotifyData.name || playlistData.name,
+                      followers: spotifyData.followers?.total || playlistData.followers,
+                      genres: spotifyData.genres?.length > 0 ? spotifyData.genres : playlistData.genres,
+                      avg_daily_streams: playlistData.avg_daily_streams // Keep CSV value for streams
+                    };
+                    
+                    fetchedCount++;
+                    console.log(`Successfully fetched Spotify data for: ${playlistData.name}`);
+                  } else {
+                    console.log(`Failed to fetch Spotify data for ${playlistId}, using CSV data:`, error);
+                  }
+                } catch (apiError) {
+                  console.warn(`Spotify API call failed for ${playlistId}:`, apiError);
+                  // Continue with CSV data
+                }
+                
+                // Small delay to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 100));
+              }
+
+              // Create playlist with fetched or CSV data
+              const { error: insertError } = await supabase.from('playlists').insert({
+                vendor_id: vendor.id,
+                name: playlistData.name,
+                url: row.playlist_url,
+                genres: playlistData.genres,
+                avg_daily_streams: playlistData.avg_daily_streams,
+                follower_count: playlistData.followers
               });
-              importCount++;
+
+              if (!insertError) {
+                importCount++;
+              } else {
+                console.error(`Failed to insert playlist: ${playlistData.name}`, insertError);
+              }
             }
           }
           
           queryClient.invalidateQueries({ queryKey: ["vendors"] });
           queryClient.invalidateQueries({ queryKey: ["all-playlists"] });
           queryClient.invalidateQueries({ queryKey: ["vendor-playlists"] });
+          
           toast({
-            title: "Success",
-            description: `Imported ${importCount} playlists successfully`,
+            title: "Import Complete!",
+            description: `Imported ${importCount} playlists. ${fetchedCount} playlists auto-populated from Spotify.`,
           });
+          
         } catch (error) {
+          console.error('Import error:', error);
           toast({
             title: "Error",
-            description: "Failed to import data. Please check the format.",
+            description: "Failed to import data. Check console for details.",
             variant: "destructive",
           });
         }
@@ -369,10 +442,13 @@ export default function PlaylistsPage() {
                       <Info className="w-3 h-3 ml-2" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>
+                   <TooltipContent>
                     <div className="text-xs max-w-xs">
-                      <p className="font-semibold mb-1">Required Format:</p>
-                      <pre className="text-xs">vendor_name,cost_per_1k_streams,playlist_url{'\n'}"Electronic Vibes",0.05,"https://open.spotify.com/playlist/..."</pre>
+                      <p className="font-semibold mb-1">CSV Format (Spotify Auto-Fetch):</p>
+                      <pre className="text-xs">vendor_name,cost_per_1k_streams,playlist_name,playlist_url,genres,followers,avg_daily_streams{'\n'}"Electronic Vibes",0.05,"My Playlist","https://open.spotify.com/playlist/...","electronic;dance",50000,5000</pre>
+                      <p className="text-yellow-400 mt-2 font-semibold">✨ Auto-fetches from Spotify:</p>
+                      <p className="text-yellow-300">• Playlist name, followers & genres</p>
+                      <p className="text-gray-400">• Falls back to CSV data if API fails</p>
                     </div>
                   </TooltipContent>
                 </Tooltip>
