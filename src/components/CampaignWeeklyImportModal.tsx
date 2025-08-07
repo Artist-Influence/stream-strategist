@@ -160,7 +160,7 @@ export default function CampaignWeeklyImportModal({
               sub_genre: subGenre,
               sub_genres: genres,
               start_date: startDate,
-              duration_days: parseInt(row['Duration Days']) || 90,
+              duration_days: 90,
               selected_playlists: parsedPlaylists.length > 0 ? 
                 parsedPlaylists.map(name => ({ name, imported: true })) : [],
               vendor_allocations: {},
@@ -256,15 +256,15 @@ export default function CampaignWeeklyImportModal({
             <p className="font-semibold text-sm">Required CSV Format:</p>
             <div className="bg-background p-3 rounded border text-xs font-mono">
               <div className="text-foreground mb-1">
-                Campaign Name,Client,Stream Goal,Remaining Streams,Daily Streams,Weekly Streams,Track URL,Start Date,Duration Days,[Playlist columns]
+                Campaign Name,Client,Stream Goal,Remaining Streams,Daily Streams,Weekly Streams,Track URL,Start Date,[Playlist columns]
               </div>
               <div className="text-muted-foreground">
-                "Jared Rapoza","Slime",20000,18000,200,1400,"https://open.spotify.com/track/...","2024-01-15",90,"Playlist Name - Another Playlist [NEW] -"
+                "Jared Rapoza","Slime",20000,18000,200,1400,"https://open.spotify.com/track/...","2024-01-15","Playlist Name - Another Playlist [NEW] -"
               </div>
             </div>
             <div className="space-y-2 text-xs text-muted-foreground">
               <p>• <strong>Start Date:</strong> Campaign start date (YYYY-MM-DD format), defaults to today if not provided</p>
-              <p>• <strong>Duration Days:</strong> Campaign duration in days, defaults to 90 if not provided</p>
+              
               <p>• <strong>Budget:</strong> Will be set to $0 and must be manually entered later</p>
               <p>• <strong>Genres:</strong> Automatically detected from Spotify track URL</p>
               <p>• <strong>Playlists:</strong> Any column containing playlist data will be parsed automatically</p>
