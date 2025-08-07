@@ -1,11 +1,11 @@
 // SINGLE SOURCE OF TRUTH - Use everywhere in the app
 export const UNIFIED_GENRES = [
-  'pop', 'rock', 'hip-hop', 'electronic', 'indie', 'r&b',
-  'country', 'folk', 'jazz', 'classical', 'reggae', 'punk',
-  'metal', 'blues', 'funk', 'soul', 'disco', 'house',
-  'techno', 'dubstep', 'trap', 'lo-fi', 'synthwave',
-  'bedroom-pop', 'indie-rock', 'alt-rock', 'future-bass',
-  'edm', 'ambient', 'experimental', 'latin', 'afrobeat'
+  'phonk', 'tech house', 'techno', 'minimal', 'house', 'progressive house',
+  'bass house', 'big room', 'afro house', 'afrobeats', 'hardstyle', 
+  'dubstep', 'trap', 'melodic bass', 'trance', 'dance', 'pop', 'indie', 
+  'alternative', 'rock', 'hip-hop', 'r&b', 'country', 'jazz', 'folk', 
+  'metal', 'classical', 'reggae', 'latin', 'brazilian', 'blues', 'punk', 
+  'chill', 'ambient', 'experimental'
 ];
 
 // Keyboard shortcuts

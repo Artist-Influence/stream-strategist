@@ -40,12 +40,9 @@ interface CampaignBuilderProps {
   initialData?: Partial<CampaignFormData>;
 }
 
-const popularGenres = [
-  "pop", "rock", "hip-hop", "electronic", "indie", "r&b", "country", 
-  "folk", "jazz", "classical", "reggae", "punk", "metal", "blues",
-  "funk", "soul", "disco", "house", "techno", "dubstep", "trap",
-  "lo-fi", "synthwave", "bedroom-pop", "indie-rock", "alt-rock"
-];
+import { UNIFIED_GENRES } from "@/lib/constants";
+
+const popularGenres = UNIFIED_GENRES;
 
 export default function CampaignConfiguration({ onNext, onBack, initialData }: CampaignBuilderProps) {
   const [selectedGenres, setSelectedGenres] = useState<string[]>(
