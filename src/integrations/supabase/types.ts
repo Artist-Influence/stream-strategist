@@ -351,6 +351,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      update_playlist_avg_streams: {
+        Args: { playlist_uuid: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
