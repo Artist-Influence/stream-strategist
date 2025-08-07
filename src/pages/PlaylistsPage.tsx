@@ -395,6 +395,18 @@ export default function PlaylistsPage() {
                 await new Promise(resolve => setTimeout(resolve, 100));
               }
 
+              // Check for existing playlist with same URL to avoid duplicates
+              const { data: existingPlaylist } = await supabase
+                .from('playlists')
+                .select('id')
+                .eq('url', playlistUrl)
+                .single();
+
+              if (existingPlaylist) {
+                console.log(`Duplicate playlist found for URL: ${playlistUrl}, skipping...`);
+                continue;
+              }
+
               // Create playlist with fetched or CSV data
               const { error: insertError } = await supabase.from('playlists').insert({
                 vendor_id: vendor.id,

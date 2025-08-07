@@ -56,10 +56,11 @@ export default function EditVendorModal({ open, onOpenChange, vendor }: EditVend
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vendors"] });
-      queryClient.invalidateQueries({ queryKey: ["playlists"] });
+      queryClient.invalidateQueries({ queryKey: ["all-playlists"] });
+      queryClient.invalidateQueries({ queryKey: ["vendor-playlists"] });
       toast({
         title: "Success",
-        description: "Vendor updated successfully",
+        description: "Vendor updated successfully - costs synced to all playlists",
       });
       onOpenChange(false);
     },
