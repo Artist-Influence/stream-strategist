@@ -55,11 +55,53 @@ export default function PlaylistsPage() {
   const [showAddVendorModal, setShowAddVendorModal] = useState(false);
   const [showAddPlaylistModal, setShowAddPlaylistModal] = useState(false);
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
+  const [selectedPlaylists, setSelectedPlaylists] = useState<Set<string>>(new Set());
   const vendorFileInputRef = useRef<HTMLInputElement>(null);
   const playlistFileInputRef = useRef<HTMLInputElement>(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Delete playlist mutation
+  const deletePlaylistMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('playlists')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-playlists'] });
+      queryClient.invalidateQueries({ queryKey: ['vendor-playlists'] });
+      toast({
+        title: "Playlist Deleted",
+        description: "Playlist has been successfully removed.",
+      });
+    }
+  });
+
+  // Bulk delete playlists mutation
+  const bulkDeletePlaylistsMutation = useMutation({
+    mutationFn: async (playlistIds: string[]) => {
+      const { error } = await supabase
+        .from('playlists')
+        .delete()
+        .in('id', playlistIds);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, playlistIds) => {
+      queryClient.invalidateQueries({ queryKey: ['all-playlists'] });
+      queryClient.invalidateQueries({ queryKey: ['vendor-playlists'] });
+      setSelectedPlaylists(new Set());
+      toast({
+        title: "Playlists Deleted",
+        description: `${playlistIds.length} playlists have been successfully removed.`,
+      });
+    }
+  });
 
   // Fetch vendors
   const { data: vendors, isLoading: vendorsLoading } = useQuery({
@@ -129,6 +171,15 @@ export default function PlaylistsPage() {
           selectedGenres.some(genre => playlist.genres?.includes(genre));
         return matchesSearch && matchesGenres;
       }) || [];
+
+  // For table view mass select functionality
+  const filteredAllPlaylists = allPlaylists?.filter(playlist => {
+    const matchesSearch = playlist.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         playlist.vendor.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesGenres = selectedGenres.length === 0 || 
+      selectedGenres.some(genre => playlist.genres?.includes(genre));
+    return matchesSearch && matchesGenres;
+  }) || [];
 
   const selectedVendorData = vendors?.find(v => v.id === selectedVendor);
 
@@ -352,29 +403,37 @@ export default function PlaylistsPage() {
     setShowAddPlaylistModal(true);
   };
 
-  const handleDeletePlaylist = async (playlistId: string) => {
-    if (!confirm("Are you sure you want to delete this playlist?")) return;
+  const handleSelectPlaylist = (playlistId: string, checked: boolean) => {
+    setSelectedPlaylists(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(playlistId);
+      } else {
+        newSet.delete(playlistId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAllPlaylists = (checked: boolean) => {
+    if (checked) {
+      setSelectedPlaylists(new Set(filteredAllPlaylists.map(p => p.id)));
+    } else {
+      setSelectedPlaylists(new Set());
+    }
+  };
+
+  const handleBulkDeletePlaylists = () => {
+    if (selectedPlaylists.size === 0) return;
     
-    try {
-      const { error } = await supabase
-        .from("playlists")
-        .delete()
-        .eq("id", playlistId);
-      
-      if (error) throw error;
-      
-      queryClient.invalidateQueries({ queryKey: ["all-playlists"] });
-      queryClient.invalidateQueries({ queryKey: ["vendor-playlists"] });
-      toast({
-        title: "Success",
-        description: "Playlist deleted successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete playlist",
-        variant: "destructive",
-      });
+    if (confirm(`Are you sure you want to delete ${selectedPlaylists.size} playlists? This action cannot be undone.`)) {
+      bulkDeletePlaylistsMutation.mutate(Array.from(selectedPlaylists));
+    }
+  };
+
+  const handleDeletePlaylist = (id: string) => {
+    if (confirm("Are you sure you want to delete this playlist? This action cannot be undone.")) {
+      deletePlaylistMutation.mutate(id);
     }
   };
 
@@ -726,6 +785,17 @@ export default function PlaylistsPage() {
                 />
               </div>
               
+              {selectedPlaylists.size > 0 && (
+                <Button 
+                  variant="destructive" 
+                  onClick={handleBulkDeletePlaylists}
+                  disabled={bulkDeletePlaylistsMutation.isPending}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Selected ({selectedPlaylists.size})
+                </Button>
+              )}
+              
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline">
@@ -773,6 +843,14 @@ export default function PlaylistsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-12">
+                          <input
+                            type="checkbox"
+                            checked={selectedPlaylists.size === filteredAllPlaylists.length && filteredAllPlaylists.length > 0}
+                            onChange={(e) => handleSelectAllPlaylists(e.target.checked)}
+                            className="rounded"
+                          />
+                        </TableHead>
                         <TableHead>Playlist</TableHead>
                         <TableHead>Vendor</TableHead>
                         <TableHead>Genres</TableHead>
@@ -783,8 +861,16 @@ export default function PlaylistsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredPlaylists.map((playlist) => (
+                      {filteredAllPlaylists.map((playlist) => (
                         <TableRow key={playlist.id} className="hover:bg-accent/20">
+                          <TableCell>
+                            <input
+                              type="checkbox"
+                              checked={selectedPlaylists.has(playlist.id)}
+                              onChange={(e) => handleSelectPlaylist(playlist.id, e.target.checked)}
+                              className="rounded"
+                            />
+                          </TableCell>
                           <TableCell className="font-medium">
                             <div>
                               <p className="font-semibold">{playlist.name}</p>
@@ -800,7 +886,7 @@ export default function PlaylistsPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <span className="font-medium">{(playlist as PlaylistWithVendor).vendor?.name}</span>
+                            <span className="font-medium">{playlist.vendor?.name}</span>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
@@ -823,7 +909,7 @@ export default function PlaylistsPage() {
                             {playlist.avg_daily_streams?.toLocaleString() || '0'}
                           </TableCell>
                           <TableCell className="font-mono text-sm">
-                            ${(playlist as PlaylistWithVendor).vendor?.cost_per_1k_streams?.toFixed(2) || '0.00'}
+                            ${playlist.vendor?.cost_per_1k_streams?.toFixed(2) || '0.00'}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-2">
@@ -850,7 +936,7 @@ export default function PlaylistsPage() {
                   </Table>
                 )}
                 
-                {!allPlaylistsLoading && filteredPlaylists.length === 0 && (
+                {!allPlaylistsLoading && filteredAllPlaylists.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
                     No playlists found. Try adjusting your search or filters.
                   </div>
