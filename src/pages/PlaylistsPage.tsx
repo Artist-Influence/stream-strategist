@@ -1088,25 +1088,61 @@ export default function PlaylistsPage() {
                           <TableCell className="font-mono text-sm">
                             ${playlist.vendor?.cost_per_1k_streams?.toFixed(2) || '0.00'}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center space-x-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleEditPlaylist(playlist)}
-                              >
-                                <Edit className="w-3 h-3" />
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleDeletePlaylist(playlist.id)}
-                                className="text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </TableCell>
+                           <TableCell>
+                             <div className="flex items-center space-x-1">
+                               <TooltipProvider>
+                                 <Tooltip>
+                                   <TooltipTrigger asChild>
+                                     <Button 
+                                       variant="outline" 
+                                       size="sm"
+                                       onClick={() => {
+                                         setSelectedPlaylistForPerformance({ id: playlist.id, name: playlist.name });
+                                         setAddPerformanceModalOpen(true);
+                                       }}
+                                     >
+                                       <Activity className="w-3 h-3" />
+                                     </Button>
+                                   </TooltipTrigger>
+                                   <TooltipContent>Add Stream Data</TooltipContent>
+                                 </Tooltip>
+                               </TooltipProvider>
+                               
+                               <TooltipProvider>
+                                 <Tooltip>
+                                   <TooltipTrigger asChild>
+                                     <Button 
+                                       variant="outline" 
+                                       size="sm"
+                                       onClick={() => {
+                                         setSelectedPlaylistForPerformance({ id: playlist.id, name: playlist.name });
+                                         setPerformanceHistoryModalOpen(true);
+                                       }}
+                                     >
+                                       <BarChart3 className="w-3 h-3" />
+                                     </Button>
+                                   </TooltipTrigger>
+                                   <TooltipContent>Performance History</TooltipContent>
+                                 </Tooltip>
+                               </TooltipProvider>
+                               
+                               <Button 
+                                 variant="outline" 
+                                 size="sm"
+                                 onClick={() => handleEditPlaylist(playlist)}
+                               >
+                                 <Edit className="w-3 h-3" />
+                               </Button>
+                               <Button 
+                                 variant="outline" 
+                                 size="sm"
+                                 onClick={() => handleDeletePlaylist(playlist.id)}
+                                 className="text-destructive hover:text-destructive"
+                               >
+                                 <Trash2 className="w-3 h-3" />
+                               </Button>
+                             </div>
+                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
