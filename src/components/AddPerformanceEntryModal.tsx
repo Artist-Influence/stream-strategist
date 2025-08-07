@@ -34,13 +34,22 @@ export default function AddPerformanceEntryModal({
 
   const addEntryMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase.from("performance_entries").insert({
+      console.log("Adding performance entry:", {
         playlist_id: playlistId,
         daily_streams: parseInt(data.daily_streams),
         date_recorded: format(data.date_recorded, 'yyyy-MM-dd'),
       });
       
+      const { data: result, error } = await supabase.from("performance_entries").insert({
+        playlist_id: playlistId,
+        daily_streams: parseInt(data.daily_streams),
+        date_recorded: format(data.date_recorded, 'yyyy-MM-dd'),
+      }).select();
+      
+      console.log("Insert result:", result, "Error:", error);
+      
       if (error) throw error;
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["performance-entries", playlistId] });
