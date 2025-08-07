@@ -601,8 +601,12 @@ export default function PlaylistsPage() {
         />
         <AddPlaylistModal 
           open={showAddPlaylistModal} 
-          onOpenChange={setShowAddPlaylistModal}
+          onOpenChange={(open) => {
+            setShowAddPlaylistModal(open);
+            if (!open) setEditingPlaylist(null);
+          }}
           vendorId={selectedVendor}
+          editingPlaylist={editingPlaylist}
         />
       </Layout>
     );
@@ -872,8 +876,12 @@ export default function PlaylistsPage() {
         />
         <AddPlaylistModal 
           open={showAddPlaylistModal} 
-          onOpenChange={setShowAddPlaylistModal}
+          onOpenChange={(open) => {
+            setShowAddPlaylistModal(open);
+            if (!open) setEditingPlaylist(null);
+          }}
           vendorId={selectedVendor}
+          editingPlaylist={editingPlaylist}
         />
       </div>
     </Layout>

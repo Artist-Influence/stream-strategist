@@ -77,6 +77,7 @@ export default function AddPlaylistModal({ open, onOpenChange, vendorId, editing
         description: editingPlaylist ? "Playlist updated successfully" : "Playlist added successfully",
       });
       onOpenChange(false);
+      // Reset form for new playlists only
       if (!editingPlaylist) {
         setFormData({ name: "", url: "", genres: [], avg_daily_streams: "", follower_count: "" });
       }
