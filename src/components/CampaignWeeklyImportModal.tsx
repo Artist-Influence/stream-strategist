@@ -259,8 +259,13 @@ export default function CampaignWeeklyImportModal({
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    console.log('File selected:', file);
+    if (!file) {
+      console.log('No file selected');
+      return;
+    }
     
+    console.log('Starting file import for:', file.name);
     handleCampaignImport(file);
     event.target.value = ''; // Reset file input
   };
