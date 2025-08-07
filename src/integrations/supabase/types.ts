@@ -19,6 +19,7 @@ export type Database = {
           allocated_streams: number | null
           brand_name: string
           budget: number
+          campaign_type: string
           client: string
           client_name: string | null
           content_types: string[]
@@ -34,6 +35,7 @@ export type Database = {
           results: Json | null
           selected_creators: Json | null
           selected_playlists: Json
+          source: string
           start_date: string
           status: string
           stream_goal: number
@@ -50,6 +52,7 @@ export type Database = {
           allocated_streams?: number | null
           brand_name: string
           budget: number
+          campaign_type?: string
           client?: string
           client_name?: string | null
           content_types?: string[]
@@ -65,6 +68,7 @@ export type Database = {
           results?: Json | null
           selected_creators?: Json | null
           selected_playlists?: Json
+          source?: string
           start_date?: string
           status?: string
           stream_goal?: number
@@ -81,6 +85,7 @@ export type Database = {
           allocated_streams?: number | null
           brand_name?: string
           budget?: number
+          campaign_type?: string
           client?: string
           client_name?: string | null
           content_types?: string[]
@@ -96,6 +101,7 @@ export type Database = {
           results?: Json | null
           selected_creators?: Json | null
           selected_playlists?: Json
+          source?: string
           start_date?: string
           status?: string
           stream_goal?: number

@@ -72,6 +72,7 @@ export default function CampaignReview({ campaignData, allocationsData, onBack }
             start_date: campaignData.start_date,
             duration_days: campaignData.duration_days,
             status: 'active',
+            source: 'campaign_manager',
             selected_playlists: allocationsData.selectedPlaylists,
             vendor_allocations: allocationsData.allocations.reduce((acc: any, alloc: any) => {
               acc[alloc.vendor_id] = (acc[alloc.vendor_id] || 0) + alloc.allocation;

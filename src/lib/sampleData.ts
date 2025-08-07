@@ -131,6 +131,7 @@ export async function insertSampleData() {
           start_date: "2024-01-15",
           duration_days: 90,
           status: "active",
+          source: "campaign_manager",
           music_genres: ["electronic"],
           content_types: ["single"],
           territory_preferences: ["US", "UK"],

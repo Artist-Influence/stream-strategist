@@ -93,12 +93,13 @@ export default function CampaignWeeklyImportModal({
         // Remove duplicates
         parsedPlaylists = [...new Set(parsedPlaylists)];
         
-        // Find existing campaign by name and client
+        // Find existing campaign by name and client (only in campaign_manager source)
         const { data: existingCampaign } = await supabase
           .from('campaigns')
           .select('*')
           .eq('name', campaignName.trim())
           .eq('client', clientName.trim())
+          .eq('source', 'campaign_manager')
           .maybeSingle();
         
         if (existingCampaign) {
@@ -204,6 +205,7 @@ export default function CampaignWeeklyImportModal({
                 parsedPlaylists.map(name => ({ name, imported: true })) : [],
               vendor_allocations: {},
               totals: { projected_streams: 0 },
+              source: 'campaign_manager', // Explicitly set source
               created_at: startDate, // Set created_at to campaign start date
               updated_at: new Date().toISOString()
             })

@@ -93,6 +93,7 @@ export default function CampaignHistory() {
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
+        .eq('source', 'campaign_manager')
         .order('created_at', { ascending: false });
       
       if (error) throw error;

@@ -49,6 +49,7 @@ export default function CampaignWeeklyUpdateModal({
           .from('campaigns')
           .select('*')
           .eq('name', row.campaign_name.trim())
+          .eq('source', 'campaign_manager')
           .single();
         
         if (campaign) {
