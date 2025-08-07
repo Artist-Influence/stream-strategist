@@ -4,16 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { UNIFIED_GENRES } from "@/lib/constants";
 import { AddPlaylistForm } from "@/components/AddPlaylistForm";
 
 interface AddPlaylistModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  vendorId: string;
+  vendorId?: string | null;
   editingPlaylist?: any;
 }
 
@@ -24,6 +25,7 @@ export default function AddPlaylistModal({ open, onOpenChange, vendorId, editing
     genres: [] as string[],
     avg_daily_streams: "",
     follower_count: "",
+    vendor_id: vendorId || "",
   });
 
   // Pre-populate form when editing
@@ -35,20 +37,43 @@ export default function AddPlaylistModal({ open, onOpenChange, vendorId, editing
         genres: editingPlaylist.genres || [],
         avg_daily_streams: editingPlaylist.avg_daily_streams?.toString() || "",
         follower_count: editingPlaylist.follower_count?.toString() || "",
+        vendor_id: editingPlaylist.vendor_id || vendorId || "",
       });
     } else {
-      setFormData({ name: "", url: "", genres: [], avg_daily_streams: "", follower_count: "" });
+      setFormData({ 
+        name: "", 
+        url: "", 
+        genres: [], 
+        avg_daily_streams: "", 
+        follower_count: "",
+        vendor_id: vendorId || "",
+      });
     }
-  }, [editingPlaylist, open]);
+  }, [editingPlaylist, open, vendorId]);
   const [isLoading, setIsLoading] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Fetch vendors for selection when vendorId is not provided
+  const { data: vendors } = useQuery({
+    queryKey: ['vendors'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('vendors')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !vendorId, // Only fetch when we need vendor selection
+  });
+
   const playlistMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       const playlistData = {
-        vendor_id: vendorId,
+        vendor_id: data.vendor_id || vendorId,
         name: data.name,
         url: data.url,
         genres: data.genres,
@@ -72,6 +97,7 @@ export default function AddPlaylistModal({ open, onOpenChange, vendorId, editing
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["playlists", vendorId] });
       queryClient.invalidateQueries({ queryKey: ["vendor-playlists"] });
+      queryClient.invalidateQueries({ queryKey: ["all-playlists"] });
       toast({
         title: "Success",
         description: editingPlaylist ? "Playlist updated successfully" : "Playlist added successfully",
@@ -79,7 +105,14 @@ export default function AddPlaylistModal({ open, onOpenChange, vendorId, editing
       onOpenChange(false);
       // Reset form for new playlists only
       if (!editingPlaylist) {
-        setFormData({ name: "", url: "", genres: [], avg_daily_streams: "", follower_count: "" });
+        setFormData({ 
+          name: "", 
+          url: "", 
+          genres: [], 
+          avg_daily_streams: "", 
+          follower_count: "",
+          vendor_id: vendorId || "",
+        });
       }
     },
     onError: (error) => {
@@ -138,10 +171,10 @@ export default function AddPlaylistModal({ open, onOpenChange, vendorId, editing
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.url || formData.genres.length === 0) {
+    if (!formData.name || !formData.url || formData.genres.length === 0 || !formData.vendor_id) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields",
+        description: "Please fill in all required fields including vendor selection",
         variant: "destructive",
       });
       return;
@@ -160,90 +193,101 @@ export default function AddPlaylistModal({ open, onOpenChange, vendorId, editing
             {editingPlaylist ? "Update playlist information" : "Enter Spotify URL to auto-fetch playlist data"}
           </DialogDescription>
         </DialogHeader>
-        {editingPlaylist ? (
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {!vendorId && (
             <div className="space-y-2">
-              <Label htmlFor="url">Spotify Playlist URL *</Label>
-              <Input
-                id="url"
-                value={formData.url}
-                onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                onBlur={(e) => handleUrlPaste(e.target.value)}
-                placeholder="https://open.spotify.com/playlist/..."
-                disabled={isLoading}
-              />
-              {isLoading && <p className="text-sm text-muted-foreground">Loading playlist data...</p>}
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="name">Playlist Name *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Enter playlist name"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Genres * (max 4)</Label>
-              <MultiSelect
-                options={UNIFIED_GENRES}
-                selected={formData.genres}
-                onChange={(genres) => setFormData({ ...formData, genres })}
-                placeholder="Select up to 4 genres"
-                max={4}
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="streams">Avg Daily Streams</Label>
-                <Input
-                  id="streams"
-                  type="number"
-                  value={formData.avg_daily_streams}
-                  onChange={(e) => setFormData({ ...formData, avg_daily_streams: e.target.value })}
-                  placeholder="e.g. 5000"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="followers">Followers</Label>
-                <Input
-                  id="followers"
-                  type="number"
-                  value={formData.follower_count}
-                  onChange={(e) => setFormData({ ...formData, follower_count: e.target.value })}
-                  placeholder="e.g. 50000"
-                />
-              </div>
-            </div>
-            
-            <div className="flex justify-end space-x-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
+              <Label htmlFor="vendor">Vendor *</Label>
+              <Select 
+                value={formData.vendor_id} 
+                onValueChange={(value) => setFormData({ ...formData, vendor_id: value })}
               >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={playlistMutation.isPending || isLoading}>
-                {playlistMutation.isPending 
-                  ? (editingPlaylist ? "Updating..." : "Adding...") 
-                  : (editingPlaylist ? "Update Playlist" : "Add Playlist")}
-              </Button>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a vendor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vendors?.map((vendor) => (
+                    <SelectItem key={vendor.id} value={vendor.id}>
+                      {vendor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </form>
-        ) : (
-          <AddPlaylistForm
-            vendorId={vendorId}
-            onSuccess={() => {
-              onOpenChange(false);
-              queryClient.invalidateQueries({ queryKey: ["vendor-playlists"] });
-            }}
-          />
-        )}
+          )}
+          
+          <div className="space-y-2">
+            <Label htmlFor="url">Spotify Playlist URL *</Label>
+            <Input
+              id="url"
+              value={formData.url}
+              onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+              onBlur={(e) => handleUrlPaste(e.target.value)}
+              placeholder="https://open.spotify.com/playlist/..."
+              disabled={isLoading}
+            />
+            {isLoading && <p className="text-sm text-muted-foreground">Loading playlist data...</p>}
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="name">Playlist Name *</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Enter playlist name"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Genres * (max 4)</Label>
+            <MultiSelect
+              options={UNIFIED_GENRES}
+              selected={formData.genres}
+              onChange={(genres) => setFormData({ ...formData, genres })}
+              placeholder="Select up to 4 genres"
+              max={4}
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="streams">Avg Daily Streams</Label>
+              <Input
+                id="streams"
+                type="number"
+                value={formData.avg_daily_streams}
+                onChange={(e) => setFormData({ ...formData, avg_daily_streams: e.target.value })}
+                placeholder="e.g. 5000"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="followers">Followers</Label>
+              <Input
+                id="followers"
+                type="number"
+                value={formData.follower_count}
+                onChange={(e) => setFormData({ ...formData, follower_count: e.target.value })}
+                placeholder="e.g. 50000"
+              />
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={playlistMutation.isPending || isLoading}>
+              {playlistMutation.isPending 
+                ? (editingPlaylist ? "Updating..." : "Adding...") 
+                : (editingPlaylist ? "Update Playlist" : "Add Playlist")}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

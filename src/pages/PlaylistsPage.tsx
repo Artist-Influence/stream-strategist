@@ -283,8 +283,14 @@ export default function PlaylistsPage() {
           });
 
           for (const [index, row] of (results.data as any[]).entries()) {
-            if (!row.vendor_name || !row.playlist_url) {
-              console.log(`Skipping row ${index + 1}: Missing vendor_name or playlist_url`);
+            // Handle different possible column name variations
+            const vendorName = row.vendor_name || row.vendor || row.Vendor || row['Vendor Name'] || row['vendor name'];
+            const playlistUrl = row.playlist_url || row.url || row.URL || row['Playlist URL'] || row['playlist url'] || row.link;
+            const costPer1k = row.cost_per_1k_streams || row['cost per 1k streams'] || row['Cost per 1k streams'] || row.cost || row.Cost;
+            
+            if (!vendorName || !playlistUrl) {
+              console.log(`Skipping row ${index + 1}: Missing vendor name (${vendorName}) or playlist URL (${playlistUrl})`);
+              console.log('Available columns:', Object.keys(row));
               continue;
             }
             
@@ -300,15 +306,15 @@ export default function PlaylistsPage() {
             let { data: vendor } = await supabase
               .from('vendors')
               .select('*')
-              .eq('name', row.vendor_name.trim())
+              .eq('name', vendorName.trim())
               .single();
             
             if (!vendor) {
               const { data: newVendor } = await supabase
                 .from('vendors')
                 .insert({
-                  name: row.vendor_name.trim(),
-                  cost_per_1k_streams: parseFloat(row.cost_per_1k_streams) || 0
+                  name: vendorName.trim(),
+                  cost_per_1k_streams: parseFloat(costPer1k) || 0
                 })
                 .select()
                 .single();
@@ -324,7 +330,7 @@ export default function PlaylistsPage() {
               };
 
               // Try to fetch data from Spotify API if it's a valid Spotify URL
-              const playlistId = extractPlaylistId(row.playlist_url);
+              const playlistId = extractPlaylistId(playlistUrl);
               if (playlistId) {
                 try {
                   console.log(`Fetching Spotify data for playlist: ${playlistId}`);
@@ -360,7 +366,7 @@ export default function PlaylistsPage() {
               const { error: insertError } = await supabase.from('playlists').insert({
                 vendor_id: vendor.id,
                 name: playlistData.name,
-                url: row.playlist_url,
+                url: playlistUrl,
                 genres: playlistData.genres,
                 avg_daily_streams: playlistData.avg_daily_streams,
                 follower_count: playlistData.followers
@@ -678,6 +684,17 @@ export default function PlaylistsPage() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold gradient-primary bg-clip-text text-transparent">VENDORS & PLAYLISTS</h1>
           <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setSelectedVendor(null);
+                setEditingPlaylist(null);
+                setShowAddPlaylistModal(true);
+              }}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Playlist
+            </Button>
             <Button onClick={() => vendorFileInputRef.current?.click()}>
               <Upload className="h-4 w-4 mr-2" />
               Import CSV
