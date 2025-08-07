@@ -162,14 +162,11 @@ export default function CampaignWeeklyImportModal({
           // Fetch genres from Spotify API if track URL provided
           if (trackUrl) {
             try {
-              const response = await fetch('/functions/v1/spotify-fetch', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: trackUrl.trim() })
+              const { data: spotifyData, error: spotifyError } = await supabase.functions.invoke('spotify-fetch', {
+                body: { url: trackUrl.trim() }
               });
               
-              if (response.ok) {
-                const spotifyData = await response.json();
+              if (!spotifyError && spotifyData) {
                 if (spotifyData.genres && spotifyData.genres.length > 0) {
                   genres = spotifyData.genres.slice(0, 3); // Top 3 genres
                   subGenre = genres[0] || '';
