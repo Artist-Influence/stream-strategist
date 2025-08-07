@@ -19,11 +19,15 @@ export default function CampaignWeeklyImportModal({
   onOpenChange 
 }: CampaignWeeklyImportModalProps) {
   const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
+  const [importStatus, setImportStatus] = useState<string>('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const handleCampaignImport = async (file: File) => {
     setIsImporting(true);
+    setImportStatus('Reading CSV file...');
+    setImportProgress({ current: 0, total: 0 });
     
     try {
       const text = await file.text();
@@ -48,10 +52,15 @@ export default function CampaignWeeklyImportModal({
       
       console.log('Parsed data:', data); // Debug log
       
+      const rows = data as any[];
+      setImportProgress({ current: 0, total: rows.length });
+      setImportStatus(`Processing ${rows.length} campaigns...`);
+      
       let updatedCount = 0;
       let createdCount = 0;
+      let processedCount = 0;
       
-      for (const row of data as any[]) {
+      for (const row of rows) {
         // Clean up field names (handle variations in CSV headers)
         const campaignName = row['Campaign Name'] || row['campaign_name'] || row['Campaign'];
         const clientName = row['Client'] || row['client'] || row['Artist'];
@@ -64,6 +73,8 @@ export default function CampaignWeeklyImportModal({
         
         if (!campaignName || !clientName) {
           console.log('Skipping row - missing campaign name or client:', row);
+          processedCount++;
+          setImportProgress({ current: processedCount, total: rows.length });
           continue;
         }
         
@@ -111,7 +122,7 @@ export default function CampaignWeeklyImportModal({
           }
         }
         
-        // Find existing campaign by name and client (only in campaign_manager source)
+        // Find existing campaign by name and client (only in campaign_manager source with spotify type)
         const { data: existingCampaign } = await supabase
           .from('campaigns')
           .select('*')
@@ -145,15 +156,17 @@ export default function CampaignWeeklyImportModal({
             .update({
               stream_goal: streamGoal || existingCampaign.stream_goal,
               remaining_streams: remainingStreams || existingCampaign.remaining_streams,
-              // delivered_streams: streamGoal ? (streamGoal - remainingStreams) : 0, // Remove this field as it doesn't exist
               track_url: trackUrl || existingCampaign.track_url,
               selected_playlists: matchedPlaylists.length > 0 ? matchedPlaylists : existingCampaign.selected_playlists,
-              // updated_at is automatically updated by trigger
             })
-            .eq('id', existingCampaign.id);
+            .eq('id', existingCampaign.id)
+            .eq('source', 'campaign_manager')
+            .eq('campaign_type', 'spotify');
           
           if (updateError) {
             console.error('Error updating campaign:', updateError);
+            processedCount++;
+            setImportProgress({ current: processedCount, total: rows.length });
             continue;
           }
           
@@ -170,7 +183,6 @@ export default function CampaignWeeklyImportModal({
           }
           
           console.log('Updated campaign:', campaignName);
-          
           updatedCount++;
         } else {
           // Create new campaign if doesn't exist
@@ -181,7 +193,7 @@ export default function CampaignWeeklyImportModal({
           if (trackUrl) {
             try {
               const { data: spotifyData, error: spotifyError } = await supabase.functions.invoke('spotify-fetch', {
-                body: { url: trackUrl.trim() }
+                body: { trackUrl: trackUrl.trim() }
               });
               
               if (!spotifyError && spotifyData) {
@@ -209,7 +221,6 @@ export default function CampaignWeeklyImportModal({
               client_name: clientName.trim(),
               stream_goal: streamGoal || 0,
               remaining_streams: remainingStreams || streamGoal || 0,
-              // delivered_streams: streamGoal ? Math.max(0, streamGoal - remainingStreams) : 0, // Remove this field as it doesn't exist
               budget: 0, // Budget to be manually entered later
               status: 'active',
               track_url: trackUrl || '',
@@ -220,8 +231,9 @@ export default function CampaignWeeklyImportModal({
               selected_playlists: matchedPlaylists.length > 0 ? matchedPlaylists : [],
               vendor_allocations: {},
               totals: { projected_streams: 0 },
-              source: 'campaign_manager', // Explicitly set source
-              created_at: startDate, // Set created_at to campaign start date
+              source: 'campaign_manager',
+              campaign_type: 'spotify', // Explicitly set to spotify
+              created_at: startDate,
               updated_at: new Date().toISOString()
             })
             .select()
@@ -229,6 +241,8 @@ export default function CampaignWeeklyImportModal({
           
           if (insertError) {
             console.error('Error creating campaign:', insertError);
+            processedCount++;
+            setImportProgress({ current: processedCount, total: rows.length });
             continue;
           }
           
@@ -248,34 +262,44 @@ export default function CampaignWeeklyImportModal({
           }
           
           console.log('Created new campaign:', campaignName);
-          
           createdCount++;
         }
+        
+        processedCount++;
+        setImportProgress({ current: processedCount, total: rows.length });
+        setImportStatus(`Processed ${processedCount}/${rows.length} campaigns...`);
       }
       
-      // Close modal first
-      onOpenChange(false);
+      // Show completion summary
+      const summary = `Import complete! Created: ${createdCount}, Updated: ${updatedCount}, Total: ${processedCount}`;
+      setImportStatus(summary);
       
-      // Then invalidate queries and show success message
+      // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['weekly-updates'] });
       
-      // Show success toast after modal closes
+      toast({
+        title: "Import Complete",
+        description: summary,
+      });
+      
+      // Close modal after short delay
       setTimeout(() => {
-        toast({
-          title: "Import Successful",
-          description: `Updated ${updatedCount} campaigns, created ${createdCount} new campaigns`,
-        });
-      }, 100);
+        onOpenChange(false);
+        setIsImporting(false);
+        setImportProgress({ current: 0, total: 0 });
+        setImportStatus('');
+      }, 2000);
+      
     } catch (error) {
       console.error('Import error:', error);
       toast({
         title: "Import Failed",
-        description: "Please check your CSV format and try again",
+        description: error instanceof Error ? error.message : "An error occurred during import",
         variant: "destructive",
       });
-    } finally {
       setIsImporting(false);
+      setImportStatus('Import failed');
     }
   };
 
@@ -303,50 +327,74 @@ export default function CampaignWeeklyImportModal({
         </DialogHeader>
         
         <div className="space-y-6">
-          <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
-            <Input
-              type="file"
-              accept=".csv"
-              onChange={handleFileUpload}
-              disabled={isImporting}
-              className="hidden"
-              id="csv-upload"
-            />
-            <Label htmlFor="csv-upload" className="cursor-pointer block space-y-3">
-              <Upload className="h-12 w-12 mx-auto text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">
-                  {isImporting ? 'Importing campaigns...' : 'Click to upload CSV file'}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  or drag and drop your file here
-                </p>
-              </div>
-            </Label>
-          </div>
-          
-          <div className="bg-muted/30 p-4 rounded-lg space-y-3">
-            <p className="font-semibold text-sm">Required CSV Format:</p>
-            <div className="bg-background p-3 rounded border text-xs font-mono">
-              <div className="text-foreground mb-1">
-                Campaign Name,Client,Goal,Remaining,Daily,Weekly,URL,Start Date,[Playlist columns]
-              </div>
-              <div className="text-muted-foreground">
-                "Jared Rapoza","Slime",20000,18000,200,1400,"https://open.spotify.com/track/...","2024-01-15","Playlist Name - Another Playlist [NEW] -"
+          {isImporting ? (
+            <div className="space-y-4">
+              <div className="text-center">
+                <div className="animate-spin h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-sm text-muted-foreground">{importStatus}</p>
+                {importProgress.total > 0 && (
+                  <div className="mt-2">
+                    <div className="w-full bg-secondary rounded-full h-2">
+                      <div 
+                        className="bg-primary h-2 rounded-full transition-all duration-300" 
+                        style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {importProgress.current} of {importProgress.total} processed
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
-            <div className="space-y-2 text-xs text-muted-foreground">
-              <p>• <strong>Column Headers:</strong> Can use "Campaign Name" or "Campaign" or "campaign_name"</p>
-              <p>• <strong>Client Names:</strong> Can use "Client" or "client" or "Artist"</p>
-              <p>• <strong>Start Date:</strong> Campaign start date (YYYY-MM-DD format), defaults to today if not provided</p>
-              <p>• <strong>Budget:</strong> Will be set to $0 and must be manually entered later</p>
-              <p>• <strong>Genres:</strong> Automatically detected from Spotify track URL</p>
-              <p>• <strong>Playlists:</strong> Any column containing playlist data will be parsed automatically</p>
-              <p>• <strong>Updates:</strong> Existing campaigns updated by Campaign Name + Client match</p>
-              <p>• <strong>New campaigns:</strong> Created automatically with created date set to start date</p>
-              <p>• <strong>Debug:</strong> Check browser console for detailed import logs</p>
-            </div>
-          </div>
+          ) : (
+            <>
+              <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
+                <Input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileUpload}
+                  disabled={isImporting}
+                  className="hidden"
+                  id="csv-upload"
+                />
+                <Label htmlFor="csv-upload" className="cursor-pointer block space-y-3">
+                  <Upload className="h-12 w-12 mx-auto text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">
+                      Click to upload CSV file
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      or drag and drop your file here
+                    </p>
+                  </div>
+                </Label>
+              </div>
+              
+              <div className="bg-muted/30 p-4 rounded-lg space-y-3">
+                <p className="font-semibold text-sm">Required CSV Format:</p>
+                <div className="bg-background p-3 rounded border text-xs font-mono">
+                  <div className="text-foreground mb-1">
+                    Campaign Name,Client,Goal,Remaining,Daily,Weekly,URL,Start Date,[Playlist columns]
+                  </div>
+                  <div className="text-muted-foreground">
+                    "Jared Rapoza","Slime",20000,18000,200,1400,"https://open.spotify.com/track/...","2024-01-15","Playlist Name - Another Playlist [NEW] -"
+                  </div>
+                </div>
+                <div className="space-y-2 text-xs text-muted-foreground">
+                  <p>• <strong>Column Headers:</strong> Can use "Campaign Name" or "Campaign" or "campaign_name"</p>
+                  <p>• <strong>Client Names:</strong> Can use "Client" or "client" or "Artist"</p>
+                  <p>• <strong>Start Date:</strong> Campaign start date (YYYY-MM-DD format), defaults to today if not provided</p>
+                  <p>• <strong>Budget:</strong> Will be set to $0 and must be manually entered later</p>
+                  <p>• <strong>Genres:</strong> Automatically detected from Spotify track URL</p>
+                  <p>• <strong>Playlists:</strong> Any column containing playlist data will be parsed automatically</p>
+                  <p>• <strong>Updates:</strong> Existing campaigns updated by Campaign Name + Client match</p>
+                  <p>• <strong>New campaigns:</strong> Created automatically with created date set to start date</p>
+                  <p>• <strong>Debug:</strong> Check browser console for detailed import logs</p>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>
