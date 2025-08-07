@@ -42,10 +42,14 @@ serve(async (req) => {
       
       const data = await response.json();
       
+      // Extract genres from track's artists
+      const genres = await extractTrackGenres(data, access_token);
+      
       return new Response(JSON.stringify({
         name: data.name,
         artists: data.artists,
-        album: data.album
+        album: data.album,
+        genres: mapToMainGenres(genres)
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -82,6 +86,33 @@ serve(async (req) => {
     });
   }
 });
+
+async function extractTrackGenres(track: any, accessToken: string): Promise<string[]> {
+  try {
+    const artistIds = track.artists?.map((artist: any) => artist.id).filter(Boolean) || [];
+    
+    if (artistIds.length === 0) return [];
+    
+    // Fetch artist genres
+    const response = await fetch(`https://api.spotify.com/v1/artists?ids=${artistIds.join(',')}`, {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    
+    const data = await response.json();
+    const genres: string[] = [];
+    
+    data.artists?.forEach((artist: any) => {
+      if (artist.genres) {
+        genres.push(...artist.genres);
+      }
+    });
+    
+    return genres;
+  } catch (error) {
+    console.error('Error extracting track genres:', error);
+    return [];
+  }
+}
 
 async function extractPlaylistGenres(playlist: any, accessToken: string): Promise<string[]> {
   try {
