@@ -27,13 +27,45 @@ export default function CampaignWeeklyImportModal({
     
     try {
       const text = await file.text();
-      const { data } = Papa.parse(text, { header: true });
+      console.log('Raw CSV text:', text); // Debug log
+      
+      // Parse CSV with proper options
+      const { data, errors } = Papa.parse(text, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header) => header.trim(), // Remove spaces from headers
+      });
+      
+      if (errors.length > 0) {
+        console.error('CSV parsing errors:', errors);
+        toast({
+          title: "CSV Parsing Error",
+          description: "Error parsing CSV file. Check console for details.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log('Parsed data:', data); // Debug log
       
       let updatedCount = 0;
       let createdCount = 0;
       
       for (const row of data as any[]) {
-        if (!row['Campaign Name'] || !row['Client']) continue;
+        // Clean up field names (handle variations in CSV headers)
+        const campaignName = row['Campaign Name'] || row['campaign_name'] || row['Campaign'];
+        const clientName = row['Client'] || row['client'] || row['Artist'];
+        const streamGoal = parseInt(row['Stream Goal'] || row['stream_goal'] || '0');
+        const remainingStreams = parseInt(row['Remaining Streams'] || row['remaining_streams'] || '0');
+        const dailyStreams = parseInt(row['Daily Streams'] || row['daily_streams'] || '0');
+        const weeklyStreams = parseInt(row['Weekly Streams'] || row['weekly_streams'] || '0');
+        const trackUrl = row['Track URL'] || row['track_url'] || '';
+        const startDateRaw = row['Start Date'] || row['start_date'] || '';
+        
+        if (!campaignName || !clientName) {
+          console.log('Skipping row - missing campaign name or client:', row);
+          continue;
+        }
         
         // Parse playlist data from various potential playlist columns
         let parsedPlaylists: string[] = [];
@@ -65,8 +97,8 @@ export default function CampaignWeeklyImportModal({
         const { data: existingCampaign } = await supabase
           .from('campaigns')
           .select('*')
-          .eq('name', row['Campaign Name'].trim())
-          .eq('client', row['Client'].trim())
+          .eq('name', campaignName.trim())
+          .eq('client', clientName.trim())
           .maybeSingle();
         
         if (existingCampaign) {
@@ -82,18 +114,18 @@ export default function CampaignWeeklyImportModal({
             !existingPlaylistNames.includes(name)
           );
           
-          let updateNotes = `Updated via CSV import - Daily: ${row['Daily Streams'] || 0}, Weekly: ${row['Weekly Streams'] || 0}`;
+          let updateNotes = `Updated via CSV import - Daily: ${dailyStreams || 0}, Weekly: ${weeklyStreams || 0}`;
           if (newPlaylists.length > 0) {
             updateNotes += ` | New playlists added: ${newPlaylists.join(', ')}`;
           }
           
           // Update existing campaign
-          await supabase
+          const { error: updateError } = await supabase
             .from('campaigns')
             .update({
-              stream_goal: parseInt(row['Stream Goal']) || existingCampaign.stream_goal,
-              remaining_streams: parseInt(row['Remaining Streams']) || existingCampaign.remaining_streams,
-              track_url: row['Track URL'] || existingCampaign.track_url,
+              stream_goal: streamGoal || existingCampaign.stream_goal,
+              remaining_streams: remainingStreams || existingCampaign.remaining_streams,
+              track_url: trackUrl || existingCampaign.track_url,
               selected_playlists: parsedPlaylists.length > 0 ? 
                 parsedPlaylists.map(name => ({ name, imported: true })) : 
                 existingCampaign.selected_playlists,
@@ -101,17 +133,24 @@ export default function CampaignWeeklyImportModal({
             })
             .eq('id', existingCampaign.id);
           
+          if (updateError) {
+            console.error('Error updating campaign:', updateError);
+            continue;
+          }
+          
           // Add weekly update entry if streams data provided
-          if (row['Daily Streams'] || row['Weekly Streams']) {
+          if (dailyStreams || weeklyStreams) {
             await supabase
               .from('weekly_updates')
               .insert({
                 campaign_id: existingCampaign.id,
-                streams: parseInt(row['Weekly Streams']) || parseInt(row['Daily Streams']) * 7 || 0,
+                streams: weeklyStreams || dailyStreams * 7 || 0,
                 imported_on: new Date().toISOString().split('T')[0],
                 notes: updateNotes
               });
           }
+          
+          console.log('Updated campaign:', campaignName);
           
           updatedCount++;
         } else {
@@ -120,12 +159,12 @@ export default function CampaignWeeklyImportModal({
           let subGenre = '';
           
           // Fetch genres from Spotify API if track URL provided
-          if (row['Track URL']) {
+          if (trackUrl) {
             try {
               const response = await fetch('/functions/v1/spotify-fetch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: row['Track URL'].trim() })
+                body: JSON.stringify({ url: trackUrl.trim() })
               });
               
               if (response.ok) {
@@ -141,22 +180,22 @@ export default function CampaignWeeklyImportModal({
           }
           
           // Determine start date - use provided date or default to today
-          const startDate = row['Start Date'] ? 
-            new Date(row['Start Date']).toISOString().split('T')[0] : 
+          const startDate = startDateRaw ? 
+            new Date(startDateRaw).toISOString().split('T')[0] : 
             new Date().toISOString().split('T')[0];
           
-          const { data: newCampaign } = await supabase
+          const { data: newCampaign, error: insertError } = await supabase
             .from('campaigns')
             .insert({
-              name: row['Campaign Name'].trim(),
-              brand_name: row['Campaign Name'].trim(),
-              client: row['Client'].trim(),
-              client_name: row['Client'].trim(),
-              stream_goal: parseInt(row['Stream Goal']) || 0,
-              remaining_streams: parseInt(row['Remaining Streams']) || 0,
+              name: campaignName.trim(),
+              brand_name: campaignName.trim(),
+              client: clientName.trim(),
+              client_name: clientName.trim(),
+              stream_goal: streamGoal || 0,
+              remaining_streams: remainingStreams || 0,
               budget: 0, // Budget to be manually entered later
               status: 'active',
-              track_url: row['Track URL'] || '',
+              track_url: trackUrl || '',
               sub_genre: subGenre,
               sub_genres: genres,
               start_date: startDate,
@@ -171,20 +210,27 @@ export default function CampaignWeeklyImportModal({
             .select()
             .single();
           
+          if (insertError) {
+            console.error('Error creating campaign:', insertError);
+            continue;
+          }
+          
           // Add initial weekly update if provided
-          if (newCampaign && (row['Daily Streams'] || row['Weekly Streams'])) {
-            const importNotes = `Initial import - Daily: ${row['Daily Streams'] || 0}, Weekly: ${row['Weekly Streams'] || 0}`;
+          if (newCampaign && (dailyStreams || weeklyStreams)) {
+            const importNotes = `Initial import - Daily: ${dailyStreams || 0}, Weekly: ${weeklyStreams || 0}`;
             const playlistNotes = parsedPlaylists.length > 0 ? ` | Playlists: ${parsedPlaylists.join(', ')}` : '';
             
             await supabase
               .from('weekly_updates')
               .insert({
                 campaign_id: newCampaign.id,
-                streams: parseInt(row['Weekly Streams']) || parseInt(row['Daily Streams']) * 7 || 0,
+                streams: weeklyStreams || dailyStreams * 7 || 0,
                 imported_on: new Date().toISOString().split('T')[0],
                 notes: importNotes + playlistNotes
               });
           }
+          
+          console.log('Created new campaign:', campaignName);
           
           createdCount++;
         }
@@ -263,13 +309,15 @@ export default function CampaignWeeklyImportModal({
               </div>
             </div>
             <div className="space-y-2 text-xs text-muted-foreground">
+              <p>• <strong>Column Headers:</strong> Can use "Campaign Name" or "Campaign" or "campaign_name"</p>
+              <p>• <strong>Client Names:</strong> Can use "Client" or "client" or "Artist"</p>
               <p>• <strong>Start Date:</strong> Campaign start date (YYYY-MM-DD format), defaults to today if not provided</p>
-              
               <p>• <strong>Budget:</strong> Will be set to $0 and must be manually entered later</p>
               <p>• <strong>Genres:</strong> Automatically detected from Spotify track URL</p>
               <p>• <strong>Playlists:</strong> Any column containing playlist data will be parsed automatically</p>
               <p>• <strong>Updates:</strong> Existing campaigns updated by Campaign Name + Client match</p>
               <p>• <strong>New campaigns:</strong> Created automatically with created date set to start date</p>
+              <p>• <strong>Debug:</strong> Check browser console for detailed import logs</p>
             </div>
           </div>
         </div>

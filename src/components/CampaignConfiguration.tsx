@@ -69,7 +69,22 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
 
   const watchedValues = watch();
 
-  const onSubmit = (data: CampaignFormData) => {
+  const onSubmit = async (data: CampaignFormData) => {
+    // First, check if there are any playlists available
+    const { data: playlists, error } = await supabase
+      .from('playlists')
+      .select('*, vendor:vendors(*)')
+      .limit(1);
+    
+    if (!playlists || playlists.length === 0) {
+      console.log('No playlists available in database');
+      alert('No playlists available. Please add playlists first in Vendors & Playlists section.');
+      return;
+    }
+    
+    console.log('Moving to step 2 with data:', { ...data, sub_genre: selectedGenres.join(', '), track_name: trackName });
+    console.log('Available playlists:', playlists.length);
+    
     onNext({ ...data, sub_genre: selectedGenres.join(', '), track_name: trackName });
   };
 
