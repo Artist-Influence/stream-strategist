@@ -103,6 +103,36 @@ export default function PlaylistsPage() {
     }
   });
 
+  // Delete vendor mutation
+  const deleteVendorMutation = useMutation({
+    mutationFn: async (vendorId: string) => {
+      // First delete all playlists associated with this vendor
+      const { error: playlistError } = await supabase
+        .from('playlists')
+        .delete()
+        .eq('vendor_id', vendorId);
+      
+      if (playlistError) throw playlistError;
+
+      // Then delete the vendor
+      const { error: vendorError } = await supabase
+        .from('vendors')
+        .delete()
+        .eq('id', vendorId);
+
+      if (vendorError) throw vendorError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['all-playlists'] });
+      queryClient.invalidateQueries({ queryKey: ['vendor-playlists'] });
+      toast({
+        title: "Vendor Deleted",
+        description: "Vendor and all associated playlists have been successfully removed.",
+      });
+    }
+  });
+
   // Fetch vendors
   const { data: vendors, isLoading: vendorsLoading } = useQuery({
     queryKey: ['vendors'],
@@ -443,6 +473,16 @@ export default function PlaylistsPage() {
     }
   };
 
+  const handleDeleteVendor = (vendorId: string, vendorName: string, playlistCount: number) => {
+    const message = playlistCount > 0 
+      ? `Are you sure you want to delete "${vendorName}" and all ${playlistCount} associated playlists? This action cannot be undone.`
+      : `Are you sure you want to delete "${vendorName}"? This action cannot be undone.`;
+    
+    if (confirm(message)) {
+      deleteVendorMutation.mutate(vendorId);
+    }
+  };
+
   const toggleGenreFilter = (genre: string) => {
     setSelectedGenres(prev => 
       prev.includes(genre) 
@@ -774,13 +814,28 @@ export default function PlaylistsPage() {
                           <span className="text-sm text-muted-foreground">Max Daily Streams</span>
                           <span className="font-mono">{vendor.max_daily_streams?.toLocaleString() || '0'}</span>
                         </div>
-                        <Button 
-                          className="w-full" 
-                          variant="outline"
-                          onClick={() => setSelectedVendor(vendor.id)}
-                        >
-                          View Playlists
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button 
+                            className="flex-1" 
+                            variant="outline"
+                            onClick={() => setSelectedVendor(vendor.id)}
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Playlists
+                          </Button>
+                          <Button 
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const playlistCount = allPlaylists?.filter(p => p.vendor.id === vendor.id).length || 0;
+                              handleDeleteVendor(vendor.id, vendor.name, playlistCount);
+                            }}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
