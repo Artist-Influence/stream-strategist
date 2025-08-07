@@ -149,39 +149,65 @@ function groupSimilarGenres(spotifyGenres: string[]): string[] {
   
   const genreCategories = {
     'phonk': ['phonk', 'drift phonk', 'gym phonk', 'phonk house', 'brazilian phonk', 'cowbell phonk'],
-    'rock': ['rock', 'alternative rock', 'indie rock', 'classic rock', 'hard rock', 'punk rock', 'garage rock', 'psychedelic rock', 'prog rock', 'art rock', 'glam rock'],
+    'tech house': ['tech house', 'techno house'],
+    'house': ['house', 'deep house', 'progressive house', 'future house', 'bass house', 'tribal house', 'electro house', 'big room house'],
+    'progressive house': ['progressive house', 'prog house'],
+    'afro house': ['afro house', 'afro-house', 'afrobeats house'],
+    'afrobeats': ['afrobeats', 'afro beat', 'afro-beat', 'afrobeat'],
+    'techno': ['techno', 'hard techno', 'minimal techno', 'detroit techno'],
+    'hardstyle': ['hardstyle', 'hard style', 'rawstyle', 'euphoric hardstyle'],
+    'dubstep': ['dubstep', 'brostep', 'melodic dubstep', 'future dubstep'],
+    'dance': ['dance', 'club', 'disco', 'eurodance', 'freestyle', 'edm'],
+    'electronic': ['electronic', 'edm', 'electro', 'bass', 'future bass', 'ambient', 'trance'],
     'pop': ['pop', 'dance pop', 'electropop', 'indie pop', 'synthpop', 'art pop', 'dream pop', 'k-pop', 'j-pop', 'europop'],
+    'indie': ['indie', 'indie rock', 'indie pop', 'indie folk', 'shoegaze', 'new wave'],
+    'alternative': ['alternative', 'alt rock', 'grunge', 'britpop', 'madchester', 'alternative rock'],
+    'rock': ['rock', 'classic rock', 'hard rock', 'punk rock', 'garage rock', 'psychedelic rock', 'prog rock', 'art rock', 'glam rock'],
     'hip-hop': ['hip hop', 'rap', 'trap', 'drill', 'boom bap', 'conscious hip hop', 'gangsta rap', 'old school hip hop', 'mumble rap'],
-    'electronic': ['electronic', 'edm', 'house', 'techno', 'dubstep', 'trance', 'ambient', 'electro', 'bass', 'future bass', 'progressive house', 'deep house'],
     'r&b': ['r&b', 'soul', 'neo soul', 'contemporary r&b', 'funk', 'motown', 'quiet storm'],
     'country': ['country', 'country rock', 'alt-country', 'americana', 'bluegrass', 'folk country', 'modern country'],
     'jazz': ['jazz', 'smooth jazz', 'bebop', 'swing', 'fusion', 'contemporary jazz', 'acid jazz'],
-    'folk': ['folk', 'indie folk', 'folk rock', 'singer-songwriter', 'acoustic', 'chamber folk'],
+    'folk': ['folk', 'folk rock', 'singer-songwriter', 'acoustic', 'chamber folk'],
     'metal': ['metal', 'heavy metal', 'death metal', 'black metal', 'thrash metal', 'metalcore', 'nu metal', 'progressive metal'],
     'classical': ['classical', 'orchestral', 'chamber music', 'opera', 'baroque', 'romantic'],
     'reggae': ['reggae', 'dub', 'ska', 'dancehall', 'reggaeton'],
     'latin': ['latin', 'salsa', 'bachata', 'merengue', 'bossa nova', 'tango', 'cumbia', 'mariachi'],
     'blues': ['blues', 'electric blues', 'delta blues', 'chicago blues', 'country blues'],
-    'indie': ['indie', 'alternative', 'shoegaze', 'post-punk', 'new wave', 'indie rock'],
     'brazilian': ['brazilian', 'bossa nova', 'samba', 'mpb', 'forró', 'axé', 'pagode', 'sertanejo'],
-    'workout': ['gym', 'workout', 'training', 'fitness', 'motivation', 'power'],
-    'chill': ['chill', 'chillout', 'lounge', 'downtempo', 'trip hop', 'lo-fi'],
-    'dance': ['dance', 'club', 'disco', 'eurodance', 'freestyle', 'house'],
     'punk': ['punk', 'hardcore', 'post-punk', 'pop punk', 'ska punk'],
-    'alternative': ['alternative', 'alt rock', 'grunge', 'britpop', 'madchester']
+    'chill': ['chill', 'chillout', 'lounge', 'downtempo', 'trip hop', 'lo-fi']
   };
+
+  // Expanded list of words to skip - including single adjectives and meaningless terms
+  const skipWords = [
+    'big', 'small', 'new', 'old', 'modern', 'classic', 'deep', 'dark', 'light', 'heavy', 'soft', 'hard', 'fast', 'slow',
+    'good', 'bad', 'best', 'top', 'hot', 'cool', 'fresh', 'raw', 'pure', 'real', 'true', 'main', 'core', 'base',
+    'super', 'mega', 'ultra', 'hyper', 'max', 'mini', 'micro', 'macro', 'pro', 'amateur', 'professional',
+    'early', 'late', 'mid', 'post', 'pre', 'neo', 'retro', 'vintage', 'contemporary', 'current', 'recent',
+    'underground', 'mainstream', 'commercial', 'experimental', 'traditional', 'fusion', 'crossover',
+    'vocal', 'instrumental', 'acoustic', 'electric', 'digital', 'analog', 'synthetic', 'organic',
+    'male', 'female', 'mixed', 'solo', 'group', 'band', 'artist', 'singer', 'rapper', 'dj', 'producer',
+    'gabber' // Specifically filtering out gabber as it's too niche
+  ];
 
   for (const genre of spotifyGenres) {
     const lowerGenre = genre.toLowerCase().trim();
     let categorized = false;
     
-    // Skip very generic or meaningless terms
-    const skipWords = ['big', 'small', 'new', 'old', 'modern', 'classic', 'deep', 'dark', 'light', 'heavy', 'soft', 'hard', 'fast', 'slow'];
+    // Skip meaningless terms, single words that are adjectives, and genres that are too short
     if (skipWords.includes(lowerGenre) || lowerGenre.length < 3) {
       continue;
     }
     
+    // Check against our curated genre categories with priority matching
     for (const [category, keywords] of Object.entries(genreCategories)) {
+      // Exact match gets priority
+      if (keywords.includes(lowerGenre)) {
+        genreMapping.set(category, (genreMapping.get(category) || 0) + 3);
+        categorized = true;
+        break;
+      }
+      // Partial match gets lower priority
       if (keywords.some(keyword => lowerGenre.includes(keyword) || keyword.includes(lowerGenre))) {
         genreMapping.set(category, (genreMapping.get(category) || 0) + 1);
         categorized = true;
@@ -189,22 +215,31 @@ function groupSimilarGenres(spotifyGenres: string[]): string[] {
       }
     }
     
-    // If not categorized and it's a reasonable genre name, keep it simplified
-    if (!categorized && lowerGenre.length > 2 && !skipWords.includes(lowerGenre)) {
-      // Clean up the genre name
-      let cleanGenre = lowerGenre
-        .replace(/[0-9]+/g, '') // Remove numbers
-        .replace(/[^\w\s-]/g, '') // Remove special chars except hyphens
-        .replace(/\s+/g, ' ') // Normalize spaces
-        .trim();
+    // Only allow well-known, legitimate genres that weren't categorized
+    if (!categorized) {
+      const allowedStandaloneGenres = [
+        'trance', 'ambient', 'drum and bass', 'dnb', 'garage', 'grime', 'dubstep', 'breakbeat',
+        'downtempo', 'trip hop', 'world', 'ethnic', 'traditional', 'experimental', 'noise',
+        'minimal', 'industrial', 'gothic', 'darkwave', 'synthwave', 'vaporwave',
+        'lounge', 'easy listening', 'smooth', 'chill', 'relaxing'
+      ];
       
-      if (cleanGenre.length > 2) {
-        genreMapping.set(cleanGenre, (genreMapping.get(cleanGenre) || 0) + 1);
+      if (allowedStandaloneGenres.some(allowed => lowerGenre.includes(allowed) || allowed.includes(lowerGenre))) {
+        // Clean up the genre name
+        let cleanGenre = lowerGenre
+          .replace(/[0-9]+/g, '') // Remove numbers
+          .replace(/[^\w\s-]/g, '') // Remove special chars except hyphens
+          .replace(/\s+/g, ' ') // Normalize spaces
+          .trim();
+        
+        if (cleanGenre.length > 2 && !skipWords.includes(cleanGenre)) {
+          genreMapping.set(cleanGenre, (genreMapping.get(cleanGenre) || 0) + 1);
+        }
       }
     }
   }
   
-  // Return top 3 genres (reduced from 4 for cleaner results)
+  // Return top 3 genres, weighted by priority
   return Array.from(genreMapping.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
