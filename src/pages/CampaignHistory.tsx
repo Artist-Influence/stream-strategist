@@ -588,19 +588,16 @@ export default function CampaignHistory() {
                         </TableCell>
                         <TableCell>{campaign.client_name || campaign.client}</TableCell>
                         <TableCell>
-                          <div className="flex flex-col items-start space-y-1">
+                          <div className="flex flex-col items-center space-y-2">
                             <StatusBadge status={campaign.status} />
                             {getCampaignPerformanceStatus(campaign) && (
-                              <div className="flex items-center space-x-1">
-                                <div className={`w-2 h-2 rounded-full ${
-                                  getCampaignPerformanceStatus(campaign)?.color === 'text-accent' ? 'bg-accent' :
-                                  getCampaignPerformanceStatus(campaign)?.color === 'text-primary' ? 'bg-primary' :
-                                  'bg-destructive'
-                                }`}></div>
-                                <span className={`text-xs ${getCampaignPerformanceStatus(campaign)?.color}`}>
-                                  {getCampaignPerformanceStatus(campaign)?.label}
-                                </span>
-                              </div>
+                              <div className={`w-3 h-3 rounded-full animate-pulse ${
+                                getCampaignPerformanceStatus(campaign)?.color === 'text-accent' 
+                                  ? 'bg-accent shadow-[0_0_8px_rgba(34,197,94,0.6)]' :
+                                getCampaignPerformanceStatus(campaign)?.color === 'text-primary' 
+                                  ? 'bg-primary shadow-[0_0_8px_rgba(99,102,241,0.6)]' :
+                                  'bg-destructive shadow-[0_0_8px_rgba(239,68,68,0.6)]'
+                              }`}></div>
                             )}
                           </div>
                         </TableCell>
