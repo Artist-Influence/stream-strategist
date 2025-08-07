@@ -373,7 +373,7 @@ export default function PlaylistsPage() {
                     // Use Spotify data if available, otherwise fall back to CSV data
                     playlistData = {
                       name: spotifyData.name || playlistData.name,
-                      followers: spotifyData.followers?.total || playlistData.followers,
+                      followers: spotifyData.followers || playlistData.followers,
                       genres: spotifyData.genres?.length > 0 ? spotifyData.genres : playlistData.genres,
                       avg_daily_streams: playlistData.avg_daily_streams // Keep CSV value for streams
                     };

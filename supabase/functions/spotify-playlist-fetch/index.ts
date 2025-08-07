@@ -18,11 +18,30 @@ serve(async (req) => {
       throw new Error('Playlist ID is required');
     }
 
-    // Get Spotify access token from secrets
-    const spotifyToken = Deno.env.get('SPOTIFY_ACCESS_TOKEN');
-    if (!spotifyToken) {
-      throw new Error('Spotify access token not found');
+    // Get Spotify credentials from secrets
+    const clientId = Deno.env.get('SPOTIFY_CLIENT_ID');
+    const clientSecret = Deno.env.get('SPOTIFY_CLIENT_SECRET');
+    
+    if (!clientId || !clientSecret) {
+      throw new Error('Spotify credentials not found');
     }
+
+    // Get fresh access token using client credentials flow
+    const tokenResponse = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+      },
+      body: 'grant_type=client_credentials',
+    });
+
+    if (!tokenResponse.ok) {
+      throw new Error(`Failed to get Spotify token: ${tokenResponse.status}`);
+    }
+
+    const tokenData = await tokenResponse.json();
+    const spotifyToken = tokenData.access_token;
 
     console.log(`Fetching playlist data for ID: ${playlistId}`);
 
@@ -57,25 +76,51 @@ serve(async (req) => {
         .slice(0, 20); // Limit to 20 tracks for analysis
 
       if (trackIds.length > 0) {
-        // Get audio features for genre analysis
-        const featuresResponse = await fetch(`https://api.spotify.com/v1/audio-features?ids=${trackIds.join(',')}`, {
-          headers: {
-            'Authorization': `Bearer ${spotifyToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
+        // Get artist IDs for genre analysis
+        const artistIds = tracksData.items
+          .map(item => item.track?.artists?.[0]?.id)
+          .filter(id => id)
+          .slice(0, 20);
 
-        if (featuresResponse.ok) {
-          const featuresData = await featuresResponse.json();
-          // Simple genre mapping based on audio features
-          genres = mapAudioFeaturesToGenres(featuresData.audio_features);
+        if (artistIds.length > 0) {
+          // Get artist genres (more accurate than audio features)
+          const artistsResponse = await fetch(`https://api.spotify.com/v1/artists?ids=${artistIds.join(',')}`, {
+            headers: {
+              'Authorization': `Bearer ${spotifyToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (artistsResponse.ok) {
+            const artistsData = await artistsResponse.json();
+            const allGenres = artistsData.artists
+              .flatMap(artist => artist.genres || [])
+              .filter(genre => genre);
+            
+            genres = groupSimilarGenres(allGenres);
+          }
+        }
+
+        // Fallback to audio features if no artist genres found
+        if (genres.length === 0) {
+          const featuresResponse = await fetch(`https://api.spotify.com/v1/audio-features?ids=${trackIds.join(',')}`, {
+            headers: {
+              'Authorization': `Bearer ${spotifyToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (featuresResponse.ok) {
+            const featuresData = await featuresResponse.json();
+            genres = mapAudioFeaturesToGenres(featuresData.audio_features);
+          }
         }
       }
     }
 
     const result = {
       name: playlistData.name,
-      followers: playlistData.followers,
+      followers: playlistData.followers?.total || 0,
       genres: genres.length > 0 ? genres : ['pop'], // Default to pop if no genres detected
       description: playlistData.description,
     };
@@ -98,7 +143,54 @@ serve(async (req) => {
   }
 });
 
-// Simple mapping function to convert audio features to genres
+// Group similar genres into main categories
+function groupSimilarGenres(spotifyGenres: string[]): string[] {
+  const genreMapping = new Map<string, number>();
+  
+  const genreCategories = {
+    'rock': ['rock', 'alternative rock', 'indie rock', 'classic rock', 'hard rock', 'punk rock', 'garage rock', 'psychedelic rock'],
+    'pop': ['pop', 'dance pop', 'electropop', 'indie pop', 'synthpop', 'art pop', 'dream pop'],
+    'hip-hop': ['hip hop', 'rap', 'trap', 'drill', 'boom bap', 'conscious hip hop', 'gangsta rap'],
+    'electronic': ['electronic', 'edm', 'house', 'techno', 'dubstep', 'trance', 'ambient', 'electro'],
+    'r&b': ['r&b', 'soul', 'neo soul', 'contemporary r&b', 'funk', 'motown'],
+    'country': ['country', 'country rock', 'alt-country', 'americana', 'bluegrass', 'folk country'],
+    'jazz': ['jazz', 'smooth jazz', 'bebop', 'swing', 'fusion', 'contemporary jazz'],
+    'folk': ['folk', 'indie folk', 'folk rock', 'singer-songwriter', 'acoustic'],
+    'metal': ['metal', 'heavy metal', 'death metal', 'black metal', 'thrash metal', 'metalcore'],
+    'classical': ['classical', 'orchestral', 'chamber music', 'opera', 'baroque'],
+    'reggae': ['reggae', 'dub', 'ska', 'dancehall', 'reggaeton'],
+    'latin': ['latin', 'salsa', 'bachata', 'merengue', 'bossa nova', 'tango'],
+    'blues': ['blues', 'electric blues', 'delta blues', 'chicago blues'],
+    'indie': ['indie', 'alternative', 'shoegaze', 'post-punk', 'new wave']
+  };
+
+  for (const genre of spotifyGenres) {
+    const lowerGenre = genre.toLowerCase();
+    let categorized = false;
+    
+    for (const [category, keywords] of Object.entries(genreCategories)) {
+      if (keywords.some(keyword => lowerGenre.includes(keyword))) {
+        genreMapping.set(category, (genreMapping.get(category) || 0) + 1);
+        categorized = true;
+        break;
+      }
+    }
+    
+    // If not categorized, use the original genre (simplified)
+    if (!categorized) {
+      const simpleGenre = lowerGenre.split(' ')[0]; // Take first word
+      genreMapping.set(simpleGenre, (genreMapping.get(simpleGenre) || 0) + 1);
+    }
+  }
+  
+  // Return top 4 genres
+  return Array.from(genreMapping.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([genre]) => genre);
+}
+
+// Simple mapping function to convert audio features to genres (fallback)
 function mapAudioFeaturesToGenres(audioFeatures: any[]): string[] {
   const genreMapping = new Map<string, number>();
   
@@ -108,7 +200,6 @@ function mapAudioFeaturesToGenres(audioFeatures: any[]): string[] {
     // Energy + Valence = Happy/Upbeat genres
     if (features.energy > 0.7 && features.valence > 0.6) {
       genreMapping.set('pop', (genreMapping.get('pop') || 0) + 1);
-      genreMapping.set('edm', (genreMapping.get('edm') || 0) + 1);
     }
     
     // High energy + low valence = Rock/Metal
@@ -127,15 +218,6 @@ function mapAudioFeaturesToGenres(audioFeatures: any[]): string[] {
     // Low energy + acoustic = Folk/Indie
     if (features.energy < 0.4 && features.acousticness > 0.5) {
       genreMapping.set('folk', (genreMapping.get('folk') || 0) + 1);
-      genreMapping.set('indie', (genreMapping.get('indie') || 0) + 1);
-    }
-    
-    // High instrumentalness = Ambient/Classical
-    if (features.instrumentalness > 0.5) {
-      genreMapping.set('ambient', (genreMapping.get('ambient') || 0) + 1);
-      if (features.acousticness > 0.7) {
-        genreMapping.set('classical', (genreMapping.get('classical') || 0) + 1);
-      }
     }
   }
   
