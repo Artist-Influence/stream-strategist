@@ -1,0 +1,145 @@
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+interface EditVendorModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  vendor: {
+    id: string;
+    name: string;
+    max_daily_streams: number;
+    cost_per_1k_streams: number;
+  } | null;
+}
+
+export default function EditVendorModal({ open, onOpenChange, vendor }: EditVendorModalProps) {
+  const [formData, setFormData] = useState({
+    name: "",
+    max_daily_streams: "",
+    cost_per_1k_streams: "",
+  });
+  
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Update form data when vendor changes
+  useEffect(() => {
+    if (vendor) {
+      setFormData({
+        name: vendor.name,
+        max_daily_streams: vendor.max_daily_streams.toString(),
+        cost_per_1k_streams: vendor.cost_per_1k_streams.toString(),
+      });
+    }
+  }, [vendor]);
+
+  const editVendorMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      if (!vendor) throw new Error("No vendor selected");
+      
+      const { error } = await supabase
+        .from("vendors")
+        .update({
+          name: data.name,
+          max_daily_streams: parseInt(data.max_daily_streams),
+          cost_per_1k_streams: parseFloat(data.cost_per_1k_streams),
+        })
+        .eq("id", vendor.id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["playlists"] });
+      toast({
+        title: "Success",
+        description: "Vendor updated successfully",
+      });
+      onOpenChange(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update vendor",
+        variant: "destructive",
+      });
+      console.error("Error updating vendor:", error);
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.max_daily_streams || !formData.cost_per_1k_streams) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive",
+      });
+      return;
+    }
+    editVendorMutation.mutate(formData);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Edit Vendor</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Vendor Name</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Enter vendor name"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="max_streams">Max Daily Streams</Label>
+            <Input
+              id="max_streams"
+              type="number"
+              value={formData.max_daily_streams}
+              onChange={(e) => setFormData({ ...formData, max_daily_streams: e.target.value })}
+              placeholder="e.g. 10000"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="cost">Cost per 1k Streams ($)</Label>
+            <Input
+              id="cost"
+              type="number"
+              step="0.01"
+              value={formData.cost_per_1k_streams}
+              onChange={(e) => setFormData({ ...formData, cost_per_1k_streams: e.target.value })}
+              placeholder="e.g. 2.50"
+            />
+          </div>
+          
+          <div className="flex justify-end space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={editVendorMutation.isPending}>
+              {editVendorMutation.isPending ? "Updating..." : "Update Vendor"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -148,45 +148,66 @@ function groupSimilarGenres(spotifyGenres: string[]): string[] {
   const genreMapping = new Map<string, number>();
   
   const genreCategories = {
-    'rock': ['rock', 'alternative rock', 'indie rock', 'classic rock', 'hard rock', 'punk rock', 'garage rock', 'psychedelic rock'],
-    'pop': ['pop', 'dance pop', 'electropop', 'indie pop', 'synthpop', 'art pop', 'dream pop'],
-    'hip-hop': ['hip hop', 'rap', 'trap', 'drill', 'boom bap', 'conscious hip hop', 'gangsta rap'],
-    'electronic': ['electronic', 'edm', 'house', 'techno', 'dubstep', 'trance', 'ambient', 'electro'],
-    'r&b': ['r&b', 'soul', 'neo soul', 'contemporary r&b', 'funk', 'motown'],
-    'country': ['country', 'country rock', 'alt-country', 'americana', 'bluegrass', 'folk country'],
-    'jazz': ['jazz', 'smooth jazz', 'bebop', 'swing', 'fusion', 'contemporary jazz'],
-    'folk': ['folk', 'indie folk', 'folk rock', 'singer-songwriter', 'acoustic'],
-    'metal': ['metal', 'heavy metal', 'death metal', 'black metal', 'thrash metal', 'metalcore'],
-    'classical': ['classical', 'orchestral', 'chamber music', 'opera', 'baroque'],
+    'phonk': ['phonk', 'drift phonk', 'gym phonk', 'phonk house', 'brazilian phonk', 'cowbell phonk'],
+    'rock': ['rock', 'alternative rock', 'indie rock', 'classic rock', 'hard rock', 'punk rock', 'garage rock', 'psychedelic rock', 'prog rock', 'art rock', 'glam rock'],
+    'pop': ['pop', 'dance pop', 'electropop', 'indie pop', 'synthpop', 'art pop', 'dream pop', 'k-pop', 'j-pop', 'europop'],
+    'hip-hop': ['hip hop', 'rap', 'trap', 'drill', 'boom bap', 'conscious hip hop', 'gangsta rap', 'old school hip hop', 'mumble rap'],
+    'electronic': ['electronic', 'edm', 'house', 'techno', 'dubstep', 'trance', 'ambient', 'electro', 'bass', 'future bass', 'progressive house', 'deep house'],
+    'r&b': ['r&b', 'soul', 'neo soul', 'contemporary r&b', 'funk', 'motown', 'quiet storm'],
+    'country': ['country', 'country rock', 'alt-country', 'americana', 'bluegrass', 'folk country', 'modern country'],
+    'jazz': ['jazz', 'smooth jazz', 'bebop', 'swing', 'fusion', 'contemporary jazz', 'acid jazz'],
+    'folk': ['folk', 'indie folk', 'folk rock', 'singer-songwriter', 'acoustic', 'chamber folk'],
+    'metal': ['metal', 'heavy metal', 'death metal', 'black metal', 'thrash metal', 'metalcore', 'nu metal', 'progressive metal'],
+    'classical': ['classical', 'orchestral', 'chamber music', 'opera', 'baroque', 'romantic'],
     'reggae': ['reggae', 'dub', 'ska', 'dancehall', 'reggaeton'],
-    'latin': ['latin', 'salsa', 'bachata', 'merengue', 'bossa nova', 'tango'],
-    'blues': ['blues', 'electric blues', 'delta blues', 'chicago blues'],
-    'indie': ['indie', 'alternative', 'shoegaze', 'post-punk', 'new wave']
+    'latin': ['latin', 'salsa', 'bachata', 'merengue', 'bossa nova', 'tango', 'cumbia', 'mariachi'],
+    'blues': ['blues', 'electric blues', 'delta blues', 'chicago blues', 'country blues'],
+    'indie': ['indie', 'alternative', 'shoegaze', 'post-punk', 'new wave', 'indie rock'],
+    'brazilian': ['brazilian', 'bossa nova', 'samba', 'mpb', 'forró', 'axé', 'pagode', 'sertanejo'],
+    'workout': ['gym', 'workout', 'training', 'fitness', 'motivation', 'power'],
+    'chill': ['chill', 'chillout', 'lounge', 'downtempo', 'trip hop', 'lo-fi'],
+    'dance': ['dance', 'club', 'disco', 'eurodance', 'freestyle', 'house'],
+    'punk': ['punk', 'hardcore', 'post-punk', 'pop punk', 'ska punk'],
+    'alternative': ['alternative', 'alt rock', 'grunge', 'britpop', 'madchester']
   };
 
   for (const genre of spotifyGenres) {
-    const lowerGenre = genre.toLowerCase();
+    const lowerGenre = genre.toLowerCase().trim();
     let categorized = false;
     
+    // Skip very generic or meaningless terms
+    const skipWords = ['big', 'small', 'new', 'old', 'modern', 'classic', 'deep', 'dark', 'light', 'heavy', 'soft', 'hard', 'fast', 'slow'];
+    if (skipWords.includes(lowerGenre) || lowerGenre.length < 3) {
+      continue;
+    }
+    
     for (const [category, keywords] of Object.entries(genreCategories)) {
-      if (keywords.some(keyword => lowerGenre.includes(keyword))) {
+      if (keywords.some(keyword => lowerGenre.includes(keyword) || keyword.includes(lowerGenre))) {
         genreMapping.set(category, (genreMapping.get(category) || 0) + 1);
         categorized = true;
         break;
       }
     }
     
-    // If not categorized, use the original genre (simplified)
-    if (!categorized) {
-      const simpleGenre = lowerGenre.split(' ')[0]; // Take first word
-      genreMapping.set(simpleGenre, (genreMapping.get(simpleGenre) || 0) + 1);
+    // If not categorized and it's a reasonable genre name, keep it simplified
+    if (!categorized && lowerGenre.length > 2 && !skipWords.includes(lowerGenre)) {
+      // Clean up the genre name
+      let cleanGenre = lowerGenre
+        .replace(/[0-9]+/g, '') // Remove numbers
+        .replace(/[^\w\s-]/g, '') // Remove special chars except hyphens
+        .replace(/\s+/g, ' ') // Normalize spaces
+        .trim();
+      
+      if (cleanGenre.length > 2) {
+        genreMapping.set(cleanGenre, (genreMapping.get(cleanGenre) || 0) + 1);
+      }
     }
   }
   
-  // Return top 4 genres
+  // Return top 3 genres (reduced from 4 for cleaner results)
   return Array.from(genreMapping.entries())
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 4)
+    .slice(0, 3)
     .map(([genre]) => genre);
 }
 

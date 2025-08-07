@@ -38,6 +38,7 @@ import { UNIFIED_GENRES } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import AddVendorModal from "@/components/AddVendorModal";
 import AddPlaylistModal from "@/components/AddPlaylistModal";
+import EditVendorModal from "@/components/EditVendorModal";
 
 interface PlaylistWithVendor extends Playlist {
   vendor: {
@@ -54,6 +55,8 @@ export default function PlaylistsPage() {
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [showAddVendorModal, setShowAddVendorModal] = useState(false);
   const [showAddPlaylistModal, setShowAddPlaylistModal] = useState(false);
+  const [showEditVendorModal, setShowEditVendorModal] = useState(false);
+  const [editingVendor, setEditingVendor] = useState<any>(null);
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
   const [selectedPlaylists, setSelectedPlaylists] = useState<Set<string>>(new Set());
   const vendorFileInputRef = useRef<HTMLInputElement>(null);
@@ -632,6 +635,7 @@ export default function PlaylistsPage() {
                       <TableHead>Genres</TableHead>
                       <TableHead>Daily Streams</TableHead>
                       <TableHead>Followers</TableHead>
+                      <TableHead>Cost/1k</TableHead>
                       <TableHead>URL</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -645,9 +649,9 @@ export default function PlaylistsPage() {
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
                             {playlist.genres.slice(0, 3).map((genre) => (
-                              <Badge key={genre} variant="secondary" className="text-xs">
-                                {genre}
-                              </Badge>
+                        <Badge key={genre} variant="secondary" className="text-xs">
+                          {genre}
+                        </Badge>
                             ))}
                             {playlist.genres.length > 3 && (
                               <Badge variant="outline" className="text-xs">
@@ -661,6 +665,9 @@ export default function PlaylistsPage() {
                         </TableCell>
                         <TableCell className="font-mono">
                           {playlist.follower_count?.toLocaleString() || '0'}
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">
+                          ${selectedVendorData?.cost_per_1k_streams?.toFixed(2) || '0.00'}
                         </TableCell>
                         <TableCell>
                           <a 
@@ -814,28 +821,39 @@ export default function PlaylistsPage() {
                           <span className="text-sm text-muted-foreground">Max Daily Streams</span>
                           <span className="font-mono">{vendor.max_daily_streams?.toLocaleString() || '0'}</span>
                         </div>
-                        <div className="flex gap-2">
-                          <Button 
-                            className="flex-1" 
-                            variant="outline"
-                            onClick={() => setSelectedVendor(vendor.id)}
-                          >
-                            <Eye className="w-4 h-4 mr-2" />
-                            View Playlists
-                          </Button>
-                          <Button 
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const playlistCount = allPlaylists?.filter(p => p.vendor.id === vendor.id).length || 0;
-                              handleDeleteVendor(vendor.id, vendor.name, playlistCount);
-                            }}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                         <div className="flex gap-2">
+                           <Button 
+                             className="flex-1" 
+                             variant="outline"
+                             onClick={() => setSelectedVendor(vendor.id)}
+                           >
+                             <Eye className="w-4 h-4 mr-2" />
+                             View Playlists
+                           </Button>
+                           <Button 
+                             variant="outline"
+                             size="sm"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               setEditingVendor(vendor);
+                               setShowEditVendorModal(true);
+                             }}
+                           >
+                             <Edit className="w-4 h-4" />
+                           </Button>
+                           <Button 
+                             variant="outline"
+                             size="sm"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               const playlistCount = allPlaylists?.filter(p => p.vendor.id === vendor.id).length || 0;
+                               handleDeleteVendor(vendor.id, vendor.name, playlistCount);
+                             }}
+                             className="text-destructive hover:text-destructive"
+                           >
+                             <Trash2 className="w-4 h-4" />
+                           </Button>
+                         </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -1028,9 +1046,15 @@ export default function PlaylistsPage() {
         />
 
         {/* Modals */}
-        <AddVendorModal 
-          open={showAddVendorModal} 
-          onOpenChange={setShowAddVendorModal} 
+        <AddVendorModal
+          open={showAddVendorModal}
+          onOpenChange={setShowAddVendorModal}
+        />
+        
+        <EditVendorModal
+          open={showEditVendorModal}
+          onOpenChange={setShowEditVendorModal}
+          vendor={editingVendor}
         />
         <AddPlaylistModal 
           open={showAddPlaylistModal} 
