@@ -502,7 +502,7 @@ export default function CampaignHistory() {
                     <TableHead>Weekly Streams</TableHead>
                     <TableHead>Remaining Streams</TableHead>
                     <TableHead>Progress</TableHead>
-                    <TableHead>Created</TableHead>
+                    <TableHead>Start Date</TableHead>
                     <TableHead>Last Updated</TableHead>
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
@@ -566,7 +566,7 @@ export default function CampaignHistory() {
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            {new Date(campaign.created_at).toLocaleDateString()}
+                            {new Date(campaign.start_date).toLocaleDateString()}
                           </div>
                         </TableCell>
                         <TableCell>
