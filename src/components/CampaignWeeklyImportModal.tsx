@@ -55,11 +55,11 @@ export default function CampaignWeeklyImportModal({
         // Clean up field names (handle variations in CSV headers)
         const campaignName = row['Campaign Name'] || row['campaign_name'] || row['Campaign'];
         const clientName = row['Client'] || row['client'] || row['Artist'];
-        const streamGoal = parseInt(row['Stream Goal'] || row['stream_goal'] || '0');
-        const remainingStreams = parseInt(row['Remaining Streams'] || row['remaining_streams'] || '0');
-        const dailyStreams = parseInt(row['Daily Streams'] || row['daily_streams'] || '0');
-        const weeklyStreams = parseInt(row['Weekly Streams'] || row['weekly_streams'] || '0');
-        const trackUrl = row['Track URL'] || row['track_url'] || '';
+        const streamGoal = parseInt(row['Stream Goal'] || row['stream_goal'] || row['Goal'] || '0');
+        const remainingStreams = parseInt(row['Remaining Streams'] || row['remaining_streams'] || row['Remaining'] || '0');
+        const dailyStreams = parseInt(row['Daily Streams'] || row['daily_streams'] || row['Daily'] || '0');
+        const weeklyStreams = parseInt(row['Weekly Streams'] || row['weekly_streams'] || row['Weekly'] || '0');
+        const trackUrl = row['Track URL'] || row['track_url'] || row['URL'] || '';
         const startDateRaw = row['Start Date'] || row['start_date'] || '';
         
         if (!campaignName || !clientName) {
@@ -90,8 +90,26 @@ export default function CampaignWeeklyImportModal({
           }
         }
         
-        // Remove duplicates
+        // Remove duplicates and get existing playlists from database
         parsedPlaylists = [...new Set(parsedPlaylists)];
+        
+        // Fetch matching playlists from database
+        let matchedPlaylists: any[] = [];
+        if (parsedPlaylists.length > 0) {
+          const { data: dbPlaylists } = await supabase
+            .from('playlists')
+            .select('id, name, vendor_id, vendors(name)')
+            .in('name', parsedPlaylists);
+          
+          if (dbPlaylists) {
+            matchedPlaylists = dbPlaylists.map(playlist => ({
+              id: playlist.id,
+              name: playlist.name,
+              vendor_name: playlist.vendors?.name || 'Unknown',
+              imported: true
+            }));
+          }
+        }
         
         // Find existing campaign by name and client (only in campaign_manager source)
         const { data: existingCampaign } = await supabase
@@ -126,10 +144,9 @@ export default function CampaignWeeklyImportModal({
             .update({
               stream_goal: streamGoal || existingCampaign.stream_goal,
               remaining_streams: remainingStreams || existingCampaign.remaining_streams,
+              // delivered_streams: streamGoal ? (streamGoal - remainingStreams) : 0, // Remove this field as it doesn't exist
               track_url: trackUrl || existingCampaign.track_url,
-              selected_playlists: parsedPlaylists.length > 0 ? 
-                parsedPlaylists.map(name => ({ name, imported: true })) : 
-                existingCampaign.selected_playlists,
+              selected_playlists: matchedPlaylists.length > 0 ? matchedPlaylists : existingCampaign.selected_playlists,
               // updated_at is automatically updated by trigger
             })
             .eq('id', existingCampaign.id);
@@ -190,7 +207,8 @@ export default function CampaignWeeklyImportModal({
               client: clientName.trim(),
               client_name: clientName.trim(),
               stream_goal: streamGoal || 0,
-              remaining_streams: remainingStreams || 0,
+              remaining_streams: remainingStreams || streamGoal || 0,
+              // delivered_streams: streamGoal ? Math.max(0, streamGoal - remainingStreams) : 0, // Remove this field as it doesn't exist
               budget: 0, // Budget to be manually entered later
               status: 'active',
               track_url: trackUrl || '',
@@ -198,8 +216,7 @@ export default function CampaignWeeklyImportModal({
               sub_genres: genres,
               start_date: startDate,
               duration_days: 90,
-              selected_playlists: parsedPlaylists.length > 0 ? 
-                parsedPlaylists.map(name => ({ name, imported: true })) : [],
+              selected_playlists: matchedPlaylists.length > 0 ? matchedPlaylists : [],
               vendor_allocations: {},
               totals: { projected_streams: 0 },
               source: 'campaign_manager', // Explicitly set source
@@ -256,7 +273,7 @@ export default function CampaignWeeklyImportModal({
     }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     console.log('File selected:', file);
     if (!file) {
@@ -265,7 +282,7 @@ export default function CampaignWeeklyImportModal({
     }
     
     console.log('Starting file import for:', file.name);
-    handleCampaignImport(file);
+    await handleCampaignImport(file);
     event.target.value = ''; // Reset file input
   };
 
@@ -306,7 +323,7 @@ export default function CampaignWeeklyImportModal({
             <p className="font-semibold text-sm">Required CSV Format:</p>
             <div className="bg-background p-3 rounded border text-xs font-mono">
               <div className="text-foreground mb-1">
-                Campaign Name,Client,Stream Goal,Remaining Streams,Daily Streams,Weekly Streams,Track URL,Start Date,[Playlist columns]
+                Campaign Name,Client,Goal,Remaining,Daily,Weekly,URL,Start Date,[Playlist columns]
               </div>
               <div className="text-muted-foreground">
                 "Jared Rapoza","Slime",20000,18000,200,1400,"https://open.spotify.com/track/...","2024-01-15","Playlist Name - Another Playlist [NEW] -"
