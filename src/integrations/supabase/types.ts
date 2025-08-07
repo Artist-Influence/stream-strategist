@@ -282,6 +282,7 @@ export type Database = {
           cost_per_1k_streams: number | null
           created_at: string
           id: string
+          max_concurrent_campaigns: number
           max_daily_streams: number
           name: string
           updated_at: string
@@ -290,6 +291,7 @@ export type Database = {
           cost_per_1k_streams?: number | null
           created_at?: string
           id?: string
+          max_concurrent_campaigns?: number
           max_daily_streams?: number
           name: string
           updated_at?: string
@@ -298,6 +300,7 @@ export type Database = {
           cost_per_1k_streams?: number | null
           created_at?: string
           id?: string
+          max_concurrent_campaigns?: number
           max_daily_streams?: number
           name?: string
           updated_at?: string

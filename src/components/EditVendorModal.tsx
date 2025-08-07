@@ -15,6 +15,7 @@ interface EditVendorModalProps {
     name: string;
     max_daily_streams: number;
     cost_per_1k_streams: number;
+    max_concurrent_campaigns: number;
   } | null;
 }
 
@@ -23,6 +24,7 @@ export default function EditVendorModal({ open, onOpenChange, vendor }: EditVend
     name: "",
     max_daily_streams: "",
     cost_per_1k_streams: "",
+    max_concurrent_campaigns: "",
   });
   
   const { toast } = useToast();
@@ -35,6 +37,7 @@ export default function EditVendorModal({ open, onOpenChange, vendor }: EditVend
         name: vendor.name,
         max_daily_streams: vendor.max_daily_streams.toString(),
         cost_per_1k_streams: vendor.cost_per_1k_streams.toString(),
+        max_concurrent_campaigns: vendor.max_concurrent_campaigns.toString(),
       });
     }
   }, [vendor]);
@@ -49,6 +52,7 @@ export default function EditVendorModal({ open, onOpenChange, vendor }: EditVend
           name: data.name,
           max_daily_streams: parseInt(data.max_daily_streams),
           cost_per_1k_streams: parseFloat(data.cost_per_1k_streams),
+          max_concurrent_campaigns: parseInt(data.max_concurrent_campaigns),
         })
         .eq("id", vendor.id);
       
@@ -76,7 +80,7 @@ export default function EditVendorModal({ open, onOpenChange, vendor }: EditVend
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.max_daily_streams || !formData.cost_per_1k_streams) {
+    if (!formData.name || !formData.max_daily_streams || !formData.cost_per_1k_streams || !formData.max_concurrent_campaigns) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
@@ -124,6 +128,17 @@ export default function EditVendorModal({ open, onOpenChange, vendor }: EditVend
               value={formData.cost_per_1k_streams}
               onChange={(e) => setFormData({ ...formData, cost_per_1k_streams: e.target.value })}
               placeholder="e.g. 2.50"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="max_campaigns">Max Concurrent Campaigns</Label>
+            <Input
+              id="max_campaigns"
+              type="number"
+              value={formData.max_concurrent_campaigns}
+              onChange={(e) => setFormData({ ...formData, max_concurrent_campaigns: e.target.value })}
+              placeholder="e.g. 5"
             />
           </div>
           

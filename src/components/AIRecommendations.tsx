@@ -94,13 +94,16 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
       vendorCaps[vendor.id] = vendor.max_daily_streams * campaignData.duration_days;
     });
 
-    // Run allocation algorithm
+    // Run allocation algorithm with enhanced parameters
     const result = allocateStreams({
       playlists,
       goal: campaignData.stream_goal,
       vendorCaps,
       subGenre: campaignData.sub_genre,
-      durationDays: campaignData.duration_days
+      durationDays: campaignData.duration_days,
+      vendors: vendors,
+      campaignBudget: campaignData.budget,
+      campaignGenres: [campaignData.sub_genre]
     });
 
     setAllocations(result.allocations);

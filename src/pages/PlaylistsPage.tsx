@@ -30,7 +30,9 @@ import {
   Upload,
   Download,
   Info,
-  Database
+  Database,
+  Activity,
+  BarChart3
 } from "lucide-react";
 import Papa from "papaparse";
 import { Vendor, Playlist } from "@/types";
@@ -39,6 +41,8 @@ import { useToast } from "@/hooks/use-toast";
 import AddVendorModal from "@/components/AddVendorModal";
 import AddPlaylistModal from "@/components/AddPlaylistModal";
 import EditVendorModal from "@/components/EditVendorModal";
+import AddPerformanceEntryModal from "@/components/AddPerformanceEntryModal";
+import PerformanceHistoryModal from "@/components/PerformanceHistoryModal";
 
 interface PlaylistWithVendor extends Playlist {
   vendor: {
@@ -58,6 +62,11 @@ export default function PlaylistsPage() {
   const [showEditVendorModal, setShowEditVendorModal] = useState(false);
   const [editingVendor, setEditingVendor] = useState<any>(null);
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
+  
+  // Performance entry modals
+  const [addPerformanceModalOpen, setAddPerformanceModalOpen] = useState(false);
+  const [performanceHistoryModalOpen, setPerformanceHistoryModalOpen] = useState(false);
+  const [selectedPlaylistForPerformance, setSelectedPlaylistForPerformance] = useState<{ id: string; name: string } | null>(null);
   const [selectedPlaylists, setSelectedPlaylists] = useState<Set<string>>(new Set());
   const vendorFileInputRef = useRef<HTMLInputElement>(null);
   const playlistFileInputRef = useRef<HTMLInputElement>(null);
@@ -708,7 +717,43 @@ export default function PlaylistsPage() {
                           </a>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-1">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedPlaylistForPerformance({ id: playlist.id, name: playlist.name });
+                                      setAddPerformanceModalOpen(true);
+                                    }}
+                                  >
+                                    <Activity className="w-3 h-3" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Add Stream Data</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedPlaylistForPerformance({ id: playlist.id, name: playlist.name });
+                                      setPerformanceHistoryModalOpen(true);
+                                    }}
+                                  >
+                                    <BarChart3 className="w-3 h-3" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Performance History</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            
                             <Button 
                               variant="outline" 
                               size="sm"
@@ -1107,6 +1152,24 @@ export default function PlaylistsPage() {
           vendorId={selectedVendor}
           editingPlaylist={editingPlaylist}
         />
+        
+        {selectedPlaylistForPerformance && (
+          <>
+            <AddPerformanceEntryModal
+              open={addPerformanceModalOpen}
+              onOpenChange={setAddPerformanceModalOpen}
+              playlistId={selectedPlaylistForPerformance.id}
+              playlistName={selectedPlaylistForPerformance.name}
+            />
+            
+            <PerformanceHistoryModal
+              open={performanceHistoryModalOpen}
+              onOpenChange={setPerformanceHistoryModalOpen}
+              playlistId={selectedPlaylistForPerformance.id}
+              playlistName={selectedPlaylistForPerformance.name}
+            />
+          </>
+        )}
       </div>
     </Layout>
   );

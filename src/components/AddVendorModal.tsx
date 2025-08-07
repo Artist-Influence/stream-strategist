@@ -17,6 +17,7 @@ export default function AddVendorModal({ open, onOpenChange }: AddVendorModalPro
     name: "",
     max_daily_streams: "",
     cost_per_1k_streams: "",
+    max_concurrent_campaigns: "5",
   });
   
   const { toast } = useToast();
@@ -28,6 +29,7 @@ export default function AddVendorModal({ open, onOpenChange }: AddVendorModalPro
         name: data.name,
         max_daily_streams: parseInt(data.max_daily_streams),
         cost_per_1k_streams: parseFloat(data.cost_per_1k_streams),
+        max_concurrent_campaigns: parseInt(data.max_concurrent_campaigns),
       });
       
       if (error) throw error;
@@ -39,7 +41,7 @@ export default function AddVendorModal({ open, onOpenChange }: AddVendorModalPro
         description: "Vendor added successfully",
       });
       onOpenChange(false);
-      setFormData({ name: "", max_daily_streams: "", cost_per_1k_streams: "" });
+      setFormData({ name: "", max_daily_streams: "", cost_per_1k_streams: "", max_concurrent_campaigns: "5" });
     },
     onError: (error) => {
       toast({
@@ -53,7 +55,7 @@ export default function AddVendorModal({ open, onOpenChange }: AddVendorModalPro
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.max_daily_streams || !formData.cost_per_1k_streams) {
+    if (!formData.name || !formData.max_daily_streams || !formData.cost_per_1k_streams || !formData.max_concurrent_campaigns) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
@@ -101,6 +103,17 @@ export default function AddVendorModal({ open, onOpenChange }: AddVendorModalPro
               value={formData.cost_per_1k_streams}
               onChange={(e) => setFormData({ ...formData, cost_per_1k_streams: e.target.value })}
               placeholder="e.g. 2.50"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="max_campaigns">Max Concurrent Campaigns</Label>
+            <Input
+              id="max_campaigns"
+              type="number"
+              value={formData.max_concurrent_campaigns}
+              onChange={(e) => setFormData({ ...formData, max_concurrent_campaigns: e.target.value })}
+              placeholder="e.g. 5"
             />
           </div>
           
