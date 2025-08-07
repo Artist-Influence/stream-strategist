@@ -214,11 +214,34 @@ export default function CampaignWeeklyImportModal({
             updateNotes += ` | New playlists added: ${newPlaylists.join(', ')}`;
           }
           
+          // Fetch and update genres if track URL provided
+          let updatedGenres = existingCampaign.sub_genres || [];
+          let updatedSubGenre = existingCampaign.sub_genre || '';
+          
+          if (trackUrl && trackUrl !== existingCampaign.track_url) {
+            try {
+              console.log('Fetching updated genres for track:', trackUrl);
+              const { data: spotifyData, error: spotifyError } = await supabase.functions.invoke('spotify-fetch', {
+                body: { trackUrl: trackUrl.trim() }
+              });
+              
+              if (!spotifyError && spotifyData?.genres?.length > 0) {
+                updatedGenres = spotifyData.genres.slice(0, 3);
+                updatedSubGenre = spotifyData.genres[0] || '';
+                console.log('Updated genres from Spotify:', updatedGenres);
+              }
+            } catch (error) {
+              console.warn('Failed to fetch updated genres:', error);
+            }
+          }
+
           // Update existing campaign with explicit null handling
           const updateData = {
             stream_goal: streamGoal > 0 ? streamGoal : existingCampaign.stream_goal,
             remaining_streams: remainingStreams > 0 ? remainingStreams : existingCampaign.remaining_streams,
             track_url: trackUrl || existingCampaign.track_url,
+            sub_genre: updatedSubGenre,
+            sub_genres: updatedGenres,
             selected_playlists: matchedPlaylists.length > 0 ? matchedPlaylists : existingCampaign.selected_playlists,
             // Ensure we always set these values, even if 0
             daily_streams: dailyStreams,
@@ -274,8 +297,12 @@ export default function CampaignWeeklyImportModal({
                 if (spotifyData.genres && spotifyData.genres.length > 0) {
                   genres = spotifyData.genres.slice(0, 3); // Top 3 genres
                   subGenre = genres[0] || '';
-                  console.log('Extracted genres:', genres);
+                  console.log('Extracted genres from Spotify:', genres);
+                } else {
+                  console.log('No genres returned from Spotify API');
                 }
+              } else {
+                console.log('Spotify API error or no data:', spotifyError);
               }
             } catch (error) {
               console.warn('Failed to fetch genres from Spotify:', error);

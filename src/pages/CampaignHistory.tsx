@@ -45,13 +45,15 @@ import {
   ExternalLink,
   Download,
   Upload,
-  Edit
+  Edit,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Papa from "papaparse";
 import { EditCampaignModal } from "@/components/EditCampaignModal";
 import CampaignWeeklyImportModal from "@/components/CampaignWeeklyImportModal";
-import AddPlaylistToCampaignModal from "@/components/AddPlaylistToCampaignModal";
 
 interface Campaign {
   id: string;
@@ -77,14 +79,18 @@ interface Campaign {
   playlists?: Array<{ name: string; url?: string; vendor_name?: string }>;
 }
 
+type SortField = 'name' | 'client' | 'budget' | 'stream_goal' | 'daily_streams' | 'weekly_streams' | 'start_date' | 'progress';
+type SortDirection = 'asc' | 'desc';
+
 export default function CampaignHistory() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [detailsModal, setDetailsModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
   const [editModal, setEditModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
   const [importModalOpen, setImportModalOpen] = useState(false);
-  const [addPlaylistModal, setAddPlaylistModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
+  const [sortField, setSortField] = useState<SortField>('start_date');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -168,14 +174,42 @@ export default function CampaignHistory() {
     }
   });
 
-  // Filter campaigns with case-insensitive status matching
-  const filteredCampaigns = campaigns?.filter(campaign => {
-    const matchesSearch = campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         campaign.client.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || 
-                         campaign.status.toLowerCase() === statusFilter.toLowerCase();
-    return matchesSearch && matchesStatus;
-  }) || [];
+  // Sort and filter campaigns
+  const sortedAndFilteredCampaigns = (() => {
+    let filtered = campaigns?.filter(campaign => {
+      const matchesSearch = campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           campaign.client.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === "all" || 
+                           campaign.status.toLowerCase() === statusFilter.toLowerCase();
+      return matchesSearch && matchesStatus;
+    }) || [];
+
+    // Sort campaigns
+    return filtered.sort((a, b) => {
+      let aValue: any = a[sortField];
+      let bValue: any = b[sortField];
+
+      // Handle special cases
+      if (sortField === 'progress') {
+        aValue = ((a.stream_goal - a.remaining_streams) / a.stream_goal) * 100;
+        bValue = ((b.stream_goal - b.remaining_streams) / b.stream_goal) * 100;
+      }
+
+      // Handle null/undefined values
+      if (aValue === null || aValue === undefined) aValue = 0;
+      if (bValue === null || bValue === undefined) bValue = 0;
+
+      // Convert to comparable types
+      if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+      if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+
+      if (sortDirection === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+  })();
 
   // Helper function for status counts
   const getStatusCount = (status: string) => {
@@ -272,10 +306,24 @@ export default function CampaignHistory() {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedCampaigns(new Set(filteredCampaigns.map(c => c.id)));
+      setSelectedCampaigns(new Set(sortedAndFilteredCampaigns.map(c => c.id)));
     } else {
       setSelectedCampaigns(new Set());
     }
+  };
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) return <ArrowUpDown className="w-4 h-4 ml-1" />;
+    return sortDirection === 'asc' ? <ArrowUp className="w-4 h-4 ml-1" /> : <ArrowDown className="w-4 h-4 ml-1" />;
   };
 
   const handleBulkDelete = () => {
@@ -501,7 +549,7 @@ export default function CampaignHistory() {
               {statusFilter === 'all' ? 'All Campaigns' : `${statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)} Campaigns`}
             </CardTitle>
             <CardDescription>
-              {filteredCampaigns.length} campaigns found
+              {sortedAndFilteredCampaigns.length} campaigns found
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -511,7 +559,7 @@ export default function CampaignHistory() {
                   <div key={i} className="h-16 bg-muted/30 rounded animate-pulse" />
                 ))}
               </div>
-            ) : filteredCampaigns.length === 0 ? (
+            ) : sortedAndFilteredCampaigns.length === 0 ? (
               <div className="text-center py-12">
                 <Target className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
                 <h3 className="text-lg font-semibold mb-2">No campaigns found</h3>
@@ -535,27 +583,59 @@ export default function CampaignHistory() {
                     <TableHead className="w-12">
                       <input
                         type="checkbox"
-                        checked={selectedCampaigns.size === filteredCampaigns.length && filteredCampaigns.length > 0}
+                        checked={selectedCampaigns.size === sortedAndFilteredCampaigns.length && sortedAndFilteredCampaigns.length > 0}
                         onChange={(e) => handleSelectAll(e.target.checked)}
                         className="rounded"
                       />
                     </TableHead>
-                    <TableHead>Campaign</TableHead>
-                    <TableHead>Client</TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('name')} className="h-auto p-0 hover:bg-transparent">
+                        Campaign {getSortIcon('name')}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('client')} className="h-auto p-0 hover:bg-transparent">
+                        Client {getSortIcon('client')}
+                      </Button>
+                    </TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Budget</TableHead>
-                    <TableHead>Stream Goal</TableHead>
-                    <TableHead>Daily Streams</TableHead>
-                    <TableHead>Weekly Streams</TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('budget')} className="h-auto p-0 hover:bg-transparent">
+                        Budget {getSortIcon('budget')}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('stream_goal')} className="h-auto p-0 hover:bg-transparent">
+                        Stream Goal {getSortIcon('stream_goal')}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('daily_streams')} className="h-auto p-0 hover:bg-transparent">
+                        Daily Streams {getSortIcon('daily_streams')}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('weekly_streams')} className="h-auto p-0 hover:bg-transparent">
+                        Weekly Streams {getSortIcon('weekly_streams')}
+                      </Button>
+                    </TableHead>
                     <TableHead>Remaining Streams</TableHead>
-                    <TableHead>Progress</TableHead>
-                    <TableHead>Start Date</TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('progress')} className="h-auto p-0 hover:bg-transparent">
+                        Progress {getSortIcon('progress')}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('start_date')} className="h-auto p-0 hover:bg-transparent">
+                        Start Date {getSortIcon('start_date')}
+                      </Button>
+                    </TableHead>
                     <TableHead>Last Updated</TableHead>
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCampaigns.map((campaign) => {
+                  {sortedAndFilteredCampaigns.map((campaign) => {
                     const progress = ((campaign.stream_goal - campaign.remaining_streams) / campaign.stream_goal) * 100;
                     const endDate = new Date(campaign.start_date);
                     endDate.setDate(endDate.getDate() + campaign.duration_days);
@@ -650,10 +730,6 @@ export default function CampaignHistory() {
                               <DropdownMenuItem onClick={() => handleEditCampaign(campaign.id)}>
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit Campaign
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setAddPlaylistModal({ open: true, campaign })}>
-                                <Plus className="w-4 h-4 mr-2" />
-                                Add Playlists
                               </DropdownMenuItem>
                               <DropdownMenuItem>
                                 <Copy className="w-4 h-4 mr-2" />
@@ -796,19 +872,6 @@ export default function CampaignHistory() {
             onOpenChange={setImportModalOpen} 
           />
 
-          {/* Add Playlist to Campaign Modal */}
-          {addPlaylistModal.campaign && (
-            <AddPlaylistToCampaignModal
-              open={addPlaylistModal.open}
-              onOpenChange={(open) => setAddPlaylistModal({ open })}
-              campaignId={addPlaylistModal.campaign.id}
-              campaignName={addPlaylistModal.campaign.name}
-              currentPlaylists={addPlaylistModal.campaign.selected_playlists || []}
-              onPlaylistsUpdated={() => {
-                queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-              }}
-            />
-          )}
        </div>
      </div>
    );
