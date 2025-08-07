@@ -111,7 +111,8 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
           remaining_streams: formData.remaining_streams
         })
         .eq('id', campaign.id)
-        .eq('source', 'campaign_manager');
+        .eq('source', 'campaign_manager')
+        .eq('campaign_type', 'spotify');
 
       if (error) throw error;
 

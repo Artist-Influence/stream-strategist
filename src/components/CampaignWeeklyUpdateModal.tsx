@@ -50,6 +50,7 @@ export default function CampaignWeeklyUpdateModal({
           .select('*')
           .eq('name', row.campaign_name.trim())
           .eq('source', 'campaign_manager')
+          .eq('campaign_type', 'spotify')
           .single();
         
         if (campaign) {

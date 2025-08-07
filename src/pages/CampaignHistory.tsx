@@ -94,6 +94,7 @@ export default function CampaignHistory() {
         .from('campaigns')
         .select('*')
         .eq('source', 'campaign_manager')
+        .eq('campaign_type', 'spotify')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -109,6 +110,7 @@ export default function CampaignHistory() {
         .update(updates)
         .eq('id', id)
         .eq('source', 'campaign_manager')
+        .eq('campaign_type', 'spotify')
         .select()
         .single();
 
@@ -127,7 +129,8 @@ export default function CampaignHistory() {
         .from('campaigns')
         .delete()
         .eq('id', id)
-        .eq('source', 'campaign_manager');
+        .eq('source', 'campaign_manager')
+        .eq('campaign_type', 'spotify');
 
       if (error) throw error;
     },
@@ -147,7 +150,8 @@ export default function CampaignHistory() {
         .from('campaigns')
         .delete()
         .in('id', campaignIds)
-        .eq('source', 'campaign_manager');
+        .eq('source', 'campaign_manager')
+        .eq('campaign_type', 'spotify');
 
       if (error) throw error;
     },

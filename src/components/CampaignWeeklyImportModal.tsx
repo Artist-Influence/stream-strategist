@@ -118,6 +118,7 @@ export default function CampaignWeeklyImportModal({
           .eq('name', campaignName.trim())
           .eq('client', clientName.trim())
           .eq('source', 'campaign_manager')
+          .eq('campaign_type', 'spotify')
           .maybeSingle();
         
         if (existingCampaign) {
