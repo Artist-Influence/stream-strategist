@@ -252,15 +252,20 @@ export default function CampaignWeeklyImportModal({
         }
       }
       
+      // Close modal first
+      onOpenChange(false);
+      
+      // Then invalidate queries and show success message
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['weekly-updates'] });
       
-      toast({
-        title: "Import Successful",
-        description: `Updated ${updatedCount} campaigns, created ${createdCount} new campaigns`,
-      });
-      
-      onOpenChange(false);
+      // Show success toast after modal closes
+      setTimeout(() => {
+        toast({
+          title: "Import Successful",
+          description: `Updated ${updatedCount} campaigns, created ${createdCount} new campaigns`,
+        });
+      }, 100);
     } catch (error) {
       console.error('Import error:', error);
       toast({
