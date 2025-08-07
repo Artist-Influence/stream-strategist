@@ -51,6 +51,7 @@ import { Link } from "react-router-dom";
 import Papa from "papaparse";
 import { EditCampaignModal } from "@/components/EditCampaignModal";
 import CampaignWeeklyImportModal from "@/components/CampaignWeeklyImportModal";
+import AddPlaylistToCampaignModal from "@/components/AddPlaylistToCampaignModal";
 
 interface Campaign {
   id: string;
@@ -82,6 +83,7 @@ export default function CampaignHistory() {
   const [detailsModal, setDetailsModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
   const [editModal, setEditModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [addPlaylistModal, setAddPlaylistModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -304,6 +306,43 @@ export default function CampaignHistory() {
     }
   };
 
+  // Calculate campaign performance and return color class
+  const getCampaignPerformanceColor = (campaign: Campaign) => {
+    if (campaign.status !== 'active') return '';
+    
+    const startDate = new Date(campaign.start_date);
+    const today = new Date();
+    const daysElapsed = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const streamsCompleted = campaign.stream_goal - campaign.remaining_streams;
+    const progressPercent = (streamsCompleted / campaign.stream_goal) * 100;
+    
+    // Expected progress based on 90-day duration
+    const expectedProgressPercent = (daysElapsed / 90) * 100;
+    const performanceRatio = progressPercent / Math.max(expectedProgressPercent, 1);
+    
+    if (performanceRatio >= 1.2) return 'bg-accent/10 border-accent/30'; // High performer
+    if (performanceRatio >= 0.8) return 'bg-primary/10 border-primary/30'; // On track
+    return 'bg-destructive/10 border-destructive/30'; // Under performing
+  };
+
+  const getCampaignPerformanceStatus = (campaign: Campaign) => {
+    if (campaign.status !== 'active') return null;
+    
+    const startDate = new Date(campaign.start_date);
+    const today = new Date();
+    const daysElapsed = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const streamsCompleted = campaign.stream_goal - campaign.remaining_streams;
+    const progressPercent = (streamsCompleted / campaign.stream_goal) * 100;
+    
+    // Expected progress based on 90-day duration
+    const expectedProgressPercent = (daysElapsed / 90) * 100;
+    const performanceRatio = progressPercent / Math.max(expectedProgressPercent, 1);
+    
+    if (performanceRatio >= 1.2) return { label: 'High Performer', color: 'text-accent' };
+    if (performanceRatio >= 0.8) return { label: 'On Track', color: 'text-primary' };
+    return { label: 'Under Performing', color: 'text-destructive' };
+  };
+
   return (
     <div className="space-y-8">
       {/* Hero Section */}
@@ -523,7 +562,7 @@ export default function CampaignHistory() {
                     const isExpired = new Date() > endDate;
 
                     return (
-                      <TableRow key={campaign.id} className="hover:bg-accent/10">
+                      <TableRow key={campaign.id} className={`hover:bg-accent/10 ${getCampaignPerformanceColor(campaign)}`}>
                         <TableCell>
                           <input
                             type="checkbox"
@@ -549,12 +588,19 @@ export default function CampaignHistory() {
                         </TableCell>
                         <TableCell>{campaign.client_name || campaign.client}</TableCell>
                         <TableCell>
-                          <StatusBadge status={campaign.status} />
+                          <div className="flex flex-col space-y-1">
+                            <StatusBadge status={campaign.status} />
+                            {getCampaignPerformanceStatus(campaign) && (
+                              <Badge variant="outline" className={`text-xs ${getCampaignPerformanceStatus(campaign)?.color}`}>
+                                {getCampaignPerformanceStatus(campaign)?.label}
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>${campaign.budget.toLocaleString()}</TableCell>
                         <TableCell>{campaign.stream_goal.toLocaleString()}</TableCell>
-                        <TableCell>{0}</TableCell>
-                        <TableCell>{0}</TableCell>
+                        <TableCell>{campaign.daily_streams?.toLocaleString() || 0}</TableCell>
+                        <TableCell>{campaign.weekly_streams?.toLocaleString() || 0}</TableCell>
                         <TableCell>{campaign.remaining_streams?.toLocaleString() || campaign.stream_goal.toLocaleString()}</TableCell>
                         <TableCell>
                           <div className="space-y-1">
@@ -600,6 +646,10 @@ export default function CampaignHistory() {
                               <DropdownMenuItem onClick={() => handleEditCampaign(campaign.id)}>
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit Campaign
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setAddPlaylistModal({ open: true, campaign })}>
+                                <Plus className="w-4 h-4 mr-2" />
+                                Add Playlists
                               </DropdownMenuItem>
                               <DropdownMenuItem>
                                 <Copy className="w-4 h-4 mr-2" />
@@ -741,6 +791,20 @@ export default function CampaignHistory() {
             open={importModalOpen} 
             onOpenChange={setImportModalOpen} 
           />
+
+          {/* Add Playlist to Campaign Modal */}
+          {addPlaylistModal.campaign && (
+            <AddPlaylistToCampaignModal
+              open={addPlaylistModal.open}
+              onOpenChange={(open) => setAddPlaylistModal({ open })}
+              campaignId={addPlaylistModal.campaign.id}
+              campaignName={addPlaylistModal.campaign.name}
+              currentPlaylists={addPlaylistModal.campaign.selected_playlists || []}
+              onPlaylistsUpdated={() => {
+                queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+              }}
+            />
+          )}
        </div>
      </div>
    );

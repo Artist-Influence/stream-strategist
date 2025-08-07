@@ -71,6 +71,16 @@ export default function CampaignWeeklyImportModal({
         const trackUrl = row['Track URL'] || row['track_url'] || row['URL'] || '';
         const startDateRaw = row['Start Date'] || row['start_date'] || '';
         
+        console.log('Processing row:', {
+          campaignName,
+          clientName,
+          streamGoal,
+          remainingStreams,
+          dailyStreams,
+          weeklyStreams,
+          trackUrl
+        });
+        
         if (!campaignName || !clientName) {
           console.log('Skipping row - missing campaign name or client:', row);
           processedCount++;
@@ -158,6 +168,8 @@ export default function CampaignWeeklyImportModal({
               remaining_streams: remainingStreams || existingCampaign.remaining_streams,
               track_url: trackUrl || existingCampaign.track_url,
               selected_playlists: matchedPlaylists.length > 0 ? matchedPlaylists : existingCampaign.selected_playlists,
+              daily_streams: dailyStreams || 0,
+              weekly_streams: weeklyStreams || 0,
             })
             .eq('id', existingCampaign.id)
             .eq('source', 'campaign_manager')
@@ -192,14 +204,18 @@ export default function CampaignWeeklyImportModal({
           // Fetch genres from Spotify API if track URL provided
           if (trackUrl) {
             try {
+              console.log('Calling Spotify API for track:', trackUrl);
               const { data: spotifyData, error: spotifyError } = await supabase.functions.invoke('spotify-fetch', {
                 body: { trackUrl: trackUrl.trim() }
               });
+              
+              console.log('Spotify API response:', { spotifyData, spotifyError });
               
               if (!spotifyError && spotifyData) {
                 if (spotifyData.genres && spotifyData.genres.length > 0) {
                   genres = spotifyData.genres.slice(0, 3); // Top 3 genres
                   subGenre = genres[0] || '';
+                  console.log('Extracted genres:', genres);
                 }
               }
             } catch (error) {
@@ -231,6 +247,8 @@ export default function CampaignWeeklyImportModal({
               selected_playlists: matchedPlaylists.length > 0 ? matchedPlaylists : [],
               vendor_allocations: {},
               totals: { projected_streams: 0 },
+              daily_streams: dailyStreams || 0,
+              weekly_streams: weeklyStreams || 0,
               source: 'campaign_manager',
               campaign_type: 'spotify', // Explicitly set to spotify
               created_at: startDate,
