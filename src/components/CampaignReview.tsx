@@ -73,6 +73,7 @@ export default function CampaignReview({ campaignData, allocationsData, onBack }
             duration_days: campaignData.duration_days,
             status: 'active',
             source: 'campaign_manager',
+            campaign_type: 'spotify',
             selected_playlists: allocationsData.selectedPlaylists,
             vendor_allocations: allocationsData.allocations.reduce((acc: any, alloc: any) => {
               acc[alloc.vendor_id] = (acc[alloc.vendor_id] || 0) + alloc.allocation;

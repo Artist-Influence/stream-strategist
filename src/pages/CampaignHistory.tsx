@@ -108,6 +108,7 @@ export default function CampaignHistory() {
         .from('campaigns')
         .update(updates)
         .eq('id', id)
+        .eq('source', 'campaign_manager')
         .select()
         .single();
 
@@ -125,7 +126,8 @@ export default function CampaignHistory() {
       const { error } = await supabase
         .from('campaigns')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('source', 'campaign_manager');
 
       if (error) throw error;
     },
@@ -144,7 +146,8 @@ export default function CampaignHistory() {
       const { error } = await supabase
         .from('campaigns')
         .delete()
-        .in('id', campaignIds);
+        .in('id', campaignIds)
+        .eq('source', 'campaign_manager');
 
       if (error) throw error;
     },

@@ -132,6 +132,7 @@ export async function insertSampleData() {
           duration_days: 90,
           status: "active",
           source: "campaign_manager",
+          campaign_type: "spotify",
           music_genres: ["electronic"],
           content_types: ["single"],
           territory_preferences: ["US", "UK"],

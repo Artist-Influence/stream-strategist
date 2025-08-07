@@ -110,7 +110,8 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
           weekly_streams: formData.weekly_streams,
           remaining_streams: formData.remaining_streams
         })
-        .eq('id', campaign.id);
+        .eq('id', campaign.id)
+        .eq('source', 'campaign_manager');
 
       if (error) throw error;
 
