@@ -64,10 +64,19 @@ export default function CampaignWeeklyImportModal({
         // Clean up field names (handle variations in CSV headers)
         const campaignName = row['Campaign Name'] || row['campaign_name'] || row['Campaign'];
         const clientName = row['Client'] || row['client'] || row['Artist'];
-        const streamGoal = parseInt(row['Stream Goal'] || row['stream_goal'] || row['Goal'] || '0');
-        const remainingStreams = parseInt(row['Remaining Streams'] || row['remaining_streams'] || row['Remaining'] || '0');
-        const dailyStreams = parseInt(row['Daily Streams'] || row['daily_streams'] || row['Daily'] || '0');
-        const weeklyStreams = parseInt(row['Weekly Streams'] || row['weekly_streams'] || row['Weekly'] || '0');
+        
+        // More robust number parsing with validation
+        const parseNumber = (value: any): number => {
+          if (!value) return 0;
+          const str = String(value).replace(/[,\s]/g, ''); // Remove commas and spaces
+          const num = parseInt(str) || 0;
+          return isNaN(num) ? 0 : num;
+        };
+        
+        const streamGoal = parseNumber(row['Stream Goal'] || row['stream_goal'] || row['Goal']);
+        const remainingStreams = parseNumber(row['Remaining Streams'] || row['remaining_streams'] || row['Remaining']);
+        const dailyStreams = parseNumber(row['Daily Streams'] || row['daily_streams'] || row['Daily']);
+        const weeklyStreams = parseNumber(row['Weekly Streams'] || row['weekly_streams'] || row['Weekly']);
         const trackUrl = row['Track URL'] || row['track_url'] || row['URL'] || '';
         const startDateRaw = row['Start Date'] || row['start_date'] || '';
         
@@ -114,22 +123,67 @@ export default function CampaignWeeklyImportModal({
         // Remove duplicates and get existing playlists from database
         parsedPlaylists = [...new Set(parsedPlaylists)];
         
-        // Fetch matching playlists from database
+        // Fetch matching playlists from database with fuzzy matching
         let matchedPlaylists: any[] = [];
         if (parsedPlaylists.length > 0) {
-          const { data: dbPlaylists } = await supabase
+          console.log('Searching for playlists:', parsedPlaylists);
+          
+          // First try exact match
+          const { data: exactMatches } = await supabase
             .from('playlists')
             .select('id, name, vendor_id, vendors(name)')
             .in('name', parsedPlaylists);
           
-          if (dbPlaylists) {
-            matchedPlaylists = dbPlaylists.map(playlist => ({
+          if (exactMatches) {
+            matchedPlaylists = exactMatches.map(playlist => ({
               id: playlist.id,
               name: playlist.name,
               vendor_name: playlist.vendors?.name || 'Unknown',
               imported: true
             }));
           }
+          
+          // For unmatched playlists, try fuzzy matching
+          const exactMatchNames = new Set(exactMatches?.map(p => p.name) || []);
+          const unmatchedPlaylists = parsedPlaylists.filter(name => !exactMatchNames.has(name));
+          
+          if (unmatchedPlaylists.length > 0) {
+            console.log('Trying fuzzy search for:', unmatchedPlaylists);
+            
+            // Get all playlists for fuzzy matching
+            const { data: allPlaylists } = await supabase
+              .from('playlists')
+              .select('id, name, vendor_id, vendors(name)');
+            
+            if (allPlaylists) {
+              for (const searchName of unmatchedPlaylists) {
+                const fuzzyMatch = allPlaylists.find(playlist => {
+                  const playlistName = playlist.name.toLowerCase();
+                  const searchLower = searchName.toLowerCase();
+                  
+                  // Check if search name is contained in playlist name or vice versa
+                  return playlistName.includes(searchLower) || 
+                         searchLower.includes(playlistName) ||
+                         // Check for partial word matches
+                         playlistName.split(' ').some(word => 
+                           searchLower.includes(word) && word.length > 3
+                         );
+                });
+                
+                if (fuzzyMatch && !matchedPlaylists.find(m => m.id === fuzzyMatch.id)) {
+                  console.log(`Fuzzy matched "${searchName}" to "${fuzzyMatch.name}"`);
+                  matchedPlaylists.push({
+                    id: fuzzyMatch.id,
+                    name: fuzzyMatch.name,
+                    vendor_name: fuzzyMatch.vendors?.name || 'Unknown',
+                    imported: true
+                  });
+                }
+              }
+            }
+          }
+          
+          console.log('Final matched playlists:', matchedPlaylists);
         }
         
         // Find existing campaign by name and client (only in campaign_manager source with spotify type)
@@ -160,17 +214,22 @@ export default function CampaignWeeklyImportModal({
             updateNotes += ` | New playlists added: ${newPlaylists.join(', ')}`;
           }
           
-          // Update existing campaign
+          // Update existing campaign with explicit null handling
+          const updateData = {
+            stream_goal: streamGoal > 0 ? streamGoal : existingCampaign.stream_goal,
+            remaining_streams: remainingStreams > 0 ? remainingStreams : existingCampaign.remaining_streams,
+            track_url: trackUrl || existingCampaign.track_url,
+            selected_playlists: matchedPlaylists.length > 0 ? matchedPlaylists : existingCampaign.selected_playlists,
+            // Ensure we always set these values, even if 0
+            daily_streams: dailyStreams,
+            weekly_streams: weeklyStreams,
+          };
+          
+          console.log('Updating campaign with data:', updateData);
+          
           const { error: updateError } = await supabase
             .from('campaigns')
-            .update({
-              stream_goal: streamGoal || existingCampaign.stream_goal,
-              remaining_streams: remainingStreams || existingCampaign.remaining_streams,
-              track_url: trackUrl || existingCampaign.track_url,
-              selected_playlists: matchedPlaylists.length > 0 ? matchedPlaylists : existingCampaign.selected_playlists,
-              daily_streams: dailyStreams || 0,
-              weekly_streams: weeklyStreams || 0,
-            })
+            .update(updateData)
             .eq('id', existingCampaign.id)
             .eq('source', 'campaign_manager')
             .eq('campaign_type', 'spotify');

@@ -154,13 +154,34 @@ async function extractPlaylistGenres(playlist: any, accessToken: string): Promis
 }
 
 function mapToMainGenres(spotifyGenres: string[]): string[] {
+  // Enhanced genre mapping with more specific sub-genres
   const GENRE_MAPPINGS: Record<string, string[]> = {
-    'rock': ['indie rock', 'alt rock', 'alternative', 'indie', 'garage rock'],
-    'hip-hop': ['trap', 'rap', 'underground hip hop', 'boom bap', 'hip hop'],
-    'electronic': ['house', 'techno', 'edm', 'dance', 'electronica'],
+    // House music sub-genres (prioritized)
+    'Progressive House': ['progressive house', 'prog house'],
+    'Afro House': ['afro house', 'afrohouse', 'african house'],
+    'Deep House': ['deep house', 'deephouse'],
+    'Tech House': ['tech house', 'techhouse'],
+    'Future House': ['future house', 'future bass house'],
+    'Tribal House': ['tribal house', 'tribal'],
+    'Big Room House': ['big room', 'big room house', 'festival house'],
+    'Melodic House': ['melodic house', 'melodic techno'],
+    
+    // Electronic sub-genres
+    'Future Bass': ['future bass', 'futurebass'],
+    'Bass Music': ['bass music', 'bass', 'dubstep', 'trap music'],
+    'Ambient': ['ambient', 'chillout', 'downtempo', 'lo-fi', 'chillhop'],
+    'Techno': ['techno', 'minimal techno', 'industrial techno'],
+    'Trance': ['trance', 'progressive trance', 'uplifting trance'],
+    'Drum & Bass': ['drum and bass', 'dnb', 'jungle'],
+    'Synthwave': ['synthwave', 'retrowave', 'vaporwave'],
+    
+    // Other specific genres
     'phonk': ['drift phonk', 'gym phonk', 'phonk house'],
     'workout': ['gym', 'motivational', 'pump up', 'training'],
-    'pop': ['pop', 'electropop', 'indie pop'],
+    'rock': ['indie rock', 'alt rock', 'alternative rock', 'garage rock'],
+    'indie': ['indie', 'indie pop', 'indie folk', 'indie electronic'],
+    'hip-hop': ['trap', 'rap', 'underground hip hop', 'boom bap', 'hip hop'],
+    'pop': ['pop', 'electropop', 'indie pop', 'dance pop'],
     'r&b': ['r&b', 'neo soul', 'contemporary r&b'],
     'jazz': ['jazz', 'smooth jazz', 'jazz fusion'],
     'classical': ['classical', 'orchestral', 'chamber music'],
@@ -170,25 +191,38 @@ function mapToMainGenres(spotifyGenres: string[]): string[] {
     'punk': ['punk', 'hardcore', 'post-punk'],
     'blues': ['blues', 'electric blues', 'delta blues'],
     'funk': ['funk', 'soul', 'disco'],
-    'dubstep': ['dubstep', 'bass', 'riddim'],
-    'lo-fi': ['lo-fi', 'chillhop', 'ambient'],
-    'synthwave': ['synthwave', 'retrowave', 'vaporwave']
+    
+    // Broader fallbacks (lower priority)
+    'electronic': ['house', 'edm', 'dance', 'electronica', 'electronic']
   };
   
   const mainGenres = new Set<string>();
+  const lowerSpotifyGenres = spotifyGenres.map(g => g.toLowerCase());
   
-  spotifyGenres.forEach(genre => {
-    const normalized = genre.toLowerCase();
-    
-    // Find which main genre this maps to
-    for (const [main, subs] of Object.entries(GENRE_MAPPINGS)) {
-      if (subs.some(sub => normalized.includes(sub)) || normalized.includes(main)) {
-        mainGenres.add(main);
+  console.log('Mapping Spotify genres:', spotifyGenres);
+  
+  // First pass: Look for specific sub-genres (prioritize specific over generic)
+  for (const [mainGenre, subGenres] of Object.entries(GENRE_MAPPINGS)) {
+    for (const subGenre of subGenres) {
+      if (lowerSpotifyGenres.some(spotifyGenre => 
+        spotifyGenre.includes(subGenre) || subGenre.includes(spotifyGenre)
+      )) {
+        mainGenres.add(mainGenre);
+        console.log(`Mapped "${subGenre}" to "${mainGenre}"`);
         break;
       }
     }
-  });
+  }
   
-  // Return top 4 main genres
-  return Array.from(mainGenres).slice(0, 4);
+  // Prioritize specific genres over generic ones
+  const result = Array.from(mainGenres);
+  const houseGenres = result.filter(g => g.includes('House'));
+  const specificGenres = result.filter(g => !['electronic', 'pop', 'rock'].includes(g) && !g.includes('House'));
+  const genericGenres = result.filter(g => ['electronic', 'pop', 'rock'].includes(g));
+  
+  const finalGenres = [...houseGenres, ...specificGenres, ...genericGenres].slice(0, 3);
+  console.log('Final mapped genres:', finalGenres);
+  
+  // If no mapping found, return original genres (up to 2)
+  return finalGenres.length > 0 ? finalGenres : spotifyGenres.slice(0, 2);
 }
