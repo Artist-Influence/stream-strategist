@@ -1,11 +1,12 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import { CalendarIcon, TrendingUp, BarChart3 } from "lucide-react";
+import { CalendarIcon, TrendingUp, BarChart3, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
 
 interface PerformanceHistoryModalProps {
   open: boolean;
@@ -27,6 +28,7 @@ export default function PerformanceHistoryModal({
   playlistId, 
   playlistName 
 }: PerformanceHistoryModalProps) {
+  const queryClient = useQueryClient();
   
   const { data: entries, isLoading } = useQuery({
     queryKey: ["performance-entries", playlistId],
@@ -42,6 +44,26 @@ export default function PerformanceHistoryModal({
     },
     enabled: open
   });
+
+  const handleDeleteEntry = async (entryId: string) => {
+    try {
+      const { error } = await supabase
+        .from("performance_entries")
+        .delete()
+        .eq("id", entryId);
+
+      if (error) throw error;
+
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["performance-entries", playlistId] });
+      queryClient.invalidateQueries({ queryKey: ["playlists"] });
+      
+      toast.success("Performance entry deleted successfully");
+    } catch (error) {
+      console.error("Error deleting performance entry:", error);
+      toast.error("Failed to delete performance entry");
+    }
+  };
 
   // Calculate statistics
   const stats = entries ? {
@@ -119,13 +141,23 @@ export default function PerformanceHistoryModal({
                     </div>
                   </div>
                   
-                  <div className="text-right">
-                    <Badge variant="secondary" className="text-lg font-semibold">
-                      {entry.daily_streams.toLocaleString()}
-                    </Badge>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      streams
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <Badge variant="secondary" className="text-lg font-semibold">
+                        {entry.daily_streams.toLocaleString()}
+                      </Badge>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        streams
+                      </div>
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteEntry(entry.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
                   </div>
                 </div>
               ))}
