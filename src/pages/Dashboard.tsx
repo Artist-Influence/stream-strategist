@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { insertSampleData } from "@/lib/sampleData";
 import { supabase } from "@/integrations/supabase/client";
+import { APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE } from "@/lib/constants";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,7 +48,7 @@ export default function Dashboard() {
     queryKey: ['dashboard-stats'],
     queryFn: async (): Promise<DashboardStats> => {
       const [campaignsRes, vendorsRes, playlistsRes] = await Promise.all([
-        supabase.from('campaigns').select('status, stream_goal, budget').eq('source', 'campaign_manager'),
+        supabase.from('campaigns').select('status, stream_goal, budget').eq('source', APP_CAMPAIGN_SOURCE).eq('campaign_type', APP_CAMPAIGN_TYPE),
         supabase.from('vendors').select('id'),
         supabase.from('playlists').select('id, avg_daily_streams')
       ]);

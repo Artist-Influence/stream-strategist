@@ -19,7 +19,7 @@ import {
 import { Plus, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { UNIFIED_GENRES } from '@/lib/constants';
+import { UNIFIED_GENRES, APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE } from '@/lib/constants';
 
 interface Campaign {
   id: string;
@@ -119,8 +119,8 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
           }))
         })
         .eq('id', campaign.id)
-        .eq('source', 'campaign_manager')
-        .eq('campaign_type', 'spotify');
+        .eq('source', APP_CAMPAIGN_SOURCE)
+        .eq('campaign_type', APP_CAMPAIGN_TYPE);
 
       if (error) throw error;
 

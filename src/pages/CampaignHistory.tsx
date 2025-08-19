@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE } from "@/lib/constants";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Table,
@@ -114,8 +115,8 @@ export default function CampaignHistory() {
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
-        .eq('source', 'campaign_manager')
-        .eq('campaign_type', 'spotify')
+        .eq('source', APP_CAMPAIGN_SOURCE)
+        .eq('campaign_type', APP_CAMPAIGN_TYPE)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -130,8 +131,8 @@ export default function CampaignHistory() {
         .from('campaigns')
         .update(updates)
         .eq('id', id)
-        .eq('source', 'campaign_manager')
-        .eq('campaign_type', 'spotify')
+        .eq('source', APP_CAMPAIGN_SOURCE)
+        .eq('campaign_type', APP_CAMPAIGN_TYPE)
         .select()
         .single();
 
@@ -150,8 +151,8 @@ export default function CampaignHistory() {
         .from('campaigns')
         .delete()
         .eq('id', id)
-        .eq('source', 'campaign_manager')
-        .eq('campaign_type', 'spotify');
+        .eq('source', APP_CAMPAIGN_SOURCE)
+        .eq('campaign_type', APP_CAMPAIGN_TYPE);
 
       if (error) throw error;
     },
@@ -171,8 +172,8 @@ export default function CampaignHistory() {
         .from('campaigns')
         .delete()
         .in('id', campaignIds)
-        .eq('source', 'campaign_manager')
-        .eq('campaign_type', 'spotify');
+        .eq('source', APP_CAMPAIGN_SOURCE)
+        .eq('campaign_type', APP_CAMPAIGN_TYPE);
 
       if (error) throw error;
     },

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { PROJECT_NAME, PROJECT_ID } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -125,6 +126,12 @@ export default function Layout({ children }: LayoutProps) {
                   ARTIST <span className="text-primary">INFLUENCE</span>
                 </span>
               </Link>
+              
+              {/* Project Identifier */}
+              <div className="hidden md:flex items-center space-x-2 px-3 py-1 bg-primary/10 rounded-full border border-primary/20">
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                <span className="text-xs font-medium text-primary">SPOTIFY CAMPAIGNS</span>
+              </div>
               
               {/* Desktop Navigation */}
               <nav className="hidden lg:flex space-x-8">

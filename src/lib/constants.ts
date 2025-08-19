@@ -9,8 +9,12 @@ export const UNIFIED_GENRES = [
 ];
 
 // Campaign filtering - CRITICAL for preventing cross-project data leaks
-export const APP_CAMPAIGN_SOURCE = 'artist_influence_campaigns';
-export const APP_CAMPAIGN_TYPE = 'spotify_promotion';
+export const APP_CAMPAIGN_SOURCE = 'artist_influence_spotify_campaigns';
+export const APP_CAMPAIGN_TYPE = 'artist_influence_spotify_promotion';
+
+// Project identification
+export const PROJECT_NAME = 'Artist Influence - Spotify Campaign Builder';
+export const PROJECT_ID = 'artist-influence-spotify';
 
 // Keyboard shortcuts
 export const KEYBOARD_SHORTCUTS = [

@@ -20,6 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE } from "@/lib/constants";
 import { Info, Upload, Mail } from "lucide-react";
 import Papa from "papaparse";
 
@@ -54,8 +55,8 @@ export default function CampaignWeeklyUpdateModal({
           .from('campaigns')
           .select('*')
           .eq('name', row.campaign_name.trim())
-          .eq('source', 'campaign_manager')
-          .eq('campaign_type', 'spotify')
+          .eq('source', APP_CAMPAIGN_SOURCE)
+          .eq('campaign_type', APP_CAMPAIGN_TYPE)
           .single();
         
         if (campaign) {

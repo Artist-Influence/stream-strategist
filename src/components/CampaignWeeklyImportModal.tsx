@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE } from "@/lib/constants";
 import { Upload } from "lucide-react";
 import Papa from "papaparse";
 
@@ -192,8 +193,8 @@ export default function CampaignWeeklyImportModal({
           .select('*')
           .eq('name', campaignName.trim())
           .eq('client', clientName.trim())
-          .eq('source', 'campaign_manager')
-          .eq('campaign_type', 'spotify')
+          .eq('source', APP_CAMPAIGN_SOURCE)
+          .eq('campaign_type', APP_CAMPAIGN_TYPE)
           .maybeSingle();
         
         if (existingCampaign) {
@@ -254,8 +255,8 @@ export default function CampaignWeeklyImportModal({
             .from('campaigns')
             .update(updateData)
             .eq('id', existingCampaign.id)
-            .eq('source', 'campaign_manager')
-            .eq('campaign_type', 'spotify');
+            .eq('source', APP_CAMPAIGN_SOURCE)
+            .eq('campaign_type', APP_CAMPAIGN_TYPE);
           
           if (updateError) {
             console.error('Error updating campaign:', updateError);
@@ -335,8 +336,8 @@ export default function CampaignWeeklyImportModal({
               totals: { projected_streams: 0 },
               daily_streams: dailyStreams || 0,
               weekly_streams: weeklyStreams || 0,
-              source: 'campaign_manager',
-              campaign_type: 'spotify', // Explicitly set to spotify
+              source: APP_CAMPAIGN_SOURCE,
+              campaign_type: APP_CAMPAIGN_TYPE, // Explicitly set to spotify
               created_at: startDate,
               updated_at: new Date().toISOString()
             })
