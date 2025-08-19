@@ -77,6 +77,13 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "campaign_creators_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "public_campaigns"
+            referencedColumns: ["id"]
+          },
         ]
       }
       campaign_posts: {
@@ -340,6 +347,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "client_credits_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "public_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "client_credits_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
@@ -475,6 +489,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_entries_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "public_campaigns"
             referencedColumns: ["id"]
           },
           {
@@ -724,16 +745,149 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "weekly_updates_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "public_campaigns"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      public_campaign_creators: {
+        Row: {
+          approval_status: string | null
+          campaign_id: string | null
+          created_at: string | null
+          due_date: string | null
+          expected_post_date: string | null
+          id: string | null
+          instagram_handle: string | null
+          post_status: string | null
+          post_type: string | null
+          posts_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_creators_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_creators_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "public_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_campaigns: {
+        Row: {
+          brand_name: string | null
+          content_types: string[] | null
+          created_at: string | null
+          description: string | null
+          duration_days: number | null
+          id: string | null
+          music_genres: string[] | null
+          name: string | null
+          post_types: string[] | null
+          public_token: string | null
+          start_date: string | null
+          status: string | null
+          stream_goal_display: number | null
+          sub_genres: string[] | null
+          territory_preferences: string[] | null
+          track_name: string | null
+          track_url: string | null
+        }
+        Insert: {
+          brand_name?: string | null
+          content_types?: string[] | null
+          created_at?: string | null
+          description?: string | null
+          duration_days?: number | null
+          id?: string | null
+          music_genres?: string[] | null
+          name?: string | null
+          post_types?: string[] | null
+          public_token?: string | null
+          start_date?: string | null
+          status?: string | null
+          stream_goal_display?: never
+          sub_genres?: string[] | null
+          territory_preferences?: string[] | null
+          track_name?: string | null
+          track_url?: string | null
+        }
+        Update: {
+          brand_name?: string | null
+          content_types?: string[] | null
+          created_at?: string | null
+          description?: string | null
+          duration_days?: number | null
+          id?: string | null
+          music_genres?: string[] | null
+          name?: string | null
+          post_types?: string[] | null
+          public_token?: string | null
+          start_date?: string | null
+          status?: string | null
+          stream_goal_display?: never
+          sub_genres?: string[] | null
+          territory_preferences?: string[] | null
+          track_name?: string | null
+          track_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_artist_influence_project_info: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      get_public_campaign_by_token: {
+        Args: { token_param: string }
+        Returns: {
+          brand_name: string | null
+          content_types: string[] | null
+          created_at: string | null
+          description: string | null
+          duration_days: number | null
+          id: string | null
+          music_genres: string[] | null
+          name: string | null
+          post_types: string[] | null
+          public_token: string | null
+          start_date: string | null
+          status: string | null
+          stream_goal_display: number | null
+          sub_genres: string[] | null
+          territory_preferences: string[] | null
+          track_name: string | null
+          track_url: string | null
+        }[]
+      }
+      get_public_campaign_creators_by_token: {
+        Args: { token_param: string }
+        Returns: {
+          approval_status: string | null
+          campaign_id: string | null
+          created_at: string | null
+          due_date: string | null
+          expected_post_date: string | null
+          id: string | null
+          instagram_handle: string | null
+          post_status: string | null
+          post_type: string | null
+          posts_count: number | null
+        }[]
       }
       get_spotify_token: {
         Args: Record<PropertyKey, never>
