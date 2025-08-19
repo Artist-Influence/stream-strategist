@@ -55,14 +55,12 @@ export function useCreateCampaignSubmission() {
 
   return useMutation({
     mutationFn: async (submissionData: CreateSubmissionData) => {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('campaign_submissions')
-        .insert([submissionData])
-        .select()
-        .single();
+        .insert([submissionData]);
 
       if (error) throw error;
-      return data;
+      return true;
     },
     onSuccess: () => {
       toast({
