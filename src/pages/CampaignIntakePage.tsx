@@ -5,12 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ClientSelector } from '@/components/ClientSelector';
 import { useClients } from '@/hooks/useClients';
 // Removed client creation import - submissions only create campaign submissions now
 import { useCreateCampaignSubmission } from '@/hooks/useCampaignSubmissions';
 import { useSalespeople } from '@/hooks/useSalespeople';
 
 interface FormData {
+  client_id: string;
   client_name: string;
   client_emails: string;
   campaign_name: string;
@@ -25,6 +27,7 @@ interface FormData {
 export default function CampaignIntakePage() {
   const [isNewClient, setIsNewClient] = useState(false);
   const [formData, setFormData] = useState<FormData>({
+    client_id: '',
     client_name: '',
     client_emails: '',
     campaign_name: '',
@@ -74,6 +77,7 @@ export default function CampaignIntakePage() {
 
       // Reset form on success
       setFormData({
+        client_id: '',
         client_name: '',
         client_emails: '',
         campaign_name: '',
@@ -91,14 +95,15 @@ export default function CampaignIntakePage() {
     }
   };
 
-  const handleClientSelection = (clientName: string) => {
-    const client = clients.find(c => c.name === clientName);
+  const handleClientSelection = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId);
     const clientEmails = client?.emails && client.emails.length > 0 
       ? client.emails.join(', ') 
       : '';
     setFormData({
       ...formData,
-      client_name: clientName,
+      client_id: clientId,
+      client_name: client?.name || '',
       client_emails: clientEmails
     });
   };
@@ -171,26 +176,16 @@ export default function CampaignIntakePage() {
                 </div>
 
                 {!isNewClient ? (
-                  <Select 
-                    value={formData.client_name} 
-                    onValueChange={handleClientSelection}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select existing client" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map(client => (
-                        <SelectItem key={client.id} value={client.name}>
-                          {client.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <ClientSelector
+                    value={formData.client_id}
+                    onChange={handleClientSelection}
+                    placeholder="Search and select existing client..."
+                  />
                 ) : (
                   <Input
                     placeholder="Enter new client name"
                     value={formData.client_name}
-                    onChange={(e) => setFormData({...formData, client_name: e.target.value})}
+                    onChange={(e) => setFormData({...formData, client_name: e.target.value, client_id: ''})}
                     required
                   />
                 )}

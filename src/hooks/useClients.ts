@@ -82,6 +82,7 @@ export function useCreateClient() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['clients', APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE] });
       toast({ title: 'Client created successfully' });
     },
     onError: (error) => {
@@ -111,6 +112,7 @@ export function useUpdateClient() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['clients', APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE] });
       toast({ title: 'Client updated successfully' });
     },
     onError: (error) => {
