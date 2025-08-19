@@ -9,8 +9,8 @@ export const UNIFIED_GENRES = [
 ];
 
 // Campaign filtering - CRITICAL for preventing cross-project data leaks
-export const APP_CAMPAIGN_SOURCE = 'campaign_manager';
-export const APP_CAMPAIGN_TYPE = 'spotify';
+export const APP_CAMPAIGN_SOURCE = 'artist_influence_campaigns';
+export const APP_CAMPAIGN_TYPE = 'spotify_promotion';
 
 // Keyboard shortcuts
 export const KEYBOARD_SHORTCUTS = [
