@@ -9,11 +9,22 @@ export function useClients() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clients')
-        .select('*')
+        .select(`
+          *,
+          campaigns!client_id(id, status)
+        `)
         .order('name');
       
       if (error) throw error;
-      return data as Client[];
+      
+      // Transform the data to include campaign counts
+      const clientsWithCampaignCounts = data.map(client => ({
+        ...client,
+        activeCampaignsCount: client.campaigns?.filter((c: any) => c.status === 'active').length || 0,
+        totalCampaignsCount: client.campaigns?.length || 0,
+      }));
+      
+      return clientsWithCampaignCounts;
     },
   });
 }
