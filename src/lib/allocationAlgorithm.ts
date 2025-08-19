@@ -226,25 +226,31 @@ export function allocateStreams(input: AllocationInput & {
     campaignGenres
   } = input;
   
-  if (playlists.length === 0 || goal <= 0) {
-    return { allocations: [], unfilled: goal, genreMatches: [] };
-  }
-  
   // Create vendor lookup map
   const vendorMap = new Map(vendors.map(v => [v.id, v]));
+  
+  // Filter out playlists from inactive vendors
+  const activePlaylists = playlists.filter(playlist => {
+    const vendor = vendorMap.get(playlist.vendor_id);
+    return vendor && vendor.is_active !== false; // Include vendor if is_active is undefined (backward compatibility) or true
+  });
+
+  if (activePlaylists.length === 0 || goal <= 0) {
+    return { allocations: [], unfilled: goal, genreMatches: [] };
+  }
   
   // Prepare campaign genres (handle both single genre and multiple genres)
   const genresForMatching = campaignGenres?.length ? campaignGenres : [subGenre];
   
   // Calculate max streams for normalization (only from playlists with real data)
-  const streamsWithData = playlists
+  const streamsWithData = activePlaylists
     .map(p => p.avg_daily_streams)
     .filter(streams => streams > 0);
   const maxStreams = streamsWithData.length > 0 ? Math.max(...streamsWithData) : 0;
   const hasReliableStreamData = maxStreams > 0;
   
   // Score and sort playlists by relevance with capacity estimation
-  const genreMatches: GenreMatch[] = playlists.map(playlist => {
+  const genreMatches: GenreMatch[] = activePlaylists.map(playlist => {
     const vendor = vendorMap.get(playlist.vendor_id);
     if (!vendor) return null;
     

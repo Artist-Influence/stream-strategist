@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -50,6 +52,7 @@ interface PlaylistWithVendor extends Playlist {
     id: string;
     name: string;
     cost_per_1k_streams?: number;
+    is_active?: boolean;
   };
 }
 
@@ -59,6 +62,7 @@ export default function PlaylistsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [showInactive, setShowInactive] = useState(false);
 
   // Initialize filter from URL parameters
   useEffect(() => {
@@ -178,7 +182,7 @@ export default function PlaylistsPage() {
         .from('playlists')
         .select(`
           *,
-          vendor:vendors(id, name, cost_per_1k_streams)
+          vendor:vendors(id, name, cost_per_1k_streams, is_active)
         `)
         .order('avg_daily_streams', { ascending: false });
       
@@ -207,7 +211,8 @@ export default function PlaylistsPage() {
 
   // Filter data based on current view
   const filteredVendors = vendors?.filter(vendor =>
-    vendor.name.toLowerCase().includes(searchTerm.toLowerCase())
+    vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+    (showInactive || vendor.is_active !== false) // Show inactive only if toggle is on, default to active
   ) || [];
 
   const filteredPlaylists = viewMode === 'table' 
@@ -216,7 +221,8 @@ export default function PlaylistsPage() {
                              playlist.vendor.name.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesGenres = selectedGenres.length === 0 || 
           selectedGenres.some(genre => playlist.genres?.includes(genre));
-        return matchesSearch && matchesGenres;
+        const matchesActiveFilter = showInactive || playlist.vendor?.is_active !== false;
+        return matchesSearch && matchesGenres && matchesActiveFilter;
       }) || []
     : playlists?.filter(playlist => {
         const matchesSearch = playlist.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -231,7 +237,8 @@ export default function PlaylistsPage() {
                          playlist.vendor.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesGenres = selectedGenres.length === 0 || 
       selectedGenres.some(genre => playlist.genres?.includes(genre));
-    return matchesSearch && matchesGenres;
+    const matchesActiveFilter = showInactive || playlist.vendor?.is_active !== false;
+    return matchesSearch && matchesGenres && matchesActiveFilter;
   }) || [];
 
   const selectedVendorData = vendors?.find(v => v.id === selectedVendor);
@@ -862,14 +869,25 @@ export default function PlaylistsPage() {
         {viewMode === 'vendors' ? (
           <>
             {/* Search */}
-            <div className="relative max-w-sm mb-6">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search vendors..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+            <div className="flex items-center space-x-4 mb-6">
+              <div className="relative max-w-sm">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search vendors..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="showInactive"
+                  checked={showInactive}
+                  onCheckedChange={setShowInactive}
+                />
+                <Label htmlFor="showInactive">Show Inactive</Label>
+              </div>
             </div>
 
             {/* Vendor Cards Grid */}
@@ -885,7 +903,12 @@ export default function PlaylistsPage() {
                   <Card key={vendor.id} className="bg-card/50 border-border/50 hover:border-primary/30 transition-all cursor-pointer group">
                     <CardHeader>
                       <CardTitle className="flex items-center justify-between">
-                        <span className="text-lg font-semibold">{vendor.name}</span>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-lg font-semibold">{vendor.name}</span>
+                          {vendor.is_active === false && (
+                            <Badge variant="destructive" className="text-xs">INACTIVE</Badge>
+                          )}
+                        </div>
                         <Button 
                           variant="outline" 
                           size="sm"
@@ -946,56 +969,65 @@ export default function PlaylistsPage() {
           </>
         ) : (
           <>
-            {/* Search and Filter for Table View */}
-            <div className="flex items-center space-x-4 mb-6">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search playlists or vendors..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              
-              {selectedPlaylists.size > 0 && (
-                <Button 
-                  variant="destructive" 
-                  onClick={handleBulkDeletePlaylists}
-                  disabled={bulkDeletePlaylistsMutation.isPending}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Selected ({selectedPlaylists.size})
-                </Button>
-              )}
-              
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
-                    <Filter className="w-4 h-4 mr-2" />
-                    Filter by Genre
-                    {selectedGenres.length > 0 && (
-                      <Badge variant="secondary" className="ml-2">
-                        {selectedGenres.length}
-                      </Badge>
-                    )}
+              {/* Search and Filter for Table View */}
+              <div className="flex items-center space-x-4 mb-6">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search playlists or vendors..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="showInactiveTable"
+                    checked={showInactive}
+                    onCheckedChange={setShowInactive}
+                  />
+                  <Label htmlFor="showInactiveTable">Show Inactive</Label>
+                </div>
+                
+                {selectedPlaylists.size > 0 && (
+                  <Button 
+                    variant="destructive" 
+                    onClick={handleBulkDeletePlaylists}
+                    disabled={bulkDeletePlaylistsMutation.isPending}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Selected ({selectedPlaylists.size})
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 max-h-64 overflow-auto">
-                  <DropdownMenuLabel>Filter by Genre</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {UNIFIED_GENRES.map(genre => (
-                    <DropdownMenuCheckboxItem
-                      key={genre}
-                      checked={selectedGenres.includes(genre)}
-                      onCheckedChange={() => toggleGenreFilter(genre)}
-                    >
-                      {genre}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                )}
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      <Filter className="w-4 h-4 mr-2" />
+                      Filter by Genre
+                      {selectedGenres.length > 0 && (
+                        <Badge variant="secondary" className="ml-2">
+                          {selectedGenres.length}
+                        </Badge>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56 max-h-64 overflow-auto">
+                    <DropdownMenuLabel>Filter by Genre</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {UNIFIED_GENRES.map(genre => (
+                      <DropdownMenuCheckboxItem
+                        key={genre}
+                        checked={selectedGenres.includes(genre)}
+                        onCheckedChange={() => toggleGenreFilter(genre)}
+                      >
+                        {genre}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
 
             {/* All Playlists Table */}
             <Card className="bg-card/50 border-border/50">
@@ -1059,7 +1091,12 @@ export default function PlaylistsPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <span className="font-medium">{playlist.vendor?.name}</span>
+                            <div className="flex items-center space-x-2">
+                              <span className="font-medium">{playlist.vendor?.name}</span>
+                              {playlist.vendor?.is_active === false && (
+                                <Badge variant="destructive" className="text-xs">INACTIVE</Badge>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">

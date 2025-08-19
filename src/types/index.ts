@@ -6,6 +6,7 @@ export interface Vendor {
   max_daily_streams: number;
   cost_per_1k_streams?: number;
   max_concurrent_campaigns: number;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }

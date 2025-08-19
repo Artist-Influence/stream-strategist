@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -16,6 +17,7 @@ interface EditVendorModalProps {
     max_daily_streams: number;
     cost_per_1k_streams: number;
     max_concurrent_campaigns: number;
+    is_active: boolean;
   } | null;
 }
 
@@ -25,6 +27,7 @@ export default function EditVendorModal({ open, onOpenChange, vendor }: EditVend
     max_daily_streams: "",
     cost_per_1k_streams: "",
     max_concurrent_campaigns: "",
+    is_active: true,
   });
   
   const { toast } = useToast();
@@ -38,6 +41,7 @@ export default function EditVendorModal({ open, onOpenChange, vendor }: EditVend
         max_daily_streams: vendor.max_daily_streams.toString(),
         cost_per_1k_streams: vendor.cost_per_1k_streams.toString(),
         max_concurrent_campaigns: vendor.max_concurrent_campaigns.toString(),
+        is_active: vendor.is_active,
       });
     }
   }, [vendor]);
@@ -53,6 +57,7 @@ export default function EditVendorModal({ open, onOpenChange, vendor }: EditVend
           max_daily_streams: parseInt(data.max_daily_streams),
           cost_per_1k_streams: parseFloat(data.cost_per_1k_streams),
           max_concurrent_campaigns: parseInt(data.max_concurrent_campaigns),
+          is_active: data.is_active,
         })
         .eq("id", vendor.id);
       
@@ -140,6 +145,15 @@ export default function EditVendorModal({ open, onOpenChange, vendor }: EditVend
               onChange={(e) => setFormData({ ...formData, max_concurrent_campaigns: e.target.value })}
               placeholder="e.g. 5"
             />
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="is_active"
+              checked={formData.is_active}
+              onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+            />
+            <Label htmlFor="is_active">Active Vendor</Label>
           </div>
           
           <div className="flex justify-end space-x-2">

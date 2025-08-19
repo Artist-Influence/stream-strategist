@@ -49,13 +49,14 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
   const [genreMatches, setGenreMatches] = useState<GenreMatch[]>([]);
   const [manualAllocations, setManualAllocations] = useState<Record<string, number>>({});
 
-  // Fetch vendors and playlists
+  // Fetch vendors and playlists (only active vendors for AI recommendations)
   const { data: vendors } = useQuery({
-    queryKey: ['vendors'],
+    queryKey: ['vendors', 'active'],
     queryFn: async (): Promise<Vendor[]> => {
       const { data, error } = await supabase
         .from('vendors')
         .select('*')
+        .eq('is_active', true)
         .order('name');
       
       if (error) throw error;
@@ -64,11 +65,15 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
   });
 
   const { data: playlists, isLoading: playlistsLoading } = useQuery({
-    queryKey: ['playlists-for-campaign'],
+    queryKey: ['playlists-for-campaign', 'active-vendors'],
     queryFn: async (): Promise<Playlist[]> => {
       const { data, error } = await supabase
         .from('playlists')
-        .select('*')
+        .select(`
+          *,
+          vendor:vendors!inner(is_active)
+        `)
+        .eq('vendor.is_active', true)
         .order('avg_daily_streams', { ascending: false });
       
       if (error) throw error;
