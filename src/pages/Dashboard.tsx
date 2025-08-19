@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { SalespeopleManager } from "@/components/SalespeopleManager";
+import { ProjectDiagnostics } from "@/components/ProjectDiagnostics";
 
 interface DashboardStats {
   totalCampaigns: number;
@@ -359,6 +360,11 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+      </section>
+
+      {/* Project Security Diagnostics */}
+      <section className="container mx-auto px-6 pb-12">
+        <ProjectDiagnostics />
       </section>
 
       {/* Salespeople Management Section */}
