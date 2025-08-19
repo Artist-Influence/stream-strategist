@@ -31,9 +31,10 @@ interface ClientSelectorProps {
   value?: string;
   onChange: (clientId: string) => void;
   placeholder?: string;
+  allowCreate?: boolean;
 }
 
-export function ClientSelector({ value, onChange, placeholder = "Select client..." }: ClientSelectorProps) {
+export function ClientSelector({ value, onChange, placeholder = "Select client...", allowCreate = true }: ClientSelectorProps) {
   const [open, setOpen] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newClientName, setNewClientName] = useState('');
@@ -84,16 +85,18 @@ export function ClientSelector({ value, onChange, placeholder = "Select client..
             <CommandList>
               <CommandEmpty>No clients found.</CommandEmpty>
               <CommandGroup>
-                <CommandItem
-                  onSelect={() => {
-                    setShowAddDialog(true);
-                    setOpen(false);
-                  }}
-                  className="font-medium text-primary"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add new client
-                </CommandItem>
+                {allowCreate && (
+                  <CommandItem
+                    onSelect={() => {
+                      setShowAddDialog(true);
+                      setOpen(false);
+                    }}
+                    className="font-medium text-primary"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add new client
+                  </CommandItem>
+                )}
                 {clients?.map((client) => (
                   <CommandItem
                     key={client.id}

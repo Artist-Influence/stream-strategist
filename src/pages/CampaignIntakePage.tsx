@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ClientSelector } from '@/components/ClientSelector';
 import { useClients } from '@/hooks/useClients';
+import { useIsVendorManager } from '@/hooks/useIsVendorManager';
 // Removed client creation import - submissions only create campaign submissions now
 import { useCreateCampaignSubmission } from '@/hooks/useCampaignSubmissions';
 import { useSalespeople } from '@/hooks/useSalespeople';
@@ -41,6 +42,7 @@ export default function CampaignIntakePage() {
 
   const { data: clients = [] } = useClients();
   const { data: salespeople = [] } = useSalespeople();
+  const { data: isVendorManager } = useIsVendorManager();
   // Removed client creation hook - handled by admin during approval process
   const createSubmission = useCreateCampaignSubmission();
 
@@ -180,6 +182,7 @@ export default function CampaignIntakePage() {
                     value={formData.client_id}
                     onChange={handleClientSelection}
                     placeholder="Search and select existing client..."
+                    allowCreate={isVendorManager || false}
                   />
                 ) : (
                   <Input

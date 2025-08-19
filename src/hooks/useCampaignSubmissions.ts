@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE } from '@/lib/constants';
 
 interface CampaignSubmission {
   id: string;
@@ -95,20 +96,48 @@ export function useApproveCampaignSubmission() {
 
       if (fetchError) throw fetchError;
 
-      // Create the actual campaign
+      // Try to find existing client by name (case-insensitive)
+      const { data: existingClient } = await supabase
+        .from('clients')
+        .select('id')
+        .ilike('name', submission.client_name)
+        .limit(1)
+        .single();
+
+      let clientId = existingClient?.id;
+
+      // If client doesn't exist, create them
+      if (!clientId) {
+        const { data: newClient, error: clientError } = await supabase
+          .from('clients')
+          .insert([{
+            name: submission.client_name,
+            emails: submission.client_emails
+          }])
+          .select('id')
+          .single();
+
+        if (clientError) throw clientError;
+        clientId = newClient.id;
+      }
+
+      // Create the actual campaign with correct source/type
       const { error: campaignError } = await supabase
         .from('campaigns')
         .insert([{
           name: submission.campaign_name,
-          brand_name: submission.campaign_name, // Use campaign name as brand name for now
+          brand_name: submission.campaign_name,
           client_name: submission.client_name,
+          client_id: clientId,
           budget: submission.price_paid,
           stream_goal: submission.stream_goal,
           start_date: submission.start_date,
           track_url: submission.track_url,
           description: submission.notes || '',
           salesperson: submission.salesperson,
-          source: 'campaign_intake',
+          source: APP_CAMPAIGN_SOURCE,
+          campaign_type: APP_CAMPAIGN_TYPE,
+          status: 'active'
         }]);
 
       if (campaignError) throw campaignError;
@@ -133,7 +162,8 @@ export function useApproveCampaignSubmission() {
         description: "Campaign has been created and client will be notified.",
       });
       queryClient.invalidateQueries({ queryKey: ['campaign-submissions'] });
-      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['campaigns', APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
     },
     onError: (error: any) => {
       toast({
