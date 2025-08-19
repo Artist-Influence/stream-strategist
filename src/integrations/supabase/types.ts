@@ -819,7 +819,7 @@ export type Database = {
           public_token?: string | null
           start_date?: string | null
           status?: string | null
-          stream_goal_display?: never
+          stream_goal_display?: number | null
           sub_genres?: string[] | null
           territory_preferences?: string[] | null
           track_name?: string | null
@@ -838,7 +838,7 @@ export type Database = {
           public_token?: string | null
           start_date?: string | null
           status?: string | null
-          stream_goal_display?: never
+          stream_goal_display?: number | null
           sub_genres?: string[] | null
           territory_preferences?: string[] | null
           track_name?: string | null
