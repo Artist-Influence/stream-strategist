@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -83,8 +84,19 @@ type SortField = 'name' | 'client' | 'budget' | 'stream_goal' | 'daily_streams' 
 type SortDirection = 'asc' | 'desc';
 
 export default function CampaignHistory() {
+  const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [performanceFilter, setPerformanceFilter] = useState<string>("all");
+
+  // Initialize filter from URL parameters
+  useEffect(() => {
+    const performanceParam = searchParams.get('performance');
+    if (performanceParam) {
+      setPerformanceFilter(performanceParam);
+      setStatusFilter('active'); // Focus on active campaigns for performance filtering
+    }
+  }, [searchParams]);
   const [detailsModal, setDetailsModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
   const [editModal, setEditModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -181,7 +193,26 @@ export default function CampaignHistory() {
                            campaign.client.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === "all" || 
                            campaign.status.toLowerCase() === statusFilter.toLowerCase();
-      return matchesSearch && matchesStatus;
+      
+      // Performance filtering
+      let matchesPerformance = true;
+      if (performanceFilter !== "all" && campaign.status === 'active') {
+        const startDate = new Date(campaign.start_date);
+        const today = new Date();
+        const daysElapsed = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const streamsCompleted = campaign.stream_goal - campaign.remaining_streams;
+        const progressPercent = (streamsCompleted / campaign.stream_goal) * 100;
+        const expectedProgressPercent = (daysElapsed / 90) * 100;
+        const performanceRatio = progressPercent / Math.max(expectedProgressPercent, 1);
+        
+        if (performanceFilter === 'high' && performanceRatio < 1.2) matchesPerformance = false;
+        if (performanceFilter === 'on-track' && (performanceRatio < 0.8 || performanceRatio >= 1.2)) matchesPerformance = false;
+        if (performanceFilter === 'under-performing' && performanceRatio >= 0.8) matchesPerformance = false;
+      } else if (performanceFilter !== "all" && campaign.status !== 'active') {
+        matchesPerformance = false; // Only active campaigns can have performance metrics
+      }
+      
+      return matchesSearch && matchesStatus && matchesPerformance;
     }) || [];
 
     // Sort campaigns
@@ -404,43 +435,87 @@ export default function CampaignHistory() {
       </section>
 
       <div className="container mx-auto px-6 space-y-6">
-        {/* Status Filter Buttons */}
-        <div className="flex gap-2 mb-6">
-          <Button
-            variant={statusFilter === 'all' ? 'default' : 'outline'}
-            onClick={() => setStatusFilter('all')}
-            size="sm"
-          >
-            All ({getStatusCount('all')})
-          </Button>
-          <Button
-            variant={statusFilter === 'active' ? 'default' : 'outline'}
-            onClick={() => setStatusFilter('active')}
-            size="sm"
-          >
-            Active ({getStatusCount('active')})
-          </Button>
-          <Button
-            variant={statusFilter === 'draft' ? 'default' : 'outline'}
-            onClick={() => setStatusFilter('draft')}
-            size="sm"
-          >
-            Draft ({getStatusCount('draft')})
-          </Button>
-          <Button
-            variant={statusFilter === 'paused' ? 'default' : 'outline'}
-            onClick={() => setStatusFilter('paused')}
-            size="sm"
-          >
-            Paused ({getStatusCount('paused')})
-          </Button>
-          <Button
-            variant={statusFilter === 'completed' ? 'default' : 'outline'}
-            onClick={() => setStatusFilter('completed')}
-            size="sm"
-          >
-            Completed ({getStatusCount('completed')})
-          </Button>
+        {/* Filter Buttons */}
+        <div className="space-y-4 mb-6">
+          {/* Status Filters */}
+          <div>
+            <p className="text-sm font-medium mb-2">Status Filters</p>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant={statusFilter === 'all' ? 'default' : 'outline'}
+                onClick={() => setStatusFilter('all')}
+                size="sm"
+              >
+                All ({getStatusCount('all')})
+              </Button>
+              <Button
+                variant={statusFilter === 'active' ? 'default' : 'outline'}
+                onClick={() => setStatusFilter('active')}
+                size="sm"
+              >
+                Active ({getStatusCount('active')})
+              </Button>
+              <Button
+                variant={statusFilter === 'draft' ? 'default' : 'outline'}
+                onClick={() => setStatusFilter('draft')}
+                size="sm"
+              >
+                Draft ({getStatusCount('draft')})
+              </Button>
+              <Button
+                variant={statusFilter === 'paused' ? 'default' : 'outline'}
+                onClick={() => setStatusFilter('paused')}
+                size="sm"
+              >
+                Paused ({getStatusCount('paused')})
+              </Button>
+              <Button
+                variant={statusFilter === 'completed' ? 'default' : 'outline'}
+                onClick={() => setStatusFilter('completed')}
+                size="sm"
+              >
+                Completed ({getStatusCount('completed')})
+              </Button>
+            </div>
+          </div>
+
+          {/* Performance Filters */}
+          <div>
+            <p className="text-sm font-medium mb-2">Performance Filters (Active Campaigns Only)</p>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant={performanceFilter === 'all' ? 'default' : 'outline'}
+                onClick={() => setPerformanceFilter('all')}
+                size="sm"
+              >
+                All Performance
+              </Button>
+              <Button
+                variant={performanceFilter === 'high' ? 'default' : 'outline'}
+                onClick={() => setPerformanceFilter('high')}
+                size="sm"
+                className="hover:bg-accent/10"
+              >
+                High Performers
+              </Button>
+              <Button
+                variant={performanceFilter === 'on-track' ? 'default' : 'outline'}
+                onClick={() => setPerformanceFilter('on-track')}
+                size="sm"
+                className="hover:bg-primary/10"
+              >
+                On Track
+              </Button>
+              <Button
+                variant={performanceFilter === 'under-performing' ? 'default' : 'outline'}
+                onClick={() => setPerformanceFilter('under-performing')}
+                size="sm"
+                className="hover:bg-destructive/10"
+              >
+                Under Performing
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Header Actions */}

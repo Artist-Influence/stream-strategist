@@ -20,7 +20,7 @@ import {
   TrendingUp as TrendingUpIcon,
   Users
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 interface DashboardStats {
   totalCampaigns: number;
@@ -35,6 +35,8 @@ interface DashboardStats {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+
   // Populate sample data on first load
   useEffect(() => {
     insertSampleData();
@@ -108,7 +110,7 @@ export default function Dashboard() {
             className="px-8 py-4 h-auto text-base font-medium border-border hover:border-primary/50 transition-smooth"
             asChild
           >
-            <Link to="/vendors">
+            <Link to="/playlists">
               <Database className="w-5 h-5 mr-2" />
               BROWSE PLAYLISTS
             </Link>
@@ -255,37 +257,49 @@ export default function Dashboard() {
                 <h3 className="text-lg font-semibold">All Genres by Reach</h3>
               </div>
               <div className="space-y-4">
-                <div>
+                <div
+                  className="cursor-pointer group transition-all hover:bg-muted/50 rounded p-2 -m-2"
+                  onClick={() => navigate('/playlists?genre=Electronic')}
+                  title="Click to view Electronic playlists"
+                >
                   <div className="flex justify-between text-sm mb-1">
-                    <span>Electronic</span>
+                    <span className="group-hover:text-primary transition-colors">Electronic</span>
                     <span className="text-muted-foreground">29.0M reach</span>
                   </div>
-                  <div className="w-full bg-muted h-2 rounded-full">
-                    <div className="bg-primary h-2 rounded-full" style={{ width: '85%' }}></div>
+                  <div className="w-full bg-muted h-2 rounded-full group-hover:bg-muted/80 transition-colors">
+                    <div className="bg-primary h-2 rounded-full group-hover:bg-primary/80 transition-colors" style={{ width: '85%' }}></div>
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">74 playlists</div>
+                  <div className="text-xs text-muted-foreground mt-1 group-hover:text-muted-foreground/80">74 playlists</div>
                 </div>
                 
-                <div>
+                <div
+                  className="cursor-pointer group transition-all hover:bg-muted/50 rounded p-2 -m-2"
+                  onClick={() => navigate('/playlists?genre=Hip-Hop')}
+                  title="Click to view Hip-Hop playlists"
+                >
                   <div className="flex justify-between text-sm mb-1">
-                    <span>Hip-Hop</span>
+                    <span className="group-hover:text-primary transition-colors">Hip-Hop</span>
                     <span className="text-muted-foreground">28.0M reach</span>
                   </div>
-                  <div className="w-full bg-muted h-2 rounded-full">
-                    <div className="bg-primary h-2 rounded-full" style={{ width: '82%' }}></div>
+                  <div className="w-full bg-muted h-2 rounded-full group-hover:bg-muted/80 transition-colors">
+                    <div className="bg-primary h-2 rounded-full group-hover:bg-primary/80 transition-colors" style={{ width: '82%' }}></div>
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">66 playlists</div>
+                  <div className="text-xs text-muted-foreground mt-1 group-hover:text-muted-foreground/80">66 playlists</div>
                 </div>
                 
-                <div>
+                <div
+                  className="cursor-pointer group transition-all hover:bg-muted/50 rounded p-2 -m-2"
+                  onClick={() => navigate('/playlists?genre=Indie')}
+                  title="Click to view Indie playlists"
+                >
                   <div className="flex justify-between text-sm mb-1">
-                    <span>Indie</span>
+                    <span className="group-hover:text-primary transition-colors">Indie</span>
                     <span className="text-muted-foreground">22.5M reach</span>
                   </div>
-                  <div className="w-full bg-muted h-2 rounded-full">
-                    <div className="bg-primary h-2 rounded-full" style={{ width: '65%' }}></div>
+                  <div className="w-full bg-muted h-2 rounded-full group-hover:bg-muted/80 transition-colors">
+                    <div className="bg-primary h-2 rounded-full group-hover:bg-primary/80 transition-colors" style={{ width: '65%' }}></div>
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">45 playlists</div>
+                  <div className="text-xs text-muted-foreground mt-1 group-hover:text-muted-foreground/80">45 playlists</div>
                 </div>
               </div>
             </CardContent>
@@ -298,33 +312,45 @@ export default function Dashboard() {
                 <h3 className="text-lg font-semibold">Campaign Performance</h3>
               </div>
               <div className="space-y-4">
-                <div>
+                <div
+                  className="cursor-pointer group transition-all hover:bg-muted/50 rounded p-2 -m-2"
+                  onClick={() => navigate('/campaigns?performance=high')}
+                  title="Click to view high performing campaigns"
+                >
                   <div className="flex justify-between text-sm mb-1">
-                    <span>High Performers (completes &lt;75 days)</span>
+                    <span className="group-hover:text-accent transition-colors">High Performers (completes &lt;75 days)</span>
                     <span className="text-muted-foreground">{Math.floor((stats?.activeCampaigns || 0) * 0.3)} campaigns</span>
                   </div>
-                  <div className="w-full bg-muted h-2 rounded-full">
-                    <div className="bg-accent h-2 rounded-full" style={{ width: '30%' }}></div>
+                  <div className="w-full bg-muted h-2 rounded-full group-hover:bg-muted/80 transition-colors">
+                    <div className="bg-accent h-2 rounded-full group-hover:bg-accent/80 transition-colors" style={{ width: '30%' }}></div>
                   </div>
                 </div>
                 
-                <div>
+                <div
+                  className="cursor-pointer group transition-all hover:bg-muted/50 rounded p-2 -m-2"
+                  onClick={() => navigate('/campaigns?performance=on-track')}
+                  title="Click to view campaigns on track"
+                >
                   <div className="flex justify-between text-sm mb-1">
-                    <span>On Track (completes 75-90 days)</span>
+                    <span className="group-hover:text-primary transition-colors">On Track (completes 75-90 days)</span>
                     <span className="text-muted-foreground">{Math.floor((stats?.activeCampaigns || 0) * 0.55)} campaigns</span>
                   </div>
-                  <div className="w-full bg-muted h-2 rounded-full">
-                    <div className="bg-primary h-2 rounded-full" style={{ width: '55%' }}></div>
+                  <div className="w-full bg-muted h-2 rounded-full group-hover:bg-muted/80 transition-colors">
+                    <div className="bg-primary h-2 rounded-full group-hover:bg-primary/80 transition-colors" style={{ width: '55%' }}></div>
                   </div>
                 </div>
                 
-                <div>
+                <div
+                  className="cursor-pointer group transition-all hover:bg-muted/50 rounded p-2 -m-2"
+                  onClick={() => navigate('/campaigns?performance=under-performing')}
+                  title="Click to view under-performing campaigns"
+                >
                   <div className="flex justify-between text-sm mb-1">
-                    <span>Under-Performers (&gt;90 days)</span>
+                    <span className="group-hover:text-destructive transition-colors">Under-Performers (&gt;90 days)</span>
                     <span className="text-muted-foreground">{Math.floor((stats?.activeCampaigns || 0) * 0.15)} campaigns</span>
                   </div>
-                  <div className="w-full bg-muted h-2 rounded-full">
-                    <div className="bg-destructive h-2 rounded-full" style={{ width: '15%' }}></div>
+                  <div className="w-full bg-muted h-2 rounded-full group-hover:bg-muted/80 transition-colors">
+                    <div className="bg-destructive h-2 rounded-full group-hover:bg-destructive/80 transition-colors" style={{ width: '15%' }}></div>
                   </div>
                 </div>
               </div>

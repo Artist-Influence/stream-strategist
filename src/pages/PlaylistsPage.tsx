@@ -1,5 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,10 +54,20 @@ interface PlaylistWithVendor extends Playlist {
 }
 
 export default function PlaylistsPage() {
+  const [searchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<'vendors' | 'table'>('vendors');
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+
+  // Initialize filter from URL parameters
+  useEffect(() => {
+    const genreParam = searchParams.get('genre');
+    if (genreParam) {
+      setSelectedGenres([genreParam]);
+      setViewMode('table'); // Switch to table view for better filtering experience
+    }
+  }, [searchParams]);
   const [showAddVendorModal, setShowAddVendorModal] = useState(false);
   const [showAddPlaylistModal, setShowAddPlaylistModal] = useState(false);
   const [showEditVendorModal, setShowEditVendorModal] = useState(false);
