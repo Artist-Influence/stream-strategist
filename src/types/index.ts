@@ -22,11 +22,33 @@ export interface Playlist {
   updated_at: string;
 }
 
+export interface Client {
+  id: string;
+  name: string;
+  emails: string[];
+  contact_person?: string;
+  phone?: string;
+  notes?: string;
+  credit_balance: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClientCredit {
+  id: string;
+  client_id: string;
+  amount: number;
+  reason?: string;
+  campaign_id?: string;
+  created_at: string;
+}
+
 export interface Campaign {
   id: string;
   name: string;
   client: string;
   client_name?: string;
+  client_id?: string;
   track_url: string;
   track_name?: string;
   stream_goal: number;

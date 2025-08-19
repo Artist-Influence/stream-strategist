@@ -83,6 +83,7 @@ export type Database = {
           budget: number
           campaign_type: string
           client: string
+          client_id: string | null
           client_name: string | null
           content_types: string[]
           created_at: string
@@ -118,6 +119,7 @@ export type Database = {
           budget: number
           campaign_type?: string
           client?: string
+          client_id?: string | null
           client_name?: string | null
           content_types?: string[]
           created_at?: string
@@ -153,6 +155,7 @@ export type Database = {
           budget?: number
           campaign_type?: string
           client?: string
+          client_id?: string | null
           client_name?: string | null
           content_types?: string[]
           created_at?: string
@@ -181,6 +184,92 @@ export type Database = {
           updated_at?: string
           vendor_allocations?: Json
           weekly_streams?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_credits: {
+        Row: {
+          amount: number
+          campaign_id: string | null
+          client_id: string
+          created_at: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          amount: number
+          campaign_id?: string | null
+          client_id: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          amount?: number
+          campaign_id?: string | null
+          client_id?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_credits_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_credits_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          contact_person: string | null
+          created_at: string
+          credit_balance: number | null
+          emails: string[] | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          contact_person?: string | null
+          created_at?: string
+          credit_balance?: number | null
+          emails?: string[] | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contact_person?: string | null
+          created_at?: string
+          credit_balance?: number | null
+          emails?: string[] | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
         }
         Relationships: []
       }

@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import PlaylistsPage from "./pages/PlaylistsPage";
 import CampaignBuilder from "./pages/CampaignBuilder";
 import CampaignHistoryPage from "./pages/CampaignHistoryPage";
+import ClientsPage from "./pages/ClientsPage";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 
@@ -41,6 +42,11 @@ const App = () => (
             <Route path="/campaigns" element={
               <ProtectedRoute>
                 <CampaignHistoryPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/clients" element={
+              <ProtectedRoute>
+                <ClientsPage />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

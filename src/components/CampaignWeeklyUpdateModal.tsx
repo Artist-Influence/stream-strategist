@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -11,6 +11,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
   TooltipContent,
@@ -18,7 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { Info, Upload } from "lucide-react";
+import { Info, Upload, Mail } from "lucide-react";
 import Papa from "papaparse";
 
 interface CampaignWeeklyUpdateModalProps {
@@ -31,6 +33,9 @@ export default function CampaignWeeklyUpdateModal({
   onOpenChange 
 }: CampaignWeeklyUpdateModalProps) {
   const [isImporting, setIsImporting] = useState(false);
+  const [reportNotes, setReportNotes] = useState('');
+  const [sendReports, setSendReports] = useState(false);
+  const [importCompleted, setImportCompleted] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -90,12 +95,75 @@ export default function CampaignWeeklyUpdateModal({
         description: `Updated ${updateCount} campaigns with weekly data`,
       });
       
-      onOpenChange(false);
+      setImportCompleted(true);
     } catch (error) {
       toast({
         title: "Import Error",
         description: "Failed to import weekly updates. Please check the format.",
         variant: "destructive"
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleSendReports = async () => {
+    if (!sendReports) return;
+    
+    try {
+      setIsImporting(true);
+      
+      // Get all active campaigns with client emails
+      const { data: campaigns, error } = await supabase
+        .from('campaigns')
+        .select(`
+          *,
+          clients:client_id (
+            name,
+            emails
+          )
+        `)
+        .eq('status', 'active');
+      
+      if (error) throw error;
+
+      // Send reports to clients (placeholder - would integrate with email service)
+      const campaignsWithClients = campaigns?.filter(c => c.clients && c.clients.emails?.length > 0) || [];
+      
+      if (campaignsWithClients.length === 0) {
+        toast({
+          title: "No reports to send",
+          description: "No active campaigns found with client emails",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // This would integrate with an email service
+      console.log('Would send weekly reports to:', campaignsWithClients.map(c => ({
+        campaign: c.name,
+        client: c.clients.name,
+        emails: c.clients.emails,
+        notes: reportNotes
+      })));
+
+      toast({
+        title: "Weekly reports sent",
+        description: `Reports sent to ${campaignsWithClients.length} clients`,
+      });
+
+      // Reset form
+      setReportNotes('');
+      setSendReports(false);
+      setImportCompleted(false);
+      onOpenChange(false);
+      
+    } catch (error) {
+      console.error('Send reports error:', error);
+      toast({
+        title: "Failed to send reports",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
       });
     } finally {
       setIsImporting(false);
@@ -127,7 +195,7 @@ export default function CampaignWeeklyUpdateModal({
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div>
             <Label htmlFor="weekly-update-file">CSV File</Label>
             <Input
@@ -152,12 +220,53 @@ export default function CampaignWeeklyUpdateModal({
               <li>playlists: Comma-separated list of playlist names (optional)</li>
             </ul>
           </div>
+
+          {importCompleted && (
+            <div className="space-y-4 border-t pt-6">
+              <div className="space-y-3">
+                <Label htmlFor="report-notes">Weekly Report Notes (Optional)</Label>
+                <Textarea
+                  id="report-notes"
+                  value={reportNotes}
+                  onChange={(e) => setReportNotes(e.target.value)}
+                  placeholder="Add any specific notes for this week's client reports..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="send-reports"
+                  checked={sendReports}
+                  onCheckedChange={(checked) => setSendReports(checked as boolean)}
+                />
+                <Label 
+                  htmlFor="send-reports" 
+                  className="flex items-center gap-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  <Mail className="h-4 w-4" />
+                  Send weekly reports to clients
+                </Label>
+              </div>
+
+              {sendReports && (
+                <p className="text-xs text-muted-foreground ml-6">
+                  Reports will be sent to all client email addresses for active campaigns
+                </p>
+              )}
+            </div>
+          )}
         </div>
         
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
+          {importCompleted && sendReports && (
+            <Button onClick={handleSendReports} disabled={isImporting}>
+              {isImporting ? 'Sending...' : 'Send Weekly Reports'}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

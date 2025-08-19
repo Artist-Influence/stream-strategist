@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { ClientSelector } from "@/components/ClientSelector";
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -22,7 +23,8 @@ import {
 
 const campaignSchema = z.object({
   name: z.string().min(1, "Campaign name is required"),
-  client: z.string().min(1, "Client name is required"),
+  client: z.string().min(1, "Client name is required"), // Keep for backward compatibility
+  client_id: z.string().optional(),
   track_url: z.string().url("Please enter a valid Spotify URL"),
   track_name: z.string().optional(),
   stream_goal: z.number().min(1, "Stream goal must be greater than 0"),
@@ -49,6 +51,7 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
     initialData?.sub_genre ? initialData.sub_genre.split(', ') : []
   );
   const [trackName, setTrackName] = useState(initialData?.track_name || "");
+  const [selectedClientId, setSelectedClientId] = useState(initialData?.client_id || "");
   
   const {
     register,
@@ -67,6 +70,12 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
   const watchedValues = watch();
 
   const onSubmit = async (data: CampaignFormData) => {
+    // Validate client selection
+    if (!selectedClientId) {
+      alert('Please select a client');
+      return;
+    }
+
     // First, check if there are any playlists available
     const { data: playlists, error } = await supabase
       .from('playlists')
@@ -79,10 +88,20 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
       return;
     }
     
-    console.log('Moving to step 2 with data:', { ...data, sub_genre: selectedGenres.join(', '), track_name: trackName });
+    console.log('Moving to step 2 with data:', { 
+      ...data, 
+      client_id: selectedClientId,
+      sub_genre: selectedGenres.join(', '), 
+      track_name: trackName 
+    });
     console.log('Available playlists:', playlists.length);
     
-    onNext({ ...data, sub_genre: selectedGenres.join(', '), track_name: trackName });
+    onNext({ 
+      ...data, 
+      client_id: selectedClientId,
+      sub_genre: selectedGenres.join(', '), 
+      track_name: trackName 
+    });
   };
 
   const toggleGenre = (genre: string) => {
@@ -175,18 +194,17 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
                      )}
                    </div>
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="client">Client/Artist Name *</Label>
-                    <Input
-                      id="client"
-                      {...register("client")}
-                      placeholder="Artist Name / Label"
-                      className={errors.client ? "border-destructive" : ""}
-                    />
-                    {errors.client && (
-                      <p className="text-sm text-destructive">{errors.client.message}</p>
-                    )}
-                  </div>
+                   <div className="space-y-2">
+                     <Label htmlFor="client">Client *</Label>
+                     <ClientSelector
+                       value={selectedClientId}
+                       onChange={setSelectedClientId}
+                       placeholder="Select or add client..."
+                     />
+                     {!selectedClientId && (
+                       <p className="text-sm text-destructive">Please select a client</p>
+                     )}
+                   </div>
                 </div>
 
                 <div className="space-y-2">
