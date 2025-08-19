@@ -143,7 +143,7 @@ const handler = async (req: Request): Promise<Response> => {
             type: "plain_text",
             text: "Review Submission"
           },
-          url: `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com') || 'https://localhost:3000'}/dashboard`,
+          url: `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com') || 'https://localhost:3000'}/clients?tab=submissions&submissionId=${record.id}`,
           action_id: "review_submission"
         }
       }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,13 +8,30 @@ import { Label } from '@/components/ui/label';
 import { useCampaignSubmissions, useApproveCampaignSubmission, useRejectCampaignSubmission } from '@/hooks/useCampaignSubmissions';
 import { formatDistanceToNow } from 'date-fns';
 
-export function CampaignSubmissionsManager() {
+interface CampaignSubmissionsManagerProps {
+  highlightSubmissionId?: string | null;
+}
+
+export function CampaignSubmissionsManager({ highlightSubmissionId }: CampaignSubmissionsManagerProps) {
   const [selectedSubmission, setSelectedSubmission] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const highlightedCardRef = useRef<HTMLDivElement>(null);
 
   const { data: submissions = [], isLoading } = useCampaignSubmissions();
   const approveMutation = useApproveCampaignSubmission();
   const rejectMutation = useRejectCampaignSubmission();
+
+  // Scroll to highlighted submission when it becomes available
+  useEffect(() => {
+    if (highlightSubmissionId && highlightedCardRef.current && !isLoading) {
+      setTimeout(() => {
+        highlightedCardRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }, 100);
+    }
+  }, [highlightSubmissionId, isLoading, submissions]);
 
   const handleApprove = async (submissionId: string) => {
     await approveMutation.mutateAsync(submissionId);
@@ -69,8 +86,18 @@ export function CampaignSubmissionsManager() {
       </div>
 
       <div className="grid gap-4">
-        {submissions.map((submission) => (
-          <Card key={submission.id} className="hover:shadow-lg transition-shadow">
+        {submissions.map((submission) => {
+          const isHighlighted = highlightSubmissionId === submission.id;
+          return (
+          <Card 
+            key={submission.id} 
+            ref={isHighlighted ? highlightedCardRef : null}
+            className={`hover:shadow-lg transition-all duration-300 ${
+              isHighlighted 
+                ? 'ring-2 ring-primary bg-primary/5 shadow-lg' 
+                : ''
+            }`}
+          >
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start">
                 <div className="space-y-1">
@@ -206,7 +233,8 @@ export function CampaignSubmissionsManager() {
               )}
             </CardContent>
           </Card>
-        ))}
+        );
+        })}
 
         {submissions.length === 0 && (
           <Card>
