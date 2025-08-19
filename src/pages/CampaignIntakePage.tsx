@@ -108,10 +108,13 @@ export default function CampaignIntakePage() {
 
   const handleClientSelection = (clientName: string) => {
     const client = clients.find(c => c.name === clientName);
+    const clientEmails = client?.emails && client.emails.length > 0 
+      ? client.emails.join(', ') 
+      : '';
     setFormData({
       ...formData,
       client_name: clientName,
-      client_emails: client?.emails?.join(', ') || ''
+      client_emails: clientEmails
     });
   };
 
@@ -212,7 +215,8 @@ export default function CampaignIntakePage() {
               <div>
                 <Label>Client Emails (up to 5, comma-separated) *</Label>
                 <Textarea
-                  placeholder={isNewClient ? "email1@example.com, email2@example.com" : "Emails auto-populated from client record"}
+                  placeholder={isNewClient ? "email1@example.com, email2@example.com" : 
+                    (formData.client_emails ? "Emails auto-populated from client record" : "No emails found for this client - contact admin")}
                   value={formData.client_emails}
                   onChange={(e) => setFormData({...formData, client_emails: e.target.value})}
                   rows={2}
@@ -223,6 +227,8 @@ export default function CampaignIntakePage() {
                 <p className="text-xs text-muted-foreground mt-1">
                   {isNewClient ? (
                     `${formData.client_emails.split(',').filter(e => e.trim()).length}/5 emails`
+                  ) : !isNewClient && !formData.client_emails ? (
+                    "⚠️ This client has no emails on file - contact admin to add client emails before submitting"
                   ) : (
                     "Emails are managed from the admin client view - contact admin for changes"
                   )}
