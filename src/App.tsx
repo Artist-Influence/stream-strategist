@@ -10,6 +10,7 @@ import PlaylistsPage from "./pages/PlaylistsPage";
 import CampaignBuilder from "./pages/CampaignBuilder";
 import CampaignHistoryPage from "./pages/CampaignHistoryPage";
 import ClientsPage from "./pages/ClientsPage";
+import CampaignIntakePage from "./pages/CampaignIntakePage";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 
@@ -49,6 +50,8 @@ const App = () => (
                 <ClientsPage />
               </ProtectedRoute>
             } />
+            {/* Public route for campaign intake form */}
+            <Route path="/campaign-intake" element={<CampaignIntakePage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

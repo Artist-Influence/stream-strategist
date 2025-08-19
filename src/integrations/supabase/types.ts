@@ -22,6 +22,7 @@ export type Database = {
           created_at: string
           creator_id: string
           due_date: string | null
+          expected_post_date: string | null
           id: string
           instagram_handle: string
           payment_notes: string | null
@@ -39,6 +40,7 @@ export type Database = {
           created_at?: string
           creator_id: string
           due_date?: string | null
+          expected_post_date?: string | null
           id?: string
           instagram_handle: string
           payment_notes?: string | null
@@ -56,6 +58,7 @@ export type Database = {
           created_at?: string
           creator_id?: string
           due_date?: string | null
+          expected_post_date?: string | null
           id?: string
           instagram_handle?: string
           payment_notes?: string | null
@@ -76,6 +79,60 @@ export type Database = {
           },
         ]
       }
+      campaign_submissions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          campaign_name: string
+          client_emails: string[]
+          client_name: string
+          created_at: string
+          id: string
+          notes: string | null
+          price_paid: number
+          rejection_reason: string | null
+          salesperson: string
+          start_date: string
+          status: string
+          stream_goal: number
+          track_url: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          campaign_name: string
+          client_emails: string[]
+          client_name: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          price_paid: number
+          rejection_reason?: string | null
+          salesperson: string
+          start_date: string
+          status?: string
+          stream_goal: number
+          track_url: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          campaign_name?: string
+          client_emails?: string[]
+          client_name?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          price_paid?: number
+          rejection_reason?: string | null
+          salesperson?: string
+          start_date?: string
+          status?: string
+          stream_goal?: number
+          track_url?: string
+        }
+        Relationships: []
+      }
       campaigns: {
         Row: {
           allocated_streams: number | null
@@ -95,8 +152,11 @@ export type Database = {
           music_genres: string[]
           name: string
           post_types: string[]
+          public_access_enabled: boolean | null
+          public_token: string | null
           remaining_streams: number
           results: Json | null
+          salesperson: string | null
           selected_creators: Json | null
           selected_playlists: Json
           source: string
@@ -131,8 +191,11 @@ export type Database = {
           music_genres?: string[]
           name: string
           post_types?: string[]
+          public_access_enabled?: boolean | null
+          public_token?: string | null
           remaining_streams?: number
           results?: Json | null
+          salesperson?: string | null
           selected_creators?: Json | null
           selected_playlists?: Json
           source?: string
@@ -167,8 +230,11 @@ export type Database = {
           music_genres?: string[]
           name?: string
           post_types?: string[]
+          public_access_enabled?: boolean | null
+          public_token?: string | null
           remaining_streams?: number
           results?: Json | null
+          salesperson?: string | null
           selected_creators?: Json | null
           selected_playlists?: Json
           source?: string
@@ -545,6 +611,10 @@ export type Database = {
       is_vendor_manager: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      regenerate_campaign_public_token: {
+        Args: { campaign_id: string }
+        Returns: string
       }
       update_playlist_avg_streams: {
         Args: { playlist_uuid: string }
