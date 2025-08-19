@@ -24,7 +24,6 @@ interface FormData {
 
 export default function CampaignIntakePage() {
   const [isNewClient, setIsNewClient] = useState(false);
-  const [customSalesperson, setCustomSalesperson] = useState('');
   const [formData, setFormData] = useState<FormData>({
     client_name: '',
     client_emails: '',
@@ -76,8 +75,6 @@ export default function CampaignIntakePage() {
         .slice(0, 5);
 
       // Create campaign submission
-      const finalSalesperson = formData.salesperson === 'Other' ? customSalesperson : formData.salesperson;
-      
       await createSubmission.mutateAsync({
         client_name: formData.client_name,
         client_emails: emailArray,
@@ -87,7 +84,7 @@ export default function CampaignIntakePage() {
         start_date: formData.start_date,
         track_url: formData.track_url,
         notes: formData.notes,
-        salesperson: finalSalesperson
+        salesperson: formData.salesperson
       });
 
       // Reset form on success
@@ -102,7 +99,6 @@ export default function CampaignIntakePage() {
         notes: '',
         salesperson: ''
       });
-      setCustomSalesperson('');
       setIsNewClient(false);
 
     } catch (error) {
@@ -146,12 +142,7 @@ export default function CampaignIntakePage() {
                 <Label>Salesperson *</Label>
                 <Select 
                   value={formData.salesperson} 
-                  onValueChange={(value) => {
-                    setFormData({...formData, salesperson: value});
-                    if (value !== 'Other') {
-                      setCustomSalesperson('');
-                    }
-                  }}
+                  onValueChange={(value) => setFormData({...formData, salesperson: value})}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select salesperson" />
@@ -162,19 +153,11 @@ export default function CampaignIntakePage() {
                         {person.name}
                       </SelectItem>
                     ))}
-                    <SelectItem value="Other">Other (specify below)</SelectItem>
                   </SelectContent>
                 </Select>
-                
-                {formData.salesperson === 'Other' && (
-                  <Input
-                    className="mt-2"
-                    placeholder="Enter salesperson name"
-                    value={customSalesperson}
-                    onChange={(e) => setCustomSalesperson(e.target.value)}
-                    required
-                  />
-                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Don't see your name? Contact admin to be added as a salesperson.
+                </p>
               </div>
 
               {/* Client Selection */}
@@ -229,14 +212,20 @@ export default function CampaignIntakePage() {
               <div>
                 <Label>Client Emails (up to 5, comma-separated) *</Label>
                 <Textarea
-                  placeholder="email1@example.com, email2@example.com"
+                  placeholder={isNewClient ? "email1@example.com, email2@example.com" : "Emails auto-populated from client record"}
                   value={formData.client_emails}
                   onChange={(e) => setFormData({...formData, client_emails: e.target.value})}
                   rows={2}
                   required
+                  readOnly={!isNewClient}
+                  className={!isNewClient ? "bg-muted" : ""}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  {formData.client_emails.split(',').filter(e => e.trim()).length}/5 emails
+                  {isNewClient ? (
+                    `${formData.client_emails.split(',').filter(e => e.trim()).length}/5 emails`
+                  ) : (
+                    "Emails are managed from the admin client view - contact admin for changes"
+                  )}
                 </p>
               </div>
 
@@ -285,13 +274,16 @@ export default function CampaignIntakePage() {
 
               {/* Track URL */}
               <div>
-                <Label>Spotify Track URL *</Label>
+                <Label>Track URL *</Label>
                 <Input
-                  placeholder="https://open.spotify.com/track/..."
+                  placeholder="Spotify, SoundCloud, Dropbox, or other streaming link"
                   value={formData.track_url}
                   onChange={(e) => setFormData({...formData, track_url: e.target.value})}
                   required
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  For released songs: Spotify URL. For unreleased: SoundCloud, Dropbox, or private streaming link.
+                </p>
               </div>
 
               {/* Notes */}
