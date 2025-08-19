@@ -711,7 +711,7 @@ export default function CampaignHistory() {
                       </Button>
                     </TableHead>
                     <TableHead>Last Updated</TableHead>
-                    <TableHead className="w-12"></TableHead>
+                    
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -808,24 +808,6 @@ export default function CampaignHistory() {
                               : 'Never'
                             }
                           </div>
-                        </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" data-radix-dropdown-menu-trigger>
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem 
-                                className="text-destructive"
-                                onClick={() => handleDelete(campaign.id)}
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     );
