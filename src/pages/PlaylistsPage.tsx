@@ -262,6 +262,7 @@ export default function PlaylistsPage() {
           exportData.push({
             vendor_name: playlist.vendor?.name || '',
             vendor_cost_per_1k: playlist.vendor?.cost_per_1k_streams || 0,
+            vendor_status: playlist.vendor?.is_active ? 'Active' : 'Inactive',
             playlist_name: playlist.name,
             playlist_url: playlist.url,
             genres: playlist.genres?.join(';') || '',
@@ -276,6 +277,7 @@ export default function PlaylistsPage() {
           exportData.push({
             vendor_name: selectedVendorData.name,
             vendor_cost_per_1k: selectedVendorData.cost_per_1k_streams || 0,
+            vendor_status: selectedVendorData.is_active ? 'Active' : 'Inactive',
             playlist_name: playlist.name,
             playlist_url: playlist.url,
             genres: playlist.genres?.join(';') || '',

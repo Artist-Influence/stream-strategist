@@ -73,7 +73,7 @@ export function PlaylistSelector({
   const fetchPlaylistsAndVendors = async () => {
     setLoading(true);
     try {
-      // Fetch playlists with vendor information
+      // Fetch playlists with vendor information (only from active vendors)
       const { data: playlistData, error: playlistError } = await supabase
         .from('playlists')
         .select(`
@@ -84,16 +84,18 @@ export function PlaylistSelector({
           follower_count,
           genres,
           vendor_id,
-          vendors(name)
+          vendors(name, is_active)
         `)
+        .eq('vendors.is_active', true)
         .order('avg_daily_streams', { ascending: false });
 
       if (playlistError) throw playlistError;
 
-      // Fetch vendors
+      // Fetch active vendors only
       const { data: vendorData, error: vendorError } = await supabase
         .from('vendors')
         .select('id, name')
+        .eq('is_active', true)
         .order('name');
 
       if (vendorError) throw vendorError;

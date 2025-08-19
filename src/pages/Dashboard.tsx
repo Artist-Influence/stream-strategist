@@ -50,8 +50,8 @@ export default function Dashboard() {
     queryFn: async (): Promise<DashboardStats> => {
       const [campaignsRes, vendorsRes, playlistsRes] = await Promise.all([
         supabase.from('campaigns').select('status, stream_goal, budget').eq('source', APP_CAMPAIGN_SOURCE).eq('campaign_type', APP_CAMPAIGN_TYPE),
-        supabase.from('vendors').select('id'),
-        supabase.from('playlists').select('id, avg_daily_streams')
+        supabase.from('vendors').select('id').eq('is_active', true),
+        supabase.from('playlists').select('id, avg_daily_streams, vendors!inner(is_active)').eq('vendors.is_active', true)
       ]);
 
       const campaigns = campaignsRes.data || [];

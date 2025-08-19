@@ -13,25 +13,29 @@ export async function insertSampleData() {
       return;
     }
 
-    // Insert sample vendors
+    // Insert sample vendors with is_active: true (default from migration)
     const { data: vendors, error: vendorError } = await supabase
       .from('vendors')
       .insert([
         {
           name: "Spotify Curators Co.",
-          max_daily_streams: 50000
+          max_daily_streams: 50000,
+          is_active: true
         },
         {
           name: "Indie Music Network",
-          max_daily_streams: 75000
+          max_daily_streams: 75000,
+          is_active: true
         },
         {
           name: "Electronic Vibes",
-          max_daily_streams: 30000
+          max_daily_streams: 30000,
+          is_active: true
         },
         {
           name: "Hip-Hop Central",
-          max_daily_streams: 60000
+          max_daily_streams: 60000,
+          is_active: true
         }
       ])
       .select();

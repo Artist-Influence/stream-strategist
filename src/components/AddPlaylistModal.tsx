@@ -55,13 +55,14 @@ export default function AddPlaylistModal({ open, onOpenChange, vendorId, editing
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch vendors for selection when vendorId is not provided
+  // Fetch active vendors for selection when vendorId is not provided
   const { data: vendors } = useQuery({
-    queryKey: ['vendors'],
+    queryKey: ['active-vendors'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('vendors')
         .select('*')
+        .eq('is_active', true)
         .order('name');
       
       if (error) throw error;
