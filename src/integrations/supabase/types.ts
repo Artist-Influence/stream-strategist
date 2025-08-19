@@ -855,38 +855,23 @@ export type Database = {
       get_public_campaign_by_token: {
         Args: { token_param: string }
         Returns: {
-          brand_name: string | null
-          content_types: string[] | null
-          created_at: string | null
-          description: string | null
-          duration_days: number | null
-          id: string | null
-          music_genres: string[] | null
-          name: string | null
-          post_types: string[] | null
-          public_token: string | null
-          start_date: string | null
-          status: string | null
-          stream_goal_display: number | null
-          sub_genres: string[] | null
-          territory_preferences: string[] | null
-          track_name: string | null
-          track_url: string | null
-        }[]
-      }
-      get_public_campaign_creators_by_token: {
-        Args: { token_param: string }
-        Returns: {
-          approval_status: string | null
-          campaign_id: string | null
-          created_at: string | null
-          due_date: string | null
-          expected_post_date: string | null
-          id: string | null
-          instagram_handle: string | null
-          post_status: string | null
-          post_type: string | null
-          posts_count: number | null
+          brand_name: string
+          content_types: string[]
+          created_at: string
+          description: string
+          duration_days: number
+          id: string
+          music_genres: string[]
+          name: string
+          post_types: string[]
+          public_token: string
+          start_date: string
+          status: string
+          stream_goal_display: number
+          sub_genres: string[]
+          territory_preferences: string[]
+          track_name: string
+          track_url: string
         }[]
       }
       get_spotify_token: {
