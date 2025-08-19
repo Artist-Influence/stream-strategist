@@ -58,12 +58,6 @@ const navItems = [
     icon: Users,
     hotkey: "Ctrl+5"
   },
-  {
-    title: "Campaign Intake",
-    href: "/campaign-intake",
-    icon: Plus,
-    hotkey: "Ctrl+6"
-  },
 ];
 
 export default function Layout({ children }: LayoutProps) {
@@ -106,10 +100,6 @@ export default function Layout({ children }: LayoutProps) {
           case '5':
             e.preventDefault();
             window.location.href = '/clients';
-            break;
-          case '6':
-            e.preventDefault();
-            window.location.href = '/campaign-intake';
             break;
         }
       }
@@ -243,12 +233,6 @@ export default function Layout({ children }: LayoutProps) {
                     <span className="flex justify-between w-full">
                       <span>Clients</span>
                       <kbd className="text-xs bg-muted px-1 rounded">Ctrl+5</kbd>
-                    </span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem disabled>
-                    <span className="flex justify-between w-full">
-                      <span>Campaign Intake</span>
-                      <kbd className="text-xs bg-muted px-1 rounded">Ctrl+6</kbd>
                     </span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
