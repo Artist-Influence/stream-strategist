@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input';
 import { Trash2, Plus, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { PlaylistSelector } from './PlaylistSelector';
 
 interface PlaylistWithStatus {
   id: string;
@@ -55,6 +56,7 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
   const [campaignData, setCampaignData] = useState<any>(null);
   const [playlists, setPlaylists] = useState<PlaylistWithStatus[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showPlaylistSelector, setShowPlaylistSelector] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -168,6 +170,46 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
     }
   };
 
+  const addPlaylists = async (selectedPlaylists: any[]) => {
+    const newPlaylists = selectedPlaylists.map(playlist => ({
+      id: playlist.id,
+      name: playlist.name,
+      url: playlist.url,
+      vendor_name: playlist.vendor_name,
+      status: 'Pending' as const,
+      placed_date: null
+    }));
+
+    const updatedPlaylists = [...playlists, ...newPlaylists];
+    setPlaylists(updatedPlaylists);
+
+    try {
+      const { error } = await supabase
+        .from('campaigns')
+        .update({ 
+          selected_playlists: updatedPlaylists as any,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', campaign!.id);
+
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: `Added ${newPlaylists.length} playlist${newPlaylists.length !== 1 ? 's' : ''} to campaign`,
+      });
+    } catch (error) {
+      console.error('Failed to add playlists:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add playlists",
+        variant: "destructive",
+      });
+      // Revert on error
+      fetchCampaignDetails();
+    }
+  };
+
   const getStatusVariant = (status: string) => {
     switch (status) {
       case 'Placed': return 'default';
@@ -261,6 +303,14 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Label className="text-lg font-semibold">Campaign Playlists ({playlists.length})</Label>
+              <Button
+                onClick={() => setShowPlaylistSelector(true)}
+                className="flex items-center gap-2"
+                size="sm"
+              >
+                <Plus className="h-4 w-4" />
+                Add Playlists
+              </Button>
             </div>
             
             {playlists.length > 0 ? (
@@ -363,6 +413,15 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
             </div>
           </div>
         </div>
+
+        {/* Playlist Selector Modal */}
+        <PlaylistSelector
+          open={showPlaylistSelector}
+          onClose={() => setShowPlaylistSelector(false)}
+          onSelect={addPlaylists}
+          campaignGenre={campaignData?.sub_genre}
+          excludePlaylistIds={playlists.map(p => p.id)}
+        />
       </DialogContent>
     </Dialog>
   );

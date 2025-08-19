@@ -718,8 +718,22 @@ export default function CampaignHistory() {
                     const isExpired = new Date() > endDate;
 
                     return (
-                      <TableRow key={campaign.id} className="hover:bg-accent/10">
-                        <TableCell>
+                      <TableRow 
+                        key={campaign.id} 
+                        className="hover:bg-accent/10 cursor-pointer"
+                        onClick={(e) => {
+                          // Don't trigger if clicking on checkbox, dropdown, or buttons
+                          const target = e.target as HTMLElement;
+                          if (target.closest('input[type="checkbox"]') || 
+                              target.closest('[data-radix-dropdown-menu-trigger]') ||
+                              target.closest('button') ||
+                              target.closest('a')) {
+                            return;
+                          }
+                          handleViewDetails(campaign.id);
+                        }}
+                      >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
                             checked={selectedCampaigns.has(campaign.id)}
@@ -791,10 +805,10 @@ export default function CampaignHistory() {
                             }
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
+                              <Button variant="ghost" size="sm" data-radix-dropdown-menu-trigger>
                                 <MoreHorizontal className="w-4 h-4" />
                               </Button>
                             </DropdownMenuTrigger>
