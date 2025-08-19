@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { logCurrentProject, validateCampaignData } from '@/utils/debugUtils';
 
 export interface Campaign {
   id: string;
@@ -51,17 +52,33 @@ export function useCampaignsForClient(clientId: string) {
 
 export function useUnassignedCampaigns() {
   return useQuery({
-    queryKey: ['campaigns', 'unassigned'],
+    queryKey: ['campaigns', 'unassigned', 'music-promotion'], // More specific cache key
     queryFn: async () => {
+      logCurrentProject();
+      
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
         .is('client_id', null)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error fetching campaigns:', error);
+        throw error;
+      }
+      
+      console.log('✅ Fetched unassigned campaigns:', data);
+      
+      // Validate we're getting the right project data
+      const isValid = validateCampaignData(data);
+      if (!isValid) {
+        console.error('❌ WRONG PROJECT DATA - Clear browser cache and refresh!');
+      }
+      
       return data as Campaign[];
     },
+    staleTime: 0, // Force fresh fetch
+    gcTime: 0, // Don't cache
   });
 }
 
@@ -83,7 +100,7 @@ export function useAssignCampaignToClient() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['campaigns', 'client', variables.clientId] });
-      queryClient.invalidateQueries({ queryKey: ['campaigns', 'unassigned'] });
+      queryClient.invalidateQueries({ queryKey: ['campaigns', 'unassigned', 'music-promotion'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       toast({ title: 'Campaign assigned successfully' });
     },
@@ -115,7 +132,7 @@ export function useUnassignCampaignFromClient() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['campaigns', 'client', variables.clientId] });
-      queryClient.invalidateQueries({ queryKey: ['campaigns', 'unassigned'] });
+      queryClient.invalidateQueries({ queryKey: ['campaigns', 'unassigned', 'music-promotion'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       toast({ title: 'Campaign unassigned successfully' });
     },

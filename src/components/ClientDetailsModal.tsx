@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -37,9 +37,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Plus, X, Trash2, Calendar, DollarSign } from 'lucide-react';
+import { Plus, X, Trash2, Calendar, DollarSign, RefreshCw } from 'lucide-react';
 import { useUpdateClient, useClientCredits, useAddClientCredit } from '@/hooks/useClients';
 import { useCampaignsForClient, useUnassignedCampaigns, useAssignCampaignToClient, useUnassignCampaignFromClient } from '@/hooks/useCampaigns';
+import { clearBrowserCache } from '@/utils/debugUtils';
 import { Client } from '@/types';
 import { format } from 'date-fns';
 
@@ -64,7 +65,16 @@ export function ClientDetailsModal({ client, isOpen, onClose }: ClientDetailsMod
 
   const { data: clientCredits = [] } = useClientCredits(client?.id || '');
   const { data: clientCampaigns = [] } = useCampaignsForClient(client?.id || '');
-  const { data: unassignedCampaigns = [] } = useUnassignedCampaigns();
+  const { data: unassignedCampaigns = [], refetch: refetchUnassigned } = useUnassignedCampaigns();
+
+  // Debug logging when modal opens
+  useEffect(() => {
+    if (isOpen && client) {
+      console.log('🔧 ClientDetailsModal opened for:', client.name);
+      console.log('🔧 Unassigned campaigns:', unassignedCampaigns);
+      refetchUnassigned(); // Force fresh fetch
+    }
+  }, [isOpen, client]);
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -338,30 +348,48 @@ export function ClientDetailsModal({ client, isOpen, onClose }: ClientDetailsMod
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Campaigns ({clientCampaigns.length})</h3>
               
-              {unassignedCampaigns.length > 0 && (
-                <div className="flex gap-2">
-                  <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Select campaign" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {unassignedCampaigns.map((campaign) => (
-                        <SelectItem key={campaign.id} value={campaign.id}>
-                          {campaign.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button 
-                    onClick={handleAssignCampaign}
-                    disabled={!selectedCampaign || assignCampaign.isPending}
-                    size="sm"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Assign
-                  </Button>
-                </div>
-              )}
+              <div className="flex gap-2">
+                {unassignedCampaigns.length > 0 ? (
+                  <>
+                    <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue placeholder="Select campaign" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border z-50">
+                        {unassignedCampaigns.map((campaign) => (
+                          <SelectItem key={campaign.id} value={campaign.id}>
+                            {campaign.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      onClick={handleAssignCampaign}
+                      disabled={!selectedCampaign || assignCampaign.isPending}
+                      size="sm"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Assign
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No unassigned campaigns available</p>
+                )}
+                
+                {/* Debug button - remove after fixing */}
+                <Button 
+                  onClick={() => {
+                    clearBrowserCache();
+                    refetchUnassigned();
+                    window.location.reload();
+                  }}
+                  variant="outline"
+                  size="sm"
+                  title="Clear cache and refresh if seeing wrong campaigns"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             {clientCampaigns.length > 0 ? (
