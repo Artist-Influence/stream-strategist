@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { logCurrentProject, validateCampaignData } from '@/utils/debugUtils';
+import { APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE } from '@/lib/constants';
 
 export interface Campaign {
   id: string;
@@ -16,15 +17,19 @@ export interface Campaign {
   remaining_streams: number;
   created_at: string;
   updated_at: string;
+  source: string;
+  campaign_type: string;
 }
 
 export function useCampaigns() {
   return useQuery({
-    queryKey: ['campaigns'],
+    queryKey: ['campaigns', APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
+        .eq('source', APP_CAMPAIGN_SOURCE)
+        .eq('campaign_type', APP_CAMPAIGN_TYPE)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -35,12 +40,14 @@ export function useCampaigns() {
 
 export function useCampaignsForClient(clientId: string) {
   return useQuery({
-    queryKey: ['campaigns', 'client', clientId],
+    queryKey: ['campaigns', 'client', clientId, APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
         .eq('client_id', clientId)
+        .eq('source', APP_CAMPAIGN_SOURCE)
+        .eq('campaign_type', APP_CAMPAIGN_TYPE)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -52,7 +59,7 @@ export function useCampaignsForClient(clientId: string) {
 
 export function useUnassignedCampaigns() {
   return useQuery({
-    queryKey: ['campaigns', 'unassigned', 'music-promotion'], // More specific cache key
+    queryKey: ['campaigns', 'unassigned', APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE],
     queryFn: async () => {
       logCurrentProject();
       
@@ -60,6 +67,8 @@ export function useUnassignedCampaigns() {
         .from('campaigns')
         .select('*')
         .is('client_id', null)
+        .eq('source', APP_CAMPAIGN_SOURCE)
+        .eq('campaign_type', APP_CAMPAIGN_TYPE)
         .order('created_at', { ascending: false });
       
       if (error) {
@@ -100,7 +109,7 @@ export function useAssignCampaignToClient() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['campaigns', 'client', variables.clientId] });
-      queryClient.invalidateQueries({ queryKey: ['campaigns', 'unassigned', 'music-promotion'] });
+      queryClient.invalidateQueries({ queryKey: ['campaigns', 'unassigned', APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       toast({ title: 'Campaign assigned successfully' });
     },
@@ -132,7 +141,7 @@ export function useUnassignCampaignFromClient() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['campaigns', 'client', variables.clientId] });
-      queryClient.invalidateQueries({ queryKey: ['campaigns', 'unassigned', 'music-promotion'] });
+      queryClient.invalidateQueries({ queryKey: ['campaigns', 'unassigned', APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       toast({ title: 'Campaign unassigned successfully' });
     },

@@ -40,6 +40,20 @@ export function validateCampaignData(campaigns: any[]) {
     return true;
   }
   
+  // Check for wrong source/campaign_type
+  const wrongSource = campaigns.filter(campaign => 
+    campaign.source !== 'campaign_manager' || campaign.campaign_type !== 'spotify'
+  );
+  
+  if (wrongSource.length > 0) {
+    console.error('❌ WRONG PROJECT DATA - Incorrect source/campaign_type:');
+    wrongSource.forEach(campaign => {
+      console.error(`- ${campaign.name} (source: ${campaign.source}, type: ${campaign.campaign_type})`);
+    });
+    return false;
+  }
+  
+  // Check for suspicious keywords (legacy check)
   const suspiciousKeywords = ['instagram', 'seeding', 'influencer', 'tiktok', 'social'];
   const suspicious = campaigns.filter(campaign => 
     suspiciousKeywords.some(keyword => 
@@ -48,8 +62,8 @@ export function validateCampaignData(campaigns: any[]) {
   );
   
   if (suspicious.length > 0) {
-    console.warn('⚠️ WRONG PROJECT DATA DETECTED:');
-    console.warn('Found campaigns that appear to be from Instagram seeding project:');
+    console.warn('⚠️ SUSPICIOUS CAMPAIGN NAMES DETECTED:');
+    console.warn('Found campaigns with Instagram-related keywords:');
     suspicious.forEach(campaign => {
       console.warn(`- ${campaign.name} (ID: ${campaign.id})`);
     });

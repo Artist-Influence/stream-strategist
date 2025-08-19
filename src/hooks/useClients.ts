@@ -2,26 +2,34 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Client, ClientCredit } from '@/types';
 import { toast } from '@/components/ui/use-toast';
+import { APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE } from '@/lib/constants';
 
 export function useClients() {
   return useQuery({
-    queryKey: ['clients'],
+    queryKey: ['clients', APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clients')
         .select(`
           *,
-          campaigns!client_id(id, status)
+          campaigns!client_id(id, status, source, campaign_type)
         `)
         .order('name');
       
       if (error) throw error;
       
-      // Transform the data to include campaign counts
+      // Transform the data to include campaign counts - only count relevant campaigns
       const clientsWithCampaignCounts = data.map(client => ({
         ...client,
-        activeCampaignsCount: client.campaigns?.filter((c: any) => c.status === 'active').length || 0,
-        totalCampaignsCount: client.campaigns?.length || 0,
+        activeCampaignsCount: client.campaigns?.filter((c: any) => 
+          c.status === 'active' && 
+          c.source === APP_CAMPAIGN_SOURCE && 
+          c.campaign_type === APP_CAMPAIGN_TYPE
+        ).length || 0,
+        totalCampaignsCount: client.campaigns?.filter((c: any) => 
+          c.source === APP_CAMPAIGN_SOURCE && 
+          c.campaign_type === APP_CAMPAIGN_TYPE
+        ).length || 0,
       }));
       
       return clientsWithCampaignCounts;
@@ -31,7 +39,7 @@ export function useClients() {
 
 export function useClient(clientId: string) {
   return useQuery({
-    queryKey: ['client', clientId],
+    queryKey: ['client', clientId, APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clients')
@@ -43,6 +51,15 @@ export function useClient(clientId: string) {
         .single();
       
       if (error) throw error;
+      
+      // Filter campaigns to only include relevant ones
+      if (data.campaigns) {
+        data.campaigns = data.campaigns.filter((c: any) => 
+          c.source === APP_CAMPAIGN_SOURCE && 
+          c.campaign_type === APP_CAMPAIGN_TYPE
+        );
+      }
+      
       return data;
     },
     enabled: !!clientId,

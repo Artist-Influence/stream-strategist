@@ -41,6 +41,7 @@ import { Plus, X, Trash2, Calendar, DollarSign, RefreshCw } from 'lucide-react';
 import { useUpdateClient, useClientCredits, useAddClientCredit } from '@/hooks/useClients';
 import { useCampaignsForClient, useUnassignedCampaigns, useAssignCampaignToClient, useUnassignCampaignFromClient } from '@/hooks/useCampaigns';
 import { clearBrowserCache } from '@/utils/debugUtils';
+import { APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE } from '@/lib/constants';
 import { Client } from '@/types';
 import { format } from 'date-fns';
 
@@ -72,6 +73,7 @@ export function ClientDetailsModal({ client, isOpen, onClose }: ClientDetailsMod
     if (isOpen && client) {
       console.log('🔧 ClientDetailsModal opened for:', client.name);
       console.log('🔧 Unassigned campaigns:', unassignedCampaigns);
+      console.log('🔧 Filtering for:', { source: APP_CAMPAIGN_SOURCE, type: APP_CAMPAIGN_TYPE });
       refetchUnassigned(); // Force fresh fetch
     }
   }, [isOpen, client]);
@@ -355,13 +357,18 @@ export function ClientDetailsModal({ client, isOpen, onClose }: ClientDetailsMod
                       <SelectTrigger className="w-48">
                         <SelectValue placeholder="Select campaign" />
                       </SelectTrigger>
-                      <SelectContent className="bg-background border z-50">
-                        {unassignedCampaigns.map((campaign) => (
-                          <SelectItem key={campaign.id} value={campaign.id}>
-                            {campaign.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                       <SelectContent className="bg-background border z-50">
+                         {unassignedCampaigns
+                           .filter(campaign => 
+                             campaign.source === APP_CAMPAIGN_SOURCE && 
+                             campaign.campaign_type === APP_CAMPAIGN_TYPE
+                           )
+                           .map((campaign) => (
+                             <SelectItem key={campaign.id} value={campaign.id}>
+                               {campaign.name} ({campaign.source}/{campaign.campaign_type})
+                             </SelectItem>
+                           ))}
+                       </SelectContent>
                     </Select>
                     <Button 
                       onClick={handleAssignCampaign}

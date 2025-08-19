@@ -8,6 +8,10 @@ export const UNIFIED_GENRES = [
   'chill', 'ambient', 'experimental'
 ];
 
+// Campaign filtering - CRITICAL for preventing cross-project data leaks
+export const APP_CAMPAIGN_SOURCE = 'campaign_manager';
+export const APP_CAMPAIGN_TYPE = 'spotify';
+
 // Keyboard shortcuts
 export const KEYBOARD_SHORTCUTS = [
   { key: 'Ctrl+K', description: 'Global Search' },
