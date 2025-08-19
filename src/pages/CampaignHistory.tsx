@@ -502,7 +502,7 @@ export default function CampaignHistory() {
                 variant={performanceFilter === 'on-track' ? 'default' : 'outline'}
                 onClick={() => setPerformanceFilter('on-track')}
                 size="sm"
-                className="hover:bg-primary/10"
+                className={performanceFilter === 'on-track' ? 'bg-purple hover:bg-purple/90' : 'hover:bg-purple/10'}
               >
                 On Track
               </Button>

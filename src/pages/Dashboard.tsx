@@ -336,7 +336,7 @@ export default function Dashboard() {
                     <span className="text-muted-foreground">{Math.floor((stats?.activeCampaigns || 0) * 0.55)} campaigns</span>
                   </div>
                   <div className="w-full bg-muted h-2 rounded-full group-hover:bg-muted/80 transition-colors">
-                    <div className="bg-primary h-2 rounded-full group-hover:bg-primary/80 transition-colors" style={{ width: '55%' }}></div>
+                    <div className="bg-purple h-2 rounded-full group-hover:bg-purple/80 transition-colors" style={{ width: '55%' }}></div>
                   </div>
                 </div>
                 

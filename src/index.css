@@ -33,6 +33,10 @@
     --accent: 142 71% 45%;
     --accent-foreground: 0 0% 98%;
 
+    /* Purple for on-track performance */
+    --purple: 260 84% 65%;
+    --purple-foreground: 0 0% 98%;
+
     /* Destructive */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
