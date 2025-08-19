@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useClients } from '@/hooks/useClients';
-import { useCreateClient } from '@/hooks/useClients';
+// Removed client creation import - submissions only create campaign submissions now
 import { useCreateCampaignSubmission } from '@/hooks/useCampaignSubmissions';
 import { useSalespeople } from '@/hooks/useSalespeople';
 
@@ -38,7 +38,7 @@ export default function CampaignIntakePage() {
 
   const { data: clients = [] } = useClients();
   const { data: salespeople = [] } = useSalespeople();
-  const createClient = useCreateClient();
+  // Removed client creation hook - handled by admin during approval process
   const createSubmission = useCreateCampaignSubmission();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,21 +52,6 @@ export default function CampaignIntakePage() {
     }
 
     try {
-      // If new client, create them first
-      if (isNewClient && formData.client_name) {
-        const emailArray = formData.client_emails
-          .split(',')
-          .map(e => e.trim())
-          .filter(e => e.length > 0)
-          .slice(0, 5);
-
-        await createClient.mutateAsync({
-          name: formData.client_name,
-          emails: emailArray,
-          credit_balance: 0
-        });
-      }
-
       // Process emails into array
       const emailArray = formData.client_emails
         .split(',')
@@ -307,9 +292,9 @@ export default function CampaignIntakePage() {
               <Button 
                 type="submit" 
                 className="w-full bg-destructive hover:bg-destructive/90"
-                disabled={createSubmission.isPending || createClient.isPending}
+                disabled={createSubmission.isPending}
               >
-                {createSubmission.isPending || createClient.isPending 
+                {createSubmission.isPending 
                   ? "Submitting..." 
                   : "Submit Campaign for Approval"
                 }
