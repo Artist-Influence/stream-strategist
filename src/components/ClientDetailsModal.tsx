@@ -39,7 +39,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Plus, X, Trash2, Calendar, DollarSign, RefreshCw } from 'lucide-react';
 import { useUpdateClient, useClientCredits, useAddClientCredit } from '@/hooks/useClients';
-import { useCampaignsForClient, useUnassignedCampaigns, useAssignCampaignToClient, useUnassignCampaignFromClient } from '@/hooks/useCampaigns';
+import { useCampaignsForClient, useAllCampaigns, useAssignCampaignToClient, useUnassignCampaignFromClient } from '@/hooks/useCampaigns';
 import { clearBrowserCache } from '@/utils/debugUtils';
 import { APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE } from '@/lib/constants';
 import { Client } from '@/types';
@@ -58,6 +58,11 @@ export function ClientDetailsModal({ client, isOpen, onClose }: ClientDetailsMod
   const [creditAmount, setCreditAmount] = useState('');
   const [creditReason, setCreditReason] = useState('');
   const [selectedCampaign, setSelectedCampaign] = useState('');
+  const [confirmReassign, setConfirmReassign] = useState<{
+    campaignId: string;
+    campaignName: string;
+    currentClientName: string;
+  } | null>(null);
 
   const updateClient = useUpdateClient();
   const addCredit = useAddClientCredit();
@@ -66,15 +71,15 @@ export function ClientDetailsModal({ client, isOpen, onClose }: ClientDetailsMod
 
   const { data: clientCredits = [] } = useClientCredits(client?.id || '');
   const { data: clientCampaigns = [] } = useCampaignsForClient(client?.id || '');
-  const { data: unassignedCampaigns = [], refetch: refetchUnassigned } = useUnassignedCampaigns();
+  const { data: allCampaigns = [], refetch: refetchAllCampaigns } = useAllCampaigns();
 
   // Debug logging when modal opens
   useEffect(() => {
     if (isOpen && client) {
       console.log('🔧 ClientDetailsModal opened for:', client.name);
-      console.log('🔧 Unassigned campaigns:', unassignedCampaigns);
+      console.log('🔧 All campaigns:', allCampaigns);
       console.log('🔧 Filtering for:', { source: APP_CAMPAIGN_SOURCE, type: APP_CAMPAIGN_TYPE });
-      refetchUnassigned(); // Force fresh fetch
+      refetchAllCampaigns(); // Force fresh fetch
     }
   }, [isOpen, client]);
 
@@ -144,14 +149,46 @@ export function ClientDetailsModal({ client, isOpen, onClose }: ClientDetailsMod
   const handleAssignCampaign = async () => {
     if (!client || !selectedCampaign) return;
     
+    const selectedCampaignData = allCampaigns.find(c => c.id === selectedCampaign);
+    if (!selectedCampaignData) return;
+    
+    // Check if campaign is already assigned to another client
+    if (selectedCampaignData.client_id && selectedCampaignData.client_id !== client.id) {
+      setConfirmReassign({
+        campaignId: selectedCampaign,
+        campaignName: selectedCampaignData.name,
+        currentClientName: selectedCampaignData.clients?.name || 'Unknown Client'
+      });
+      return;
+    }
+    
+    // Campaign is unassigned or already assigned to this client, proceed directly
     try {
       await assignCampaign.mutateAsync({
         campaignId: selectedCampaign,
         clientId: client.id,
+        previousClientId: selectedCampaignData.client_id || undefined,
       });
       setSelectedCampaign('');
     } catch (error) {
       console.error('Error assigning campaign:', error);
+    }
+  };
+  
+  const handleConfirmReassign = async () => {
+    if (!client || !confirmReassign) return;
+    
+    try {
+      await assignCampaign.mutateAsync({
+        campaignId: confirmReassign.campaignId,
+        clientId: client.id,
+        previousClientId: allCampaigns.find(c => c.id === confirmReassign.campaignId)?.client_id || undefined,
+      });
+      setSelectedCampaign('');
+      setConfirmReassign(null);
+    } catch (error) {
+      console.error('Error reassigning campaign:', error);
+      setConfirmReassign(null);
     }
   };
 
@@ -351,24 +388,56 @@ export function ClientDetailsModal({ client, isOpen, onClose }: ClientDetailsMod
               <h3 className="text-lg font-semibold">Campaigns ({clientCampaigns.length})</h3>
               
               <div className="flex gap-2">
-                {unassignedCampaigns.length > 0 ? (
+                {allCampaigns.length > 0 ? (
                   <>
                     <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
-                      <SelectTrigger className="w-48">
-                        <SelectValue placeholder="Select campaign" />
+                      <SelectTrigger className="w-64">
+                        <SelectValue placeholder="Select campaign to assign" />
                       </SelectTrigger>
-                       <SelectContent className="bg-background border z-50">
-                         {unassignedCampaigns
-                           .filter(campaign => 
-                             campaign.source === APP_CAMPAIGN_SOURCE && 
-                             campaign.campaign_type === APP_CAMPAIGN_TYPE
-                           )
-                           .map((campaign) => (
-                             <SelectItem key={campaign.id} value={campaign.id}>
-                               {campaign.name} ({campaign.source}/{campaign.campaign_type})
-                             </SelectItem>
-                           ))}
-                       </SelectContent>
+                      <SelectContent className="bg-background border z-50">
+                        {allCampaigns
+                          .filter(campaign => 
+                            campaign.source === APP_CAMPAIGN_SOURCE && 
+                            campaign.campaign_type === APP_CAMPAIGN_TYPE
+                          )
+                          .map((campaign) => {
+                            const isUnassigned = !campaign.client_id;
+                            const isAssignedToCurrentClient = campaign.client_id === client?.id;
+                            const isAssignedToOtherClient = campaign.client_id && campaign.client_id !== client?.id;
+                            
+                            return (
+                              <SelectItem 
+                                key={campaign.id} 
+                                value={campaign.id}
+                                disabled={isAssignedToCurrentClient}
+                                className={
+                                  isUnassigned 
+                                    ? "text-green-600" 
+                                    : isAssignedToOtherClient 
+                                    ? "text-orange-600" 
+                                    : "text-muted-foreground"
+                                }
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span>
+                                    {isUnassigned && "✅"}
+                                    {isAssignedToOtherClient && "🔄"}
+                                    {isAssignedToCurrentClient && "✓"}
+                                  </span>
+                                  <span>{campaign.name}</span>
+                                  {isAssignedToOtherClient && (
+                                    <span className="text-xs text-muted-foreground">
+                                      (assigned to {campaign.clients?.name || 'Unknown'})
+                                    </span>
+                                  )}
+                                  {isAssignedToCurrentClient && (
+                                    <span className="text-xs text-muted-foreground">(already assigned)</span>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
+                      </SelectContent>
                     </Select>
                     <Button 
                       onClick={handleAssignCampaign}
@@ -376,18 +445,21 @@ export function ClientDetailsModal({ client, isOpen, onClose }: ClientDetailsMod
                       size="sm"
                     >
                       <Plus className="h-4 w-4 mr-2" />
-                      Assign
+                      {allCampaigns.find(c => c.id === selectedCampaign)?.client_id && 
+                       allCampaigns.find(c => c.id === selectedCampaign)?.client_id !== client?.id
+                        ? 'Reassign' 
+                        : 'Assign'}
                     </Button>
                   </>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No unassigned campaigns available</p>
+                  <p className="text-sm text-muted-foreground">No campaigns available</p>
                 )}
                 
                 {/* Debug button - remove after fixing */}
                 <Button 
                   onClick={() => {
                     clearBrowserCache();
-                    refetchUnassigned();
+                    refetchAllCampaigns();
                     window.location.reload();
                   }}
                   variant="outline"
@@ -462,6 +534,27 @@ export function ClientDetailsModal({ client, isOpen, onClose }: ClientDetailsMod
           </div>
         </div>
       </DialogContent>
+      
+      {/* Reassignment Confirmation Dialog */}
+      <AlertDialog open={!!confirmReassign} onOpenChange={() => setConfirmReassign(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reassign Campaign</AlertDialogTitle>
+            <AlertDialogDescription>
+              Campaign "{confirmReassign?.campaignName}" is currently assigned to "{confirmReassign?.currentClientName}".
+              <br />
+              <br />
+              Are you sure you want to reassign it to "{client?.name}"?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmReassign(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmReassign}>
+              Reassign Campaign
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

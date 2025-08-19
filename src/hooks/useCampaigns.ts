@@ -57,6 +57,42 @@ export function useCampaignsForClient(clientId: string) {
   });
 }
 
+export function useAllCampaigns() {
+  return useQuery({
+    queryKey: ['campaigns', 'all', APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE],
+    queryFn: async () => {
+      logCurrentProject();
+      
+      const { data, error } = await supabase
+        .from('campaigns')
+        .select(`
+          *,
+          clients!campaigns_client_id_fkey(name)
+        `)
+        .eq('source', APP_CAMPAIGN_SOURCE)
+        .eq('campaign_type', APP_CAMPAIGN_TYPE)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('❌ Error fetching campaigns:', error);
+        throw error;
+      }
+      
+      console.log('✅ Fetched all campaigns:', data);
+      
+      // Validate we're getting the right project data
+      const isValid = validateCampaignData(data);
+      if (!isValid) {
+        console.error('❌ WRONG PROJECT DATA - Clear browser cache and refresh!');
+      }
+      
+      return data as (Campaign & { clients?: { name: string } | null })[];
+    },
+    staleTime: 0, // Force fresh fetch
+    gcTime: 0, // Don't cache
+  });
+}
+
 export function useUnassignedCampaigns() {
   return useQuery({
     queryKey: ['campaigns', 'unassigned', APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE],
@@ -95,23 +131,43 @@ export function useAssignCampaignToClient() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ campaignId, clientId }: { campaignId: string; clientId: string }) => {
+    mutationFn: async ({ 
+      campaignId, 
+      clientId, 
+      previousClientId 
+    }: { 
+      campaignId: string; 
+      clientId: string; 
+      previousClientId?: string;
+    }) => {
       const { data, error } = await supabase
         .from('campaigns')
         .update({ client_id: clientId })
         .eq('id', campaignId)
-        .select()
+        .select(`
+          *,
+          clients!campaigns_client_id_fkey(name)
+        `)
         .single();
       
       if (error) throw error;
-      return data;
+      return { data, previousClientId };
     },
-    onSuccess: (_, variables) => {
+    onSuccess: ({ data, previousClientId }, variables) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['campaigns', 'client', variables.clientId] });
       queryClient.invalidateQueries({ queryKey: ['campaigns', 'unassigned', APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE] });
+      queryClient.invalidateQueries({ queryKey: ['campaigns', 'all', APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE] });
+      if (previousClientId) {
+        queryClient.invalidateQueries({ queryKey: ['campaigns', 'client', previousClientId] });
+      }
       queryClient.invalidateQueries({ queryKey: ['clients'] });
-      toast({ title: 'Campaign assigned successfully' });
+      
+      if (previousClientId) {
+        toast({ title: `Campaign reassigned successfully` });
+      } else {
+        toast({ title: 'Campaign assigned successfully' });
+      }
     },
     onError: (error) => {
       toast({ 
