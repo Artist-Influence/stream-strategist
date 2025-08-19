@@ -18,7 +18,8 @@ import {
   X,
   Key,
   LogOut,
-  User
+  User,
+  Users
 } from "lucide-react";
 import SpotifySettingsModal from "./SpotifySettingsModal";
 
@@ -50,6 +51,12 @@ const navItems = [
     href: "/campaigns",
     icon: History,
     hotkey: "Ctrl+4"
+  },
+  {
+    title: "Clients",
+    href: "/clients",
+    icon: Users,
+    hotkey: "Ctrl+5"
   },
 ];
 
@@ -89,6 +96,10 @@ export default function Layout({ children }: LayoutProps) {
           case '4':
             e.preventDefault();
             window.location.href = '/campaigns';
+            break;
+          case '5':
+            e.preventDefault();
+            window.location.href = '/clients';
             break;
         }
       }
@@ -216,6 +227,12 @@ export default function Layout({ children }: LayoutProps) {
                     <span className="flex justify-between w-full">
                       <span>View Campaigns</span>
                       <kbd className="text-xs bg-muted px-1 rounded">Ctrl+4</kbd>
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled>
+                    <span className="flex justify-between w-full">
+                      <span>Clients</span>
+                      <kbd className="text-xs bg-muted px-1 rounded">Ctrl+5</kbd>
                     </span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
