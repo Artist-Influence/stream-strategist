@@ -81,7 +81,7 @@ interface Campaign {
   playlists?: Array<{ name: string; url?: string; vendor_name?: string }>;
 }
 
-type SortField = 'name' | 'client' | 'budget' | 'stream_goal' | 'daily_streams' | 'weekly_streams' | 'start_date' | 'progress';
+type SortField = 'name' | 'client' | 'budget' | 'stream_goal' | 'daily_streams' | 'weekly_streams' | 'start_date' | 'progress' | 'status';
 type SortDirection = 'asc' | 'desc';
 
 export default function CampaignHistory() {
@@ -674,7 +674,11 @@ export default function CampaignHistory() {
                         Client {getSortIcon('client')}
                       </Button>
                     </TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('status')} className="h-auto p-0 hover:bg-transparent">
+                        Status {getSortIcon('status')}
+                      </Button>
+                    </TableHead>
                     <TableHead>
                       <Button variant="ghost" onClick={() => handleSort('budget')} className="h-auto p-0 hover:bg-transparent">
                         Budget {getSortIcon('budget')}
@@ -813,33 +817,6 @@ export default function CampaignHistory() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleViewDetails(campaign.id)}>
-                                <Eye className="w-4 h-4 mr-2" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleEditCampaign(campaign.id)}>
-                                <Edit className="w-4 h-4 mr-2" />
-                                Edit Campaign
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Copy className="w-4 h-4 mr-2" />
-                                Duplicate
-                              </DropdownMenuItem>
-                              {campaign.status === 'active' ? (
-                                <DropdownMenuItem 
-                                  onClick={() => handleStatusChange(campaign.id, 'paused')}
-                                >
-                                  <Pause className="w-4 h-4 mr-2" />
-                                  Pause
-                                </DropdownMenuItem>
-                              ) : campaign.status === 'paused' ? (
-                                <DropdownMenuItem 
-                                  onClick={() => handleStatusChange(campaign.id, 'active')}
-                                >
-                                  <Play className="w-4 h-4 mr-2" />
-                                  Resume
-                                </DropdownMenuItem>
-                              ) : null}
                               <DropdownMenuItem 
                                 className="text-destructive"
                                 onClick={() => handleDelete(campaign.id)}
