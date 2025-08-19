@@ -418,7 +418,7 @@ export default function CampaignHistory() {
     const performanceRatio = progressPercent / Math.max(expectedProgressPercent, 1);
     
     if (performanceRatio >= 1.2) return { label: 'High Performer', color: 'text-accent' };
-    if (performanceRatio >= 0.8) return { label: 'On Track', color: 'text-primary' };
+    if (performanceRatio >= 0.8) return { label: 'On Track', color: 'text-purple' };
     return { label: 'Under Performing', color: 'text-destructive' };
   };
 
@@ -746,11 +746,11 @@ export default function CampaignHistory() {
                           <div className="flex flex-col items-center space-y-2">
                             <StatusBadge status={campaign.status} />
                             {getCampaignPerformanceStatus(campaign) && (
-                              <div className={`w-3 h-3 rounded-full animate-pulse ${
+                               <div className={`w-3 h-3 rounded-full animate-pulse ${
                                 getCampaignPerformanceStatus(campaign)?.color === 'text-accent' 
                                   ? 'bg-accent shadow-[0_0_8px_rgba(34,197,94,0.6)]' :
-                                getCampaignPerformanceStatus(campaign)?.color === 'text-primary' 
-                                  ? 'bg-primary shadow-[0_0_8px_rgba(99,102,241,0.6)]' :
+                                getCampaignPerformanceStatus(campaign)?.color === 'text-purple' 
+                                  ? 'bg-purple shadow-[0_0_8px_rgba(168,85,247,0.6)]' :
                                   'bg-destructive shadow-[0_0_8px_rgba(239,68,68,0.6)]'
                               }`}></div>
                             )}
