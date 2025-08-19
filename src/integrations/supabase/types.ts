@@ -14,6 +14,68 @@ export type Database = {
   }
   public: {
     Tables: {
+      campaign_creators: {
+        Row: {
+          approval_notes: string | null
+          approval_status: string
+          campaign_id: string
+          created_at: string
+          creator_id: string
+          due_date: string | null
+          id: string
+          instagram_handle: string
+          payment_notes: string | null
+          payment_status: string
+          post_status: string
+          post_type: string
+          posts_count: number
+          rate: number
+          updated_at: string
+        }
+        Insert: {
+          approval_notes?: string | null
+          approval_status?: string
+          campaign_id: string
+          created_at?: string
+          creator_id: string
+          due_date?: string | null
+          id?: string
+          instagram_handle: string
+          payment_notes?: string | null
+          payment_status?: string
+          post_status?: string
+          post_type?: string
+          posts_count?: number
+          rate?: number
+          updated_at?: string
+        }
+        Update: {
+          approval_notes?: string | null
+          approval_status?: string
+          campaign_id?: string
+          created_at?: string
+          creator_id?: string
+          due_date?: string | null
+          id?: string
+          instagram_handle?: string
+          payment_notes?: string | null
+          payment_status?: string
+          post_status?: string
+          post_type?: string
+          posts_count?: number
+          rate?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_creators_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           allocated_streams: number | null
