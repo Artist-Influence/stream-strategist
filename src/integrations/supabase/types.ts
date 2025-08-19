@@ -79,6 +79,51 @@ export type Database = {
           },
         ]
       }
+      campaign_posts: {
+        Row: {
+          campaign_id: string
+          content_description: string | null
+          created_at: string
+          creator_id: string | null
+          id: string
+          instagram_handle: string
+          post_type: string
+          post_url: string
+          posted_at: string | null
+          status: string
+          thumbnail_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          content_description?: string | null
+          created_at?: string
+          creator_id?: string | null
+          id?: string
+          instagram_handle: string
+          post_type?: string
+          post_url: string
+          posted_at?: string | null
+          status?: string
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          content_description?: string | null
+          created_at?: string
+          creator_id?: string | null
+          id?: string
+          instagram_handle?: string
+          post_type?: string
+          post_url?: string
+          posted_at?: string | null
+          status?: string
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       campaign_submissions: {
         Row: {
           approved_at: string | null
@@ -484,6 +529,92 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      post_analytics: {
+        Row: {
+          comments: number | null
+          created_at: string
+          engagement_rate: number | null
+          id: string
+          likes: number | null
+          post_id: string
+          recorded_at: string
+          saves: number | null
+          shares: number | null
+          views: number | null
+        }
+        Insert: {
+          comments?: number | null
+          created_at?: string
+          engagement_rate?: number | null
+          id?: string
+          likes?: number | null
+          post_id: string
+          recorded_at?: string
+          saves?: number | null
+          shares?: number | null
+          views?: number | null
+        }
+        Update: {
+          comments?: number | null
+          created_at?: string
+          engagement_rate?: number | null
+          id?: string
+          likes?: number | null
+          post_id?: string
+          recorded_at?: string
+          saves?: number | null
+          shares?: number | null
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_analytics_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salespeople: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          phone: string | null
+          total_approved: number | null
+          total_revenue: number | null
+          total_submissions: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          phone?: string | null
+          total_approved?: number | null
+          total_revenue?: number | null
+          total_submissions?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          phone?: string | null
+          total_approved?: number | null
+          total_revenue?: number | null
+          total_submissions?: number | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       tags: {
         Row: {

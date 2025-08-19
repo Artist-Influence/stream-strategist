@@ -21,6 +21,7 @@ import {
   Users
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { SalespeopleManager } from "@/components/SalespeopleManager";
 
 interface DashboardStats {
   totalCampaigns: number;
@@ -357,6 +358,44 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+      </section>
+
+      {/* Salespeople Management Section */}
+      <section className="container mx-auto px-6 pb-12">
+        <SalespeopleManager />
+      </section>
+
+      {/* Public Intake Form Link */}
+      <section className="container mx-auto px-6 pb-12">
+        <Card className="max-w-2xl mx-auto text-center">
+          <CardContent className="p-8">
+            <div className="flex items-center justify-center w-16 h-16 bg-primary/20 rounded-lg mb-4 mx-auto">
+              <Plus className="w-8 h-8 text-primary" />
+            </div>
+            <h3 className="text-xl font-semibold text-foreground mb-2">Campaign Intake Form</h3>
+            <p className="text-muted-foreground mb-4">
+              Share this link with salespeople to submit new campaigns for approval
+            </p>
+            <div className="bg-muted p-3 rounded-lg mb-4">
+              <code className="text-sm text-foreground">
+                {window.location.origin}/campaign-intake
+              </code>
+            </div>
+            <div className="flex gap-2 justify-center">
+              <Button
+                onClick={() => navigator.clipboard.writeText(`${window.location.origin}/campaign-intake`)}
+                variant="outline"
+              >
+                Copy Link
+              </Button>
+              <Button asChild>
+                <Link to="/campaign-intake" target="_blank">
+                  Open Form
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </section>
     </div>
   );

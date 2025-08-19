@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useClients } from '@/hooks/useClients';
 import { useCreateClient } from '@/hooks/useClients';
 import { useCreateCampaignSubmission } from '@/hooks/useCampaignSubmissions';
+import { useSalespeople } from '@/hooks/useSalespeople';
 
 interface FormData {
   client_name: string;
@@ -21,17 +22,9 @@ interface FormData {
   salesperson: string;
 }
 
-const SALESPEOPLE = [
-  'Sarah Johnson',
-  'Mike Chen',
-  'Alex Rodriguez',
-  'Emma Thompson',
-  'David Kim',
-  'Other'
-];
-
 export default function CampaignIntakePage() {
   const [isNewClient, setIsNewClient] = useState(false);
+  const [customSalesperson, setCustomSalesperson] = useState('');
   const [formData, setFormData] = useState<FormData>({
     client_name: '',
     client_emails: '',
@@ -45,6 +38,7 @@ export default function CampaignIntakePage() {
   });
 
   const { data: clients = [] } = useClients();
+  const { data: salespeople = [] } = useSalespeople();
   const createClient = useCreateClient();
   const createSubmission = useCreateCampaignSubmission();
 
@@ -82,6 +76,8 @@ export default function CampaignIntakePage() {
         .slice(0, 5);
 
       // Create campaign submission
+      const finalSalesperson = formData.salesperson === 'Other' ? customSalesperson : formData.salesperson;
+      
       await createSubmission.mutateAsync({
         client_name: formData.client_name,
         client_emails: emailArray,
@@ -91,7 +87,7 @@ export default function CampaignIntakePage() {
         start_date: formData.start_date,
         track_url: formData.track_url,
         notes: formData.notes,
-        salesperson: formData.salesperson
+        salesperson: finalSalesperson
       });
 
       // Reset form on success
@@ -106,6 +102,7 @@ export default function CampaignIntakePage() {
         notes: '',
         salesperson: ''
       });
+      setCustomSalesperson('');
       setIsNewClient(false);
 
     } catch (error) {
@@ -149,19 +146,35 @@ export default function CampaignIntakePage() {
                 <Label>Salesperson *</Label>
                 <Select 
                   value={formData.salesperson} 
-                  onValueChange={(value) => setFormData({...formData, salesperson: value})}
+                  onValueChange={(value) => {
+                    setFormData({...formData, salesperson: value});
+                    if (value !== 'Other') {
+                      setCustomSalesperson('');
+                    }
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select salesperson" />
                   </SelectTrigger>
                   <SelectContent>
-                    {SALESPEOPLE.map(person => (
-                      <SelectItem key={person} value={person}>
-                        {person}
+                    {salespeople.filter(sp => sp.is_active).map(person => (
+                      <SelectItem key={person.id} value={person.name}>
+                        {person.name}
                       </SelectItem>
                     ))}
+                    <SelectItem value="Other">Other (specify below)</SelectItem>
                   </SelectContent>
                 </Select>
+                
+                {formData.salesperson === 'Other' && (
+                  <Input
+                    className="mt-2"
+                    placeholder="Enter salesperson name"
+                    value={customSalesperson}
+                    onChange={(e) => setCustomSalesperson(e.target.value)}
+                    required
+                  />
+                )}
               </div>
 
               {/* Client Selection */}
