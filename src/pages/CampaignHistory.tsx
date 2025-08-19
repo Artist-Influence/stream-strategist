@@ -55,6 +55,7 @@ import { Link } from "react-router-dom";
 import Papa from "papaparse";
 import { EditCampaignModal } from "@/components/EditCampaignModal";
 import CampaignWeeklyImportModal from "@/components/CampaignWeeklyImportModal";
+import { CampaignDetailsModal } from "@/components/CampaignDetailsModal";
 
 interface Campaign {
   id: string;
@@ -845,89 +846,11 @@ export default function CampaignHistory() {
         </Card>
 
         {/* Campaign Details Modal */}
-        <Dialog open={detailsModal.open} onOpenChange={(open) => setDetailsModal({ open })}>
-          <DialogContent className="max-w-3xl">
-            <DialogHeader>
-              <DialogTitle>{detailsModal.campaign?.name}</DialogTitle>
-            </DialogHeader>
-            
-            {detailsModal.campaign && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Client</Label>
-                    <p className="text-sm">{detailsModal.campaign.client}</p>
-                  </div>
-                  <div>
-                    <Label>Status</Label>
-                    <p className="text-sm capitalize">{detailsModal.campaign.status}</p>
-                  </div>
-                  <div>
-                    <Label>Budget</Label>
-                    <p className="text-sm">${detailsModal.campaign.budget.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <Label>Stream Goal</Label>
-                    <p className="text-sm">{detailsModal.campaign.stream_goal.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <Label>Remaining Streams</Label>
-                    <p className="text-sm">{(detailsModal.campaign.remaining_streams || detailsModal.campaign.stream_goal).toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <Label>Genre</Label>
-                    <p className="text-sm">{detailsModal.campaign.sub_genre}</p>
-                  </div>
-                </div>
-                
-                 <div>
-                   <Label>Track URL</Label>
-                   <a 
-                     href={detailsModal.campaign.track_url} 
-                     target="_blank" 
-                     rel="noopener noreferrer"
-                     className="text-blue-400 hover:underline text-sm block"
-                   >
-                     {detailsModal.campaign.track_url}
-                   </a>
-                 </div>
-                 
-                 {/* PLAYLISTS SECTION */}
-                 <div>
-                   <Label className="text-lg font-semibold mb-3">Campaign Playlists</Label>
-                   <div className="border rounded-lg p-4 bg-card/30">
-                     {detailsModal.campaign.playlists && detailsModal.campaign.playlists.length > 0 ? (
-                       <div className="space-y-2">
-                         {detailsModal.campaign.playlists.map((playlist, idx) => (
-                           <div key={idx} className="flex items-center justify-between p-2 bg-background/50 rounded">
-                              <a 
-                                href={typeof playlist === 'string' ? '#' : (playlist.url || '#')} 
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-400 hover:underline font-medium"
-                              >
-                                {typeof playlist === 'string' ? playlist : playlist.name}
-                              </a>
-                              <Badge variant="secondary">
-                                {typeof playlist === 'string' ? 'Unknown Vendor' : (playlist.vendor_name || 'Unknown Vendor')}
-                              </Badge>
-                           </div>
-                         ))}
-                       </div>
-                     ) : (
-                       <p className="text-muted-foreground text-center py-4">No playlists assigned yet</p>
-                     )}
-                   </div>
-                 </div>
-                 
-                  <div>
-                    <Label>Created</Label>
-                    <p className="text-sm">{new Date(detailsModal.campaign.created_at).toLocaleDateString()}</p>
-                  </div>
-               </div>
-             )}
-           </DialogContent>
-         </Dialog>
+        <CampaignDetailsModal
+          campaign={detailsModal.campaign}
+          open={detailsModal.open}
+          onClose={() => setDetailsModal({ open: false })}
+        />
 
           {/* Edit Campaign Modal */}
           {editModal.campaign && (

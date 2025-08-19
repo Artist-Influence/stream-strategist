@@ -108,7 +108,15 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
           duration_days: formData.duration_days,
           daily_streams: formData.daily_streams,
           weekly_streams: formData.weekly_streams,
-          remaining_streams: formData.remaining_streams
+          remaining_streams: formData.remaining_streams,
+          selected_playlists: formData.playlists.map(playlist => ({
+            id: playlist.id,
+            name: playlist.name,
+            url: playlist.url,
+            vendor_name: playlist.vendor_name || playlist.vendor?.name,
+            genres: playlist.genres,
+            status: 'Pending'
+          }))
         })
         .eq('id', campaign.id)
         .eq('source', 'campaign_manager')
