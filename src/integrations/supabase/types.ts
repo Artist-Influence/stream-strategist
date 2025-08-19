@@ -728,6 +728,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_artist_influence_project_info: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_spotify_token: {
         Args: Record<PropertyKey, never>
         Returns: Json
