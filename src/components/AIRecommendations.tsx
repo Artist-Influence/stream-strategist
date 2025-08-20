@@ -101,10 +101,11 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
     
     setIsAllocating(true);
     
-    // Create vendor caps map
+    // Create vendor caps map - treat zero/missing max_daily_streams as unlimited
     const vendorCaps: Record<string, number> = {};
     vendors.forEach(vendor => {
-      vendorCaps[vendor.id] = vendor.max_daily_streams * campaignData.duration_days;
+      const dailyCapacity = vendor.max_daily_streams || 0;
+      vendorCaps[vendor.id] = dailyCapacity > 0 ? dailyCapacity * campaignData.duration_days : Infinity;
     });
 
     try {
@@ -175,7 +176,10 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
   const projections = calculateProjections(selectedAllocations, playlists || []);
   const validation = validateAllocations(
     selectedAllocations, 
-    vendors?.reduce((acc, v) => ({ ...acc, [v.id]: v.max_daily_streams * campaignData.duration_days }), {}) || {},
+    vendors?.reduce((acc, v) => ({ 
+      ...acc, 
+      [v.id]: (v.max_daily_streams && v.max_daily_streams > 0) ? v.max_daily_streams * campaignData.duration_days : Infinity 
+    }), {}) || {},
     playlists || [],
     campaignData.duration_days,
     vendors || []

@@ -186,10 +186,10 @@ export function validateAllocations(
     byVendor[vendorId] = (byVendor[vendorId] || 0) + a.allocation;
   }
 
-  // Check vendor caps
+  // Check vendor caps - treat zero or missing caps as unlimited
   for (const [vendorId, total] of Object.entries(byVendor)) {
-    const cap = vendorCaps[vendorId] ?? Infinity;
-    if (total > cap) {
+    const cap = (vendorCaps[vendorId] && vendorCaps[vendorId] > 0) ? vendorCaps[vendorId] : Infinity;
+    if (total > cap && cap !== Infinity) {
       const vendorName = vendorMap.get(vendorId) || `Vendor ${vendorId}`;
       errors.push(`${vendorName} has exceeded its capacity (${total.toLocaleString()} > ${cap.toLocaleString()} streams over campaign duration).`);
     }
