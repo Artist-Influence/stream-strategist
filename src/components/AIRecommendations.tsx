@@ -26,8 +26,10 @@ import {
   ExternalLink,
   RefreshCw,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Info
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Vendor, Playlist } from "@/types";
 import { allocateStreams, calculateProjections, GenreMatch, validateAllocations } from "@/lib/allocationAlgorithm";
 
@@ -251,8 +253,22 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Projected Streams</p>
+                    <div className="flex items-center space-x-1">
+                      <p className="text-sm text-muted-foreground">Total Projected Streams</p>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="w-3 h-3 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Total streams over {campaignData.duration_days} days</p>
+                            <p className="text-xs">({Math.round(projections.totalStreams / campaignData.duration_days).toLocaleString()} avg/day)</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                     <p className="text-lg font-semibold">{projections.totalStreams.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">Over {campaignData.duration_days} days</p>
                   </div>
                   <TrendingUp className="w-5 h-5 text-accent" />
                 </div>
@@ -263,7 +279,20 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Coverage</p>
+                    <div className="flex items-center space-x-1">
+                      <p className="text-sm text-muted-foreground">Goal Coverage</p>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="w-3 h-3 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Projected vs. target streams over campaign duration</p>
+                            <p className="text-xs">{projections.totalStreams.toLocaleString()} / {campaignData.stream_goal.toLocaleString()}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                     <p className="text-lg font-semibold">
                       {((projections.totalStreams / campaignData.stream_goal) * 100).toFixed(1)}%
                     </p>
@@ -307,8 +336,36 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                     <TableHead>Playlist</TableHead>
                     <TableHead>Genres</TableHead>
                     <TableHead>Match Score</TableHead>
-                    <TableHead>Daily Streams</TableHead>
-                    <TableHead>Allocation</TableHead>
+                    <TableHead>
+                      <div className="flex items-center space-x-1">
+                        <span>Daily Streams</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Info className="w-3 h-3 text-muted-foreground" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Average daily streams for this playlist</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center space-x-1">
+                        <span>Campaign Total</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Info className="w-3 h-3 text-muted-foreground" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Total streams allocated over {campaignData.duration_days} days</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -416,9 +473,16 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                 </div>
                 
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Projected</span>
+                  <span className="text-sm text-muted-foreground">Projected Total</span>
                   <span className="font-mono text-sm text-primary">
                     {projections.totalStreams.toLocaleString()}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Daily Average</span>
+                  <span className="font-mono text-sm text-muted-foreground">
+                    {Math.round(projections.totalStreams / campaignData.duration_days).toLocaleString()}
                   </span>
                 </div>
                 
