@@ -31,7 +31,7 @@ export function logCurrentProject() {
   console.log('🔍 Current Supabase Project Details:');
   console.log('Project ID: mwtrdhnctzasddbeilwm');
   console.log('URL: https://mwtrdhnctzasddbeilwm.supabase.co');
-  console.log('Expected: Music promotion campaigns, NOT Instagram seeding');
+  console.log('Expected: Instagram promotion campaigns, NOT Spotify campaigns');
 }
 
 export function validateCampaignData(campaigns: any[]) {
@@ -40,9 +40,9 @@ export function validateCampaignData(campaigns: any[]) {
     return true;
   }
   
-  // Check for wrong source/campaign_type
+  // Check for wrong source/campaign_type - expecting Instagram campaigns from campaign_manager/campaign_intake
   const wrongSource = campaigns.filter(campaign => 
-    campaign.source !== 'campaign_manager' || campaign.campaign_type !== 'spotify'
+    !['campaign_manager', 'campaign_intake'].includes(campaign.source) || campaign.campaign_type !== 'instagram'
   );
   
   if (wrongSource.length > 0) {
@@ -53,23 +53,25 @@ export function validateCampaignData(campaigns: any[]) {
     return false;
   }
   
-  // Check for suspicious keywords (legacy check)
-  const suspiciousKeywords = ['instagram', 'seeding', 'influencer', 'tiktok', 'social'];
+  // Check for suspicious Spotify keywords (indicating wrong project data)
+  const suspiciousKeywords = ['spotify', 'streams', 'playlist', 'artist_influence_spotify'];
   const suspicious = campaigns.filter(campaign => 
     suspiciousKeywords.some(keyword => 
-      campaign.name?.toLowerCase().includes(keyword)
+      campaign.name?.toLowerCase().includes(keyword) || 
+      campaign.source?.toLowerCase().includes(keyword) ||
+      campaign.campaign_type?.toLowerCase().includes(keyword)
     )
   );
   
   if (suspicious.length > 0) {
-    console.warn('⚠️ SUSPICIOUS CAMPAIGN NAMES DETECTED:');
-    console.warn('Found campaigns with Instagram-related keywords:');
+    console.warn('⚠️ SUSPICIOUS CAMPAIGN DATA DETECTED:');
+    console.warn('Found campaigns with Spotify-related keywords (wrong project data):');
     suspicious.forEach(campaign => {
-      console.warn(`- ${campaign.name} (ID: ${campaign.id})`);
+      console.warn(`- ${campaign.name} (ID: ${campaign.id}) - Source: ${campaign.source}, Type: ${campaign.campaign_type}`);
     });
     return false;
   }
   
-  console.log('✅ Campaign data appears correct for music promotion project');
+  console.log('✅ Campaign data appears correct for Instagram promotion project');
   return true;
 }

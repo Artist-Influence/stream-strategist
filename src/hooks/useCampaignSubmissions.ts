@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE } from '@/lib/constants';
+import { APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_SOURCE_INTAKE, APP_CAMPAIGN_TYPE } from '@/lib/constants';
 
 interface CampaignSubmission {
   id: string;
@@ -135,7 +135,7 @@ export function useApproveCampaignSubmission() {
           track_url: submission.track_url,
           description: submission.notes || '',
           salesperson: submission.salesperson,
-          source: APP_CAMPAIGN_SOURCE,
+          source: APP_CAMPAIGN_SOURCE_INTAKE,
           campaign_type: APP_CAMPAIGN_TYPE,
           status: 'active'
         }]);

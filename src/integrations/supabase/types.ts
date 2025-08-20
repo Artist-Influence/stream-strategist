@@ -1053,6 +1053,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      get_instagram_campaign_project_info: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_public_campaign_by_token: {
         Args: { token_param: string }
         Returns: {

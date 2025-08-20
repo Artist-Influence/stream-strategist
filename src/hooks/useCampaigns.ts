@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { logCurrentProject, validateCampaignData } from '@/utils/debugUtils';
-import { APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE } from '@/lib/constants';
+import { APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_SOURCE_INTAKE, APP_CAMPAIGN_TYPE } from '@/lib/constants';
 
 export interface Campaign {
   id: string;
@@ -28,7 +28,7 @@ export function useCampaigns() {
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
-        .eq('source', APP_CAMPAIGN_SOURCE)
+        .in('source', [APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_SOURCE_INTAKE])
         .eq('campaign_type', APP_CAMPAIGN_TYPE)
         .order('created_at', { ascending: false });
       
@@ -46,7 +46,7 @@ export function useCampaignsForClient(clientId: string) {
         .from('campaigns')
         .select('*')
         .eq('client_id', clientId)
-        .eq('source', APP_CAMPAIGN_SOURCE)
+        .in('source', [APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_SOURCE_INTAKE])
         .eq('campaign_type', APP_CAMPAIGN_TYPE)
         .order('created_at', { ascending: false });
       
@@ -69,7 +69,7 @@ export function useAllCampaigns() {
           *,
           clients!campaigns_client_id_fkey(name)
         `)
-        .eq('source', APP_CAMPAIGN_SOURCE)
+        .in('source', [APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_SOURCE_INTAKE])
         .eq('campaign_type', APP_CAMPAIGN_TYPE)
         .order('created_at', { ascending: false });
       
@@ -103,7 +103,7 @@ export function useUnassignedCampaigns() {
         .from('campaigns')
         .select('*')
         .is('client_id', null)
-        .eq('source', APP_CAMPAIGN_SOURCE)
+        .in('source', [APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_SOURCE_INTAKE])
         .eq('campaign_type', APP_CAMPAIGN_TYPE)
         .order('created_at', { ascending: false });
       
