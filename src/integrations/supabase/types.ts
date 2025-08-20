@@ -14,6 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
+      algorithm_learning_log: {
+        Row: {
+          algorithm_version: string | null
+          campaign_id: string | null
+          confidence_score: number | null
+          created_at: string
+          decision_data: Json | null
+          decision_type: string
+          id: string
+          input_data: Json | null
+          performance_impact: number | null
+        }
+        Insert: {
+          algorithm_version?: string | null
+          campaign_id?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          decision_data?: Json | null
+          decision_type: string
+          id?: string
+          input_data?: Json | null
+          performance_impact?: number | null
+        }
+        Update: {
+          algorithm_version?: string | null
+          campaign_id?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          decision_data?: Json | null
+          decision_type?: string
+          id?: string
+          input_data?: Json | null
+          performance_impact?: number | null
+        }
+        Relationships: []
+      }
+      campaign_allocations_performance: {
+        Row: {
+          actual_cost_per_stream: number | null
+          actual_streams: number | null
+          allocated_streams: number
+          campaign_id: string
+          completed_at: string | null
+          cost_per_stream: number | null
+          created_at: string
+          id: string
+          performance_score: number | null
+          playlist_id: string
+          predicted_streams: number
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          actual_cost_per_stream?: number | null
+          actual_streams?: number | null
+          allocated_streams: number
+          campaign_id: string
+          completed_at?: string | null
+          cost_per_stream?: number | null
+          created_at?: string
+          id?: string
+          performance_score?: number | null
+          playlist_id: string
+          predicted_streams: number
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          actual_cost_per_stream?: number | null
+          actual_streams?: number | null
+          allocated_streams?: number
+          campaign_id?: string
+          completed_at?: string | null
+          cost_per_stream?: number | null
+          created_at?: string
+          id?: string
+          performance_score?: number | null
+          playlist_id?: string
+          predicted_streams?: number
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: []
+      }
       campaign_creators: {
         Row: {
           approval_notes: string | null
@@ -458,6 +542,39 @@ export type Database = {
         }
         Relationships: []
       }
+      genre_correlation_matrix: {
+        Row: {
+          avg_performance_lift: number | null
+          correlation_score: number | null
+          genre_a: string
+          genre_b: string
+          id: string
+          last_updated: string | null
+          sample_size: number | null
+          success_rate: number | null
+        }
+        Insert: {
+          avg_performance_lift?: number | null
+          correlation_score?: number | null
+          genre_a: string
+          genre_b: string
+          id?: string
+          last_updated?: string | null
+          sample_size?: number | null
+          success_rate?: number | null
+        }
+        Update: {
+          avg_performance_lift?: number | null
+          correlation_score?: number | null
+          genre_a?: string
+          genre_b?: string
+          id?: string
+          last_updated?: string | null
+          sample_size?: number | null
+          success_rate?: number | null
+        }
+        Relationships: []
+      }
       performance_entries: {
         Row: {
           campaign_id: string | null
@@ -506,6 +623,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      playlist_performance_history: {
+        Row: {
+          avg_daily_streams: number
+          campaign_id: string | null
+          created_at: string
+          genre_match_score: number | null
+          id: string
+          peak_streams: number | null
+          performance_trend: string | null
+          period_end: string
+          period_start: string
+          playlist_id: string
+          reliability_score: number | null
+        }
+        Insert: {
+          avg_daily_streams?: number
+          campaign_id?: string | null
+          created_at?: string
+          genre_match_score?: number | null
+          id?: string
+          peak_streams?: number | null
+          performance_trend?: string | null
+          period_end: string
+          period_start: string
+          playlist_id: string
+          reliability_score?: number | null
+        }
+        Update: {
+          avg_daily_streams?: number
+          campaign_id?: string | null
+          created_at?: string
+          genre_match_score?: number | null
+          id?: string
+          peak_streams?: number | null
+          performance_trend?: string | null
+          period_end?: string
+          period_start?: string
+          playlist_id?: string
+          reliability_score?: number | null
+        }
+        Relationships: []
       }
       playlists: {
         Row: {
@@ -676,6 +835,48 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      vendor_reliability_scores: {
+        Row: {
+          cost_efficiency: number | null
+          created_at: string
+          delivery_consistency: number | null
+          id: string
+          last_updated: string | null
+          quality_score: number | null
+          response_time_hours: number | null
+          stream_accuracy: number | null
+          successful_campaigns: number | null
+          total_campaigns: number | null
+          vendor_id: string
+        }
+        Insert: {
+          cost_efficiency?: number | null
+          created_at?: string
+          delivery_consistency?: number | null
+          id?: string
+          last_updated?: string | null
+          quality_score?: number | null
+          response_time_hours?: number | null
+          stream_accuracy?: number | null
+          successful_campaigns?: number | null
+          total_campaigns?: number | null
+          vendor_id: string
+        }
+        Update: {
+          cost_efficiency?: number | null
+          created_at?: string
+          delivery_consistency?: number | null
+          id?: string
+          last_updated?: string | null
+          quality_score?: number | null
+          response_time_hours?: number | null
+          stream_accuracy?: number | null
+          successful_campaigns?: number | null
+          total_campaigns?: number | null
+          vendor_id?: string
         }
         Relationships: []
       }
@@ -895,6 +1096,14 @@ export type Database = {
       }
       update_playlist_avg_streams: {
         Args: { playlist_uuid: string }
+        Returns: undefined
+      }
+      update_playlist_reliability_score: {
+        Args: { playlist_uuid: string }
+        Returns: undefined
+      }
+      update_vendor_reliability_scores: {
+        Args: Record<PropertyKey, never>
         Returns: undefined
       }
     }
