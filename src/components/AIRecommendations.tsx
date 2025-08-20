@@ -162,10 +162,12 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
     }
     
     // Create manual allocation for selected playlists without automatic allocation
+    // Default allocation should be campaign total (daily streams * duration)
+    const defaultCampaignTotal = Math.min(1000 * campaignData.duration_days, (playlist?.avg_daily_streams || 100) * campaignData.duration_days);
     return {
       playlist_id: playlistId,
       vendor_id: vendor?.id || '',
-      allocation: manualAllocations[playlistId] || Math.min(1000, playlist?.avg_daily_streams || 100)
+      allocation: manualAllocations[playlistId] || defaultCampaignTotal
     };
   }).filter(a => a.vendor_id); // Filter out invalid allocations
   const projections = calculateProjections(selectedAllocations, playlists || []);
@@ -433,7 +435,7 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                           {isSelected && (
                             <Input
                               type="number"
-                              value={manualAllocations[playlist.id] || (allocation?.allocation) || Math.min(1000, playlist.avg_daily_streams || 100)}
+                              value={manualAllocations[playlist.id] || (allocation?.allocation) || Math.min(1000 * campaignData.duration_days, (playlist.avg_daily_streams || 100) * campaignData.duration_days)}
                               onChange={(e) => updateManualAllocation(playlist.id, parseInt(e.target.value) || 0)}
                               className="w-20 h-8 text-xs"
                               placeholder="Streams"
