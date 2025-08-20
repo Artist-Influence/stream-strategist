@@ -4,6 +4,7 @@ import CampaignConfiguration from "@/components/CampaignConfiguration";
 import AIRecommendations from "@/components/AIRecommendations";
 import CampaignReview from "@/components/CampaignReview";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Circle } from "lucide-react";
@@ -13,7 +14,9 @@ type CampaignStep = "configuration" | "recommendations" | "review" | "complete";
 interface CampaignData {
   name: string;
   client: string;
+  client_id?: string;
   track_url: string;
+  track_name?: string;
   stream_goal: number;
   budget: number;
   sub_genre: string;
@@ -33,6 +36,7 @@ export default function CampaignBuilder() {
   const [allocationsData, setAllocationsData] = useState<any>(null);
 
   const handleConfigurationNext = (data: CampaignData) => {
+    console.log('CampaignBuilder received data:', data);
     setCampaignData(data);
     setCurrentStep("recommendations");
   };
@@ -124,12 +128,25 @@ export default function CampaignBuilder() {
             />
           )}
           
-          {currentStep === "recommendations" && campaignData.stream_goal && (
+          {currentStep === "recommendations" && campaignData.stream_goal && campaignData.sub_genre && (
             <AIRecommendations
               campaignData={campaignData as CampaignData}
               onNext={handleRecommendationsNext}
               onBack={handleBack}
             />
+          )}
+          
+          {currentStep === "recommendations" && (!campaignData.stream_goal || !campaignData.sub_genre) && (
+            <div className="max-w-4xl mx-auto">
+              <Card className="bg-card/50 border-border/50">
+                <CardContent className="p-8 text-center">
+                  <p className="text-muted-foreground">Missing campaign data. Please go back and complete the configuration.</p>
+                  <Button variant="outline" onClick={handleBack} className="mt-4">
+                    Back to Configuration
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
           )}
           
           {currentStep === "review" && campaignData.stream_goal && allocationsData && (

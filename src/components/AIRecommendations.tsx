@@ -33,9 +33,15 @@ import { allocateStreams, calculateProjections, GenreMatch, validateAllocations 
 
 interface AIRecommendationsProps {
   campaignData: {
+    name: string;
+    client: string;
+    client_id?: string;
+    track_url: string;
+    track_name?: string;
     stream_goal: number;
     budget: number;
     sub_genre: string;
+    start_date: string;
     duration_days: number;
   };
   onNext: (allocations: any) => void;
