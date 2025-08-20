@@ -224,6 +224,7 @@ export type Database = {
           client_name: string
           content_types: string[] | null
           created_at: string
+          duration_days: number | null
           id: string
           music_genres: string[] | null
           notes: string | null
@@ -244,6 +245,7 @@ export type Database = {
           client_name: string
           content_types?: string[] | null
           created_at?: string
+          duration_days?: number | null
           id?: string
           music_genres?: string[] | null
           notes?: string | null
@@ -264,6 +266,7 @@ export type Database = {
           client_name?: string
           content_types?: string[] | null
           created_at?: string
+          duration_days?: number | null
           id?: string
           music_genres?: string[] | null
           notes?: string | null

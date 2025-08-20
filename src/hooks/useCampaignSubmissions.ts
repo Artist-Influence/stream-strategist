@@ -131,6 +131,56 @@ export function useApproveCampaignSubmission() {
         clientId = newClient.id;
       }
 
+      // Run allocation algorithm to generate playlist recommendations for Spotify campaigns
+      const { data: playlists } = await supabase
+        .from('playlists')
+        .select(`
+          *,
+          vendor:vendors(*)
+        `);
+
+      const { data: vendors } = await supabase
+        .from('vendors')
+        .select('*')
+        .eq('is_active', true);
+
+      let algorithmRecommendations = {};
+
+      if (playlists && playlists.length > 0 && vendors && vendors.length > 0) {
+        // Import the allocation algorithm
+        const { allocateStreams } = await import('@/lib/allocationAlgorithm');
+        
+        // Build vendor caps (assume max daily streams * duration for simplicity)
+        const vendorCaps: Record<string, number> = {};
+        vendors.forEach(vendor => {
+          const vendorPlaylists = playlists.filter(p => p.vendor_id === vendor.id);
+          const totalCapacity = vendorPlaylists.reduce((sum, p) => sum + (p.avg_daily_streams || 0), 0);
+          vendorCaps[vendor.id] = Math.floor(totalCapacity * (submission.duration_days ?? 90));
+        });
+
+        try {
+          const algorithmResult = await allocateStreams({
+            playlists: playlists,
+            goal: submission.stream_goal,
+            vendorCaps,
+            subGenre: (submission.music_genres || [])[0] || '',
+            durationDays: submission.duration_days ?? 90,
+            campaignGenres: submission.music_genres || [],
+            vendors,
+            campaignBudget: submission.price_paid
+          });
+
+          algorithmRecommendations = {
+            allocations: algorithmResult.allocations,
+            genreMatches: algorithmResult.genreMatches,
+            insights: algorithmResult.insights,
+            timestamp: new Date().toISOString()
+          };
+        } catch (error) {
+          console.warn('Algorithm failed, creating draft without recommendations:', error);
+        }
+      }
+
       // Create draft campaign with algorithm recommendations for Spotify playlisting
       const { error: campaignError } = await supabase
         .from('campaigns')
@@ -147,13 +197,13 @@ export function useApproveCampaignSubmission() {
           budget: submission.price_paid,
           start_date: submission.start_date,
           status: 'draft',
-          duration_days: submission.duration_days || 90,
+          duration_days: submission.duration_days ?? 90,
           sub_genre: (submission.music_genres || []).join(', '),
           music_genres: submission.music_genres || [],
           territory_preferences: submission.territory_preferences || [],
           selected_playlists: [],
           vendor_allocations: {},
-          algorithm_recommendations: {},
+          algorithm_recommendations: algorithmRecommendations,
           pending_operator_review: true,
           totals: {},
           results: {},
@@ -181,7 +231,7 @@ export function useApproveCampaignSubmission() {
     onSuccess: () => {
       toast({
         title: "Campaign Approved",
-        description: "Draft campaign created with AI recommendations. Ready for operator review.",
+        description: "Draft campaign created with AI playlist recommendations. Ready for operator review.",
       });
       queryClient.invalidateQueries({ queryKey: ['campaign-submissions'] });
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
