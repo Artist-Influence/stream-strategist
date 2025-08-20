@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ClientSelector } from "@/components/ClientSelector";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -52,6 +54,12 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
   );
   const [trackName, setTrackName] = useState(initialData?.track_name || "");
   const [selectedClientId, setSelectedClientId] = useState(initialData?.client_id || "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+  
+  // Debug logging for client selection
+  console.log('CampaignConfiguration - selectedClientId:', selectedClientId);
+  console.log('CampaignConfiguration - selectedGenres:', selectedGenres);
   
   const {
     register,
@@ -70,38 +78,95 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
   const watchedValues = watch();
 
   const onSubmit = async (data: CampaignFormData) => {
-    // Validate client selection
-    if (!selectedClientId) {
-      alert('Please select a client');
-      return;
-    }
+    console.log('Form submission started with data:', data);
+    console.log('Current selectedClientId:', selectedClientId);
+    console.log('Current selectedGenres:', selectedGenres);
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Validate client selection
+      if (!selectedClientId) {
+        toast({
+          title: "Client Required",
+          description: "Please select a client to continue",
+          variant: "destructive",
+        });
+        // Scroll to client selector
+        document.getElementById('client')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
 
-    // First, check if there are any playlists available
-    const { data: playlists, error } = await supabase
-      .from('playlists')
-      .select('*, vendor:vendors(*)')
-      .limit(1);
-    
-    if (!playlists || playlists.length === 0) {
-      console.log('No playlists available in database');
-      alert('No playlists available. Please add playlists first in Vendors & Playlists section.');
-      return;
+      // Validate genre selection
+      if (selectedGenres.length === 0) {
+        toast({
+          title: "Genre Required",
+          description: "Please select at least one genre to continue",
+          variant: "destructive",
+        });
+        // Scroll to genre selection
+        document.querySelector('[data-testid="genre-selection"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      // Check if there are any playlists available
+      console.log('Checking playlist availability...');
+      const { data: playlists, error: playlistError } = await supabase
+        .from('playlists')
+        .select('*, vendor:vendors(*)')
+        .limit(1);
+      
+      if (playlistError) {
+        console.error('Database error checking playlists:', playlistError);
+        toast({
+          title: "Database Error",
+          description: "Failed to check playlist availability. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!playlists || playlists.length === 0) {
+        console.log('No playlists available in database');
+        toast({
+          title: "No Playlists Available",
+          description: "Please add playlists first in the Vendors & Playlists section.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log('Successfully found playlists:', playlists.length);
+      
+      const finalData = { 
+        ...data, 
+        client_id: selectedClientId,
+        sub_genre: selectedGenres.join(', '), 
+        track_name: trackName 
+      };
+      
+      console.log('Moving to AI Recommendations with data:', finalData);
+      
+      toast({
+        title: "Moving to AI Recommendations",
+        description: "Processing your campaign configuration...",
+      });
+      
+      // Small delay to show the toast
+      setTimeout(() => {
+        onNext(finalData);
+      }, 500);
+      
+    } catch (error) {
+      console.error('Unexpected error during form submission:', error);
+      toast({
+        title: "Unexpected Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    console.log('Moving to step 2 with data:', { 
-      ...data, 
-      client_id: selectedClientId,
-      sub_genre: selectedGenres.join(', '), 
-      track_name: trackName 
-    });
-    console.log('Available playlists:', playlists.length);
-    
-    onNext({ 
-      ...data, 
-      client_id: selectedClientId,
-      sub_genre: selectedGenres.join(', '), 
-      track_name: trackName 
-    });
   };
 
   const toggleGenre = (genre: string) => {
@@ -198,11 +263,17 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
                      <Label htmlFor="client">Client *</Label>
                      <ClientSelector
                        value={selectedClientId}
-                       onChange={setSelectedClientId}
+                       onChange={(clientId) => {
+                         console.log('Client selector onChange called with:', clientId);
+                         setSelectedClientId(clientId);
+                       }}
                        placeholder="Select or add client..."
                      />
                      {!selectedClientId && (
                        <p className="text-sm text-destructive">Please select a client</p>
+                     )}
+                     {selectedClientId && (
+                       <p className="text-sm text-accent">✓ Client selected: {selectedClientId}</p>
                      )}
                    </div>
                 </div>
@@ -313,7 +384,7 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
             </Card>
 
             {/* Genre Selection */}
-            <Card className="bg-card/50 border-border/50">
+            <Card className="bg-card/50 border-border/50" data-testid="genre-selection">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Sparkles className="w-5 h-5 text-accent" />
@@ -439,11 +510,20 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
           <Button 
             type="submit" 
             className="bg-gradient-primary hover:opacity-80 shadow-glow"
-            disabled={selectedGenres.length === 0}
+            disabled={isSubmitting}
           >
-            Continue to AI Recommendations
-            <Zap className="w-4 h-4 ml-2" />
-            <ArrowRight className="w-4 h-4 ml-1" />
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                Continue to AI Recommendations
+                <Zap className="w-4 h-4 ml-2" />
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </>
+            )}
           </Button>
         </div>
       </form>
