@@ -25,7 +25,7 @@ import {
 
 const campaignSchema = z.object({
   name: z.string().min(1, "Campaign name is required"),
-  client: z.string().min(1, "Client name is required"), // Keep for backward compatibility
+  client: z.string().optional(), // Backward compatibility (unused in UI)
   client_id: z.string().optional(),
   track_url: z.string().url("Please enter a valid Spotify URL"),
   track_name: z.string().optional(),
@@ -230,6 +230,8 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Hidden field to register genres for validation */}
+        <input type="hidden" {...register("sub_genre")} />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Form */}
           <div className="lg:col-span-2 space-y-6">
@@ -284,8 +286,8 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
                     id="track_url"
                     placeholder="https://open.spotify.com/track/..."
                     className={errors.track_url ? "border-destructive" : ""}
-                    onChange={(e) => handleTrackUrlChange(e.target.value)}
                     defaultValue={initialData?.track_url}
+                    {...register("track_url", { onChange: (e) => handleTrackUrlChange(e.target.value) })}
                   />
                   {errors.track_url && (
                     <p className="text-sm text-destructive">{errors.track_url.message}</p>
