@@ -226,15 +226,15 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
               </CardContent>
             </Card>
 
-            {/* Goals & Budget */}
+            {/* Price & Margin Analysis */}
             <Card className="bg-card/50 border-border/50">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <Target className="w-5 h-5 text-secondary" />
-                  <span>Goals & Budget</span>
+                  <DollarSign className="w-5 h-5 text-secondary" />
+                  <span>Price & Margin Analysis</span>
                 </CardTitle>
                 <CardDescription>
-                  Define your campaign objectives and budget
+                  Set pricing with 40% minimum margin requirement
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -254,7 +254,7 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="budget">Budget (USD) *</Label>
+                    <Label htmlFor="budget">Price Paid (USD) *</Label>
                     <Input
                       id="budget"
                       type="number"
@@ -265,6 +265,18 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
                     />
                     {errors.budget && (
                       <p className="text-sm text-destructive">{errors.budget.message}</p>
+                    )}
+                    {watchedValues.budget && (
+                      <div className="text-xs space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Estimated costs (60%):</span>
+                          <span>${(watchedValues.budget * 0.6).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Target margin (40%):</span>
+                          <span className="text-green-600">${(watchedValues.budget * 0.4).toFixed(2)}</span>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -358,9 +370,16 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
                   </div>
                   
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Budget</span>
+                    <span className="text-sm text-muted-foreground">Price Paid</span>
                     <span className="font-mono text-sm">
                       ${watchedValues.budget?.toLocaleString() || "0"}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Target Margin</span>
+                    <span className="font-mono text-sm text-green-600">
+                      ${((watchedValues.budget || 0) * 0.4).toLocaleString()}
                     </span>
                   </div>
                   

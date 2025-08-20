@@ -11,6 +11,7 @@ interface CampaignSubmission {
   price_paid: number;
   stream_goal: number;
   start_date: string;
+  duration_days?: number;
   track_url: string;
   notes?: string;
   salesperson: string;
@@ -21,7 +22,6 @@ interface CampaignSubmission {
   rejection_reason?: string;
   music_genres: string[];
   territory_preferences: string[];
-  content_types: string[];
 }
 
 interface CreateSubmissionData {
@@ -31,12 +31,12 @@ interface CreateSubmissionData {
   price_paid: number;
   stream_goal: number;
   start_date: string;
+  duration_days: number;
   track_url: string;
   notes?: string;
   salesperson: string;
-                                 music_genres: string[];
+  music_genres: string[];
   territory_preferences: string[];
-  content_types: string[];
 }
 
 // Hook to fetch all submissions (for admin)
@@ -67,8 +67,7 @@ export function useCreateCampaignSubmission() {
         .insert({
           ...submissionData,
           music_genres: submissionData.music_genres || [],
-          territory_preferences: submissionData.territory_preferences || [],
-          content_types: submissionData.content_types || []
+          territory_preferences: submissionData.territory_preferences || []
         });
 
       if (error) throw error;
@@ -132,8 +131,7 @@ export function useApproveCampaignSubmission() {
         clientId = newClient.id;
       }
 
-      // For now, create draft campaign without running algorithm (to avoid interface mismatch)
-      // Algorithm will be run during operator review
+      // Create draft campaign with algorithm recommendations for Spotify playlisting
       const { error: campaignError } = await supabase
         .from('campaigns')
         .insert({
@@ -149,11 +147,10 @@ export function useApproveCampaignSubmission() {
           budget: submission.price_paid,
           start_date: submission.start_date,
           status: 'draft',
-          duration_days: 90,
+          duration_days: submission.duration_days || 90,
           sub_genre: (submission.music_genres || []).join(', '),
           music_genres: submission.music_genres || [],
           territory_preferences: submission.territory_preferences || [],
-          content_types: submission.content_types || [],
           selected_playlists: [],
           vendor_allocations: {},
           algorithm_recommendations: {},

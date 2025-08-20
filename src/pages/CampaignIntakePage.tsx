@@ -21,12 +21,12 @@ interface FormData {
   price_paid: string;
   stream_goal: string;
   start_date: string;
+  duration_days: string;
   track_url: string;
   notes: string;
   salesperson: string;
   music_genres: string[];
   territory_preferences: string[];
-  content_types: string[];
 }
 
 export default function CampaignIntakePage() {
@@ -39,12 +39,12 @@ export default function CampaignIntakePage() {
     price_paid: '',
     stream_goal: '',
     start_date: '',
+    duration_days: '90',
     track_url: '',
     notes: '',
     salesperson: '',
     music_genres: [],
-    territory_preferences: [],
-    content_types: []
+    territory_preferences: []
   });
 
   const { data: clients = [] } = useClients();
@@ -59,7 +59,8 @@ export default function CampaignIntakePage() {
     // Validate required fields
     if (!formData.client_name || !formData.client_emails || !formData.campaign_name || 
         !formData.price_paid || !formData.stream_goal || !formData.start_date || 
-        !formData.track_url || !formData.salesperson || formData.music_genres.length === 0) {
+        !formData.duration_days || !formData.track_url || !formData.salesperson || 
+        formData.music_genres.length === 0) {
       return;
     }
 
@@ -79,12 +80,12 @@ export default function CampaignIntakePage() {
         price_paid: parseFloat(formData.price_paid),
         stream_goal: parseInt(formData.stream_goal),
         start_date: formData.start_date,
+        duration_days: parseInt(formData.duration_days),
         track_url: formData.track_url,
         notes: formData.notes,
         salesperson: formData.salesperson,
         music_genres: formData.music_genres,
-        territory_preferences: formData.territory_preferences,
-        content_types: formData.content_types
+        territory_preferences: formData.territory_preferences
       });
 
       // Reset form on success
@@ -96,12 +97,12 @@ export default function CampaignIntakePage() {
         price_paid: '',
         stream_goal: '',
         start_date: '',
+        duration_days: '90',
         track_url: '',
         notes: '',
         salesperson: '',
         music_genres: [],
-        territory_preferences: [],
-        content_types: []
+        territory_preferences: []
       });
       setIsNewClient(false);
 
@@ -252,6 +253,11 @@ export default function CampaignIntakePage() {
                     onChange={(e) => setFormData({...formData, price_paid: e.target.value})}
                     required
                   />
+                  {formData.price_paid && formData.stream_goal && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Cost per stream: ${(parseFloat(formData.price_paid) / parseInt(formData.stream_goal || '1')).toFixed(4)}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label>Stream Goal *</Label>
@@ -271,6 +277,21 @@ export default function CampaignIntakePage() {
                     onChange={(e) => setFormData({...formData, start_date: e.target.value})}
                     required
                   />
+                </div>
+                <div>
+                  <Label>Campaign Duration (Days) *</Label>
+                  <Input
+                    type="number"
+                    placeholder="90"
+                    value={formData.duration_days}
+                    onChange={(e) => setFormData({...formData, duration_days: e.target.value})}
+                    required
+                    min="1"
+                    max="365"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Recommended: 90 days for optimal results
+                  </p>
                 </div>
               </div>
 
@@ -366,42 +387,33 @@ export default function CampaignIntakePage() {
                 </p>
               </div>
 
-              {/* Content Types */}
-              <div>
-                <Label>Content Types (Optional)</Label>
-                <div className="flex flex-wrap gap-2 mt-2 mb-2">
-                  {['Playlist Feature', 'Blog Review', 'Social Media Post', 'Video Content', 'Podcast Feature'].map((contentType) => (
-                    <button
-                      key={contentType}
-                      type="button"
-                      onClick={() => {
-                        const currentTypes = formData.content_types;
-                        if (currentTypes.includes(contentType)) {
-                          setFormData({
-                            ...formData,
-                            content_types: currentTypes.filter(t => t !== contentType)
-                          });
-                        } else {
-                          setFormData({
-                            ...formData,
-                            content_types: [...currentTypes, contentType]
-                          });
-                        }
-                      }}
-                      className={`px-3 py-1 rounded-full text-sm transition-all hover:scale-105 ${
-                        formData.content_types.includes(contentType)
-                          ? 'bg-destructive text-destructive-foreground shadow-md'
-                          : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      {contentType}
-                    </button>
-                  ))}
+              {/* Margin Calculation */}
+              {formData.price_paid && formData.stream_goal && (
+                <div>
+                  <Label>Margin Analysis</Label>
+                  <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm">Price Paid:</span>
+                      <span className="font-mono">${parseFloat(formData.price_paid).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm">Estimated Cost (60% of price):</span>
+                      <span className="font-mono">${(parseFloat(formData.price_paid) * 0.6).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm">Projected Margin (40%):</span>
+                      <span className={`font-mono ${(parseFloat(formData.price_paid) * 0.4) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        ${(parseFloat(formData.price_paid) * 0.4).toFixed(2)}
+                      </span>
+                    </div>
+                    {(parseFloat(formData.price_paid) * 0.4) < (parseFloat(formData.price_paid) * 0.4) && (
+                      <p className="text-xs text-amber-600 mt-2">
+                        ⚠️ Margin below 40% target - consider adjusting pricing
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Selected content types: {formData.content_types.join(', ') || 'None selected'}
-                </p>
-              </div>
+              )}
 
               {/* Notes */}
               <div>
