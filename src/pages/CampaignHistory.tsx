@@ -57,6 +57,7 @@ import Papa from "papaparse";
 import { EditCampaignModal } from "@/components/EditCampaignModal";
 import CampaignWeeklyImportModal from "@/components/CampaignWeeklyImportModal";
 import { CampaignDetailsModal } from "@/components/CampaignDetailsModal";
+import { DraftCampaignReviewModal } from "@/components/DraftCampaignReviewModal";
 
 interface Campaign {
   id: string;
@@ -80,6 +81,11 @@ interface Campaign {
   daily_streams?: number;
   weekly_streams?: number;
   playlists?: Array<{ name: string; url?: string; vendor_name?: string }>;
+  music_genres: string[];
+  territory_preferences: string[];
+  content_types: string[];
+  algorithm_recommendations: any;
+  salesperson: string;
 }
 
 type SortField = 'name' | 'client' | 'budget' | 'stream_goal' | 'daily_streams' | 'weekly_streams' | 'start_date' | 'progress' | 'status';
@@ -101,6 +107,7 @@ export default function CampaignHistory() {
   }, [searchParams]);
   const [detailsModal, setDetailsModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
   const [editModal, setEditModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
+  const [draftReviewModal, setDraftReviewModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<SortField>('start_date');
@@ -461,8 +468,9 @@ export default function CampaignHistory() {
                 variant={statusFilter === 'draft' ? 'default' : 'outline'}
                 onClick={() => setStatusFilter('draft')}
                 size="sm"
+                className="bg-amber-500/20 text-amber-600 hover:bg-amber-500/30 border-amber-500/50"
               >
-                Draft ({getStatusCount('draft')})
+                Pending Review ({getStatusCount('draft')})
               </Button>
               <Button
                 variant={statusFilter === 'paused' ? 'default' : 'outline'}
@@ -712,6 +720,7 @@ export default function CampaignHistory() {
                       </Button>
                     </TableHead>
                     <TableHead>Last Updated</TableHead>
+                    <TableHead className="w-20">Actions</TableHead>
                     
                   </TableRow>
                 </TableHeader>
@@ -810,6 +819,50 @@ export default function CampaignHistory() {
                             }
                           </div>
                         </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleViewDetails(campaign.id)}>
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              {campaign.status === 'draft' && (
+                                <DropdownMenuItem onClick={() => {
+                                  const draftCampaign = campaigns?.find(c => c.id === campaign.id);
+                                  setDraftReviewModal({ open: true, campaign: draftCampaign });
+                                }}>
+                                  <Play className="w-4 h-4 mr-2" />
+                                  Review & Approve
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem onClick={() => handleEditCampaign(campaign.id)}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              {campaign.status === 'active' && (
+                                <DropdownMenuItem onClick={() => handleStatusChange(campaign.id, 'paused')}>
+                                  <Pause className="w-4 h-4 mr-2" />
+                                  Pause
+                                </DropdownMenuItem>
+                              )}
+                              {campaign.status === 'paused' && (
+                                <DropdownMenuItem onClick={() => handleStatusChange(campaign.id, 'active')}>
+                                  <Play className="w-4 h-4 mr-2" />
+                                  Resume
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem onClick={() => handleDelete(campaign.id)} className="text-destructive">
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -843,6 +896,13 @@ export default function CampaignHistory() {
             open={importModalOpen} 
             onOpenChange={setImportModalOpen} 
           />
+
+            {/* Draft Campaign Review Modal */}
+            <DraftCampaignReviewModal
+              open={draftReviewModal.open}
+              onOpenChange={(open) => setDraftReviewModal({ open, campaign: open ? draftReviewModal.campaign : undefined })}
+              campaign={draftReviewModal.campaign as any}
+            />
 
        </div>
      </div>

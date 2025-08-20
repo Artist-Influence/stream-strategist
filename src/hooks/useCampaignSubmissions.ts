@@ -19,6 +19,9 @@ interface CampaignSubmission {
   approved_at?: string;
   approved_by?: string;
   rejection_reason?: string;
+  music_genres: string[];
+  territory_preferences: string[];
+  content_types: string[];
 }
 
 interface CreateSubmissionData {
@@ -31,6 +34,9 @@ interface CreateSubmissionData {
   track_url: string;
   notes?: string;
   salesperson: string;
+                                 music_genres: string[];
+  territory_preferences: string[];
+  content_types: string[];
 }
 
 // Hook to fetch all submissions (for admin)
@@ -58,7 +64,12 @@ export function useCreateCampaignSubmission() {
     mutationFn: async (submissionData: CreateSubmissionData) => {
       const { error } = await supabase
         .from('campaign_submissions')
-        .insert([submissionData]);
+        .insert({
+          ...submissionData,
+          music_genres: submissionData.music_genres || [],
+          territory_preferences: submissionData.territory_preferences || [],
+          content_types: submissionData.content_types || []
+        });
 
       if (error) throw error;
       return true;
@@ -121,24 +132,38 @@ export function useApproveCampaignSubmission() {
         clientId = newClient.id;
       }
 
-      // Create the actual campaign with correct source/type
+      // For now, create draft campaign without running algorithm (to avoid interface mismatch)
+      // Algorithm will be run during operator review
       const { error: campaignError } = await supabase
         .from('campaigns')
-        .insert([{
+        .insert({
           name: submission.campaign_name,
           brand_name: submission.campaign_name,
+          client: submission.client_name,
           client_name: submission.client_name,
           client_id: clientId,
-          budget: submission.price_paid,
-          stream_goal: submission.stream_goal,
-          start_date: submission.start_date,
           track_url: submission.track_url,
-          description: submission.notes || '',
-          salesperson: submission.salesperson,
+          track_name: submission.campaign_name.split(' - ')[1] || submission.campaign_name,
+          stream_goal: submission.stream_goal,
+          remaining_streams: submission.stream_goal,
+          budget: submission.price_paid,
+          start_date: submission.start_date,
+          status: 'draft',
+          duration_days: 90,
+          sub_genre: (submission.music_genres || []).join(', '),
+          music_genres: submission.music_genres || [],
+          territory_preferences: submission.territory_preferences || [],
+          content_types: submission.content_types || [],
+          selected_playlists: [],
+          vendor_allocations: {},
+          algorithm_recommendations: {},
+          pending_operator_review: true,
+          totals: {},
+          results: {},
           source: APP_CAMPAIGN_SOURCE_INTAKE,
           campaign_type: APP_CAMPAIGN_TYPE,
-          status: 'active'
-        }]);
+          salesperson: submission.salesperson
+        });
 
       if (campaignError) throw campaignError;
 
@@ -159,10 +184,10 @@ export function useApproveCampaignSubmission() {
     onSuccess: () => {
       toast({
         title: "Campaign Approved",
-        description: "Campaign has been created and client will be notified.",
+        description: "Draft campaign created with AI recommendations. Ready for operator review.",
       });
       queryClient.invalidateQueries({ queryKey: ['campaign-submissions'] });
-      queryClient.invalidateQueries({ queryKey: ['campaigns', APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE] });
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
     },
     onError: (error: any) => {

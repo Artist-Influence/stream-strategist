@@ -222,8 +222,10 @@ export type Database = {
           campaign_name: string
           client_emails: string[]
           client_name: string
+          content_types: string[] | null
           created_at: string
           id: string
+          music_genres: string[] | null
           notes: string | null
           price_paid: number
           rejection_reason: string | null
@@ -231,6 +233,7 @@ export type Database = {
           start_date: string
           status: string
           stream_goal: number
+          territory_preferences: string[] | null
           track_url: string
         }
         Insert: {
@@ -239,8 +242,10 @@ export type Database = {
           campaign_name: string
           client_emails: string[]
           client_name: string
+          content_types?: string[] | null
           created_at?: string
           id?: string
+          music_genres?: string[] | null
           notes?: string | null
           price_paid: number
           rejection_reason?: string | null
@@ -248,6 +253,7 @@ export type Database = {
           start_date: string
           status?: string
           stream_goal: number
+          territory_preferences?: string[] | null
           track_url: string
         }
         Update: {
@@ -256,8 +262,10 @@ export type Database = {
           campaign_name?: string
           client_emails?: string[]
           client_name?: string
+          content_types?: string[] | null
           created_at?: string
           id?: string
+          music_genres?: string[] | null
           notes?: string | null
           price_paid?: number
           rejection_reason?: string | null
@@ -265,12 +273,14 @@ export type Database = {
           start_date?: string
           status?: string
           stream_goal?: number
+          territory_preferences?: string[] | null
           track_url?: string
         }
         Relationships: []
       }
       campaigns: {
         Row: {
+          algorithm_recommendations: Json | null
           allocated_streams: number | null
           brand_name: string
           budget: number
@@ -287,6 +297,7 @@ export type Database = {
           id: string
           music_genres: string[]
           name: string
+          pending_operator_review: boolean | null
           post_types: string[]
           public_access_enabled: boolean | null
           public_token: string | null
@@ -310,6 +321,7 @@ export type Database = {
           weekly_streams: number | null
         }
         Insert: {
+          algorithm_recommendations?: Json | null
           allocated_streams?: number | null
           brand_name: string
           budget: number
@@ -326,6 +338,7 @@ export type Database = {
           id?: string
           music_genres?: string[]
           name: string
+          pending_operator_review?: boolean | null
           post_types?: string[]
           public_access_enabled?: boolean | null
           public_token?: string | null
@@ -349,6 +362,7 @@ export type Database = {
           weekly_streams?: number | null
         }
         Update: {
+          algorithm_recommendations?: Json | null
           allocated_streams?: number | null
           brand_name?: string
           budget?: number
@@ -365,6 +379,7 @@ export type Database = {
           id?: string
           music_genres?: string[]
           name?: string
+          pending_operator_review?: boolean | null
           post_types?: string[]
           public_access_enabled?: boolean | null
           public_token?: string | null

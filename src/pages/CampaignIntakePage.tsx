@@ -5,12 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { ClientSelector } from '@/components/ClientSelector';
 import { useClients } from '@/hooks/useClients';
 import { useIsVendorManager } from '@/hooks/useIsVendorManager';
-// Removed client creation import - submissions only create campaign submissions now
 import { useCreateCampaignSubmission } from '@/hooks/useCampaignSubmissions';
 import { useSalespeople } from '@/hooks/useSalespeople';
+import { UNIFIED_GENRES } from '@/lib/constants';
 
 interface FormData {
   client_id: string;
@@ -23,6 +24,9 @@ interface FormData {
   track_url: string;
   notes: string;
   salesperson: string;
+  music_genres: string[];
+  territory_preferences: string[];
+  content_types: string[];
 }
 
 export default function CampaignIntakePage() {
@@ -37,7 +41,10 @@ export default function CampaignIntakePage() {
     start_date: '',
     track_url: '',
     notes: '',
-    salesperson: ''
+    salesperson: '',
+    music_genres: [],
+    territory_preferences: [],
+    content_types: []
   });
 
   const { data: clients = [] } = useClients();
@@ -52,7 +59,7 @@ export default function CampaignIntakePage() {
     // Validate required fields
     if (!formData.client_name || !formData.client_emails || !formData.campaign_name || 
         !formData.price_paid || !formData.stream_goal || !formData.start_date || 
-        !formData.track_url || !formData.salesperson) {
+        !formData.track_url || !formData.salesperson || formData.music_genres.length === 0) {
       return;
     }
 
@@ -74,7 +81,10 @@ export default function CampaignIntakePage() {
         start_date: formData.start_date,
         track_url: formData.track_url,
         notes: formData.notes,
-        salesperson: formData.salesperson
+        salesperson: formData.salesperson,
+        music_genres: formData.music_genres,
+        territory_preferences: formData.territory_preferences,
+        content_types: formData.content_types
       });
 
       // Reset form on success
@@ -88,7 +98,10 @@ export default function CampaignIntakePage() {
         start_date: '',
         track_url: '',
         notes: '',
-        salesperson: ''
+        salesperson: '',
+        music_genres: [],
+        territory_preferences: [],
+        content_types: []
       });
       setIsNewClient(false);
 
@@ -272,6 +285,121 @@ export default function CampaignIntakePage() {
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   For released songs: Spotify URL. For unreleased: SoundCloud, Dropbox, or private streaming link.
+                </p>
+              </div>
+
+              {/* Music Genres */}
+              <div>
+                <Label>Music Genres (1-3 required) *</Label>
+                <div className="flex flex-wrap gap-2 mt-2 mb-2">
+                  {UNIFIED_GENRES.map((genre) => (
+                    <button
+                      key={genre}
+                      type="button"
+                      onClick={() => {
+                        const currentGenres = formData.music_genres;
+                        if (currentGenres.includes(genre)) {
+                          setFormData({
+                            ...formData,
+                            music_genres: currentGenres.filter(g => g !== genre)
+                          });
+                        } else if (currentGenres.length < 3) {
+                          setFormData({
+                            ...formData,
+                            music_genres: [...currentGenres, genre]
+                          });
+                        }
+                      }}
+                      className={`px-3 py-1 rounded-full text-sm transition-all hover:scale-105 ${
+                        formData.music_genres.includes(genre)
+                          ? 'bg-destructive text-destructive-foreground shadow-md'
+                          : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
+                      }`}
+                      disabled={!formData.music_genres.includes(genre) && formData.music_genres.length >= 3}
+                    >
+                      {genre}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Selected genres ({formData.music_genres.length}/3): {formData.music_genres.join(', ') || 'None selected'}
+                </p>
+                {formData.music_genres.length === 0 && (
+                  <p className="text-xs text-destructive mt-1">Please select at least one genre</p>
+                )}
+              </div>
+
+              {/* Territory Preferences */}
+              <div>
+                <Label>Territory Preferences (Optional)</Label>
+                <div className="flex flex-wrap gap-2 mt-2 mb-2">
+                  {['US', 'UK', 'Germany', 'France', 'Canada', 'Australia', 'Brazil', 'Global'].map((territory) => (
+                    <button
+                      key={territory}
+                      type="button"
+                      onClick={() => {
+                        const currentTerritories = formData.territory_preferences;
+                        if (currentTerritories.includes(territory)) {
+                          setFormData({
+                            ...formData,
+                            territory_preferences: currentTerritories.filter(t => t !== territory)
+                          });
+                        } else {
+                          setFormData({
+                            ...formData,
+                            territory_preferences: [...currentTerritories, territory]
+                          });
+                        }
+                      }}
+                      className={`px-3 py-1 rounded-full text-sm transition-all hover:scale-105 ${
+                        formData.territory_preferences.includes(territory)
+                          ? 'bg-destructive text-destructive-foreground shadow-md'
+                          : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {territory}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Selected territories: {formData.territory_preferences.join(', ') || 'None selected'}
+                </p>
+              </div>
+
+              {/* Content Types */}
+              <div>
+                <Label>Content Types (Optional)</Label>
+                <div className="flex flex-wrap gap-2 mt-2 mb-2">
+                  {['Playlist Feature', 'Blog Review', 'Social Media Post', 'Video Content', 'Podcast Feature'].map((contentType) => (
+                    <button
+                      key={contentType}
+                      type="button"
+                      onClick={() => {
+                        const currentTypes = formData.content_types;
+                        if (currentTypes.includes(contentType)) {
+                          setFormData({
+                            ...formData,
+                            content_types: currentTypes.filter(t => t !== contentType)
+                          });
+                        } else {
+                          setFormData({
+                            ...formData,
+                            content_types: [...currentTypes, contentType]
+                          });
+                        }
+                      }}
+                      className={`px-3 py-1 rounded-full text-sm transition-all hover:scale-105 ${
+                        formData.content_types.includes(contentType)
+                          ? 'bg-destructive text-destructive-foreground shadow-md'
+                          : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {contentType}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Selected content types: {formData.content_types.join(', ') || 'None selected'}
                 </p>
               </div>
 
