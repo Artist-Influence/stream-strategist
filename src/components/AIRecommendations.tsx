@@ -436,13 +436,7 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center space-x-1">
-                            <TrendingUp className="w-3 h-3 text-secondary" />
-                            <span className="text-sm">{playlist.avg_daily_streams.toLocaleString()}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {isSelected && (
+                          {isSelected ? (
                             <Input
                               type="number"
                               value={Math.round((manualAllocations[playlist.id] || (allocation?.allocation) || Math.min(1000 * campaignData.duration_days, (playlist.avg_daily_streams || 100) * campaignData.duration_days)) / campaignData.duration_days)}
@@ -450,6 +444,18 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                               className="w-20 h-8 text-xs"
                               placeholder="Daily"
                             />
+                          ) : (
+                            <div className="flex items-center space-x-1">
+                              <TrendingUp className="w-3 h-3 text-secondary" />
+                              <span className="text-sm">{playlist.avg_daily_streams.toLocaleString()}</span>
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isSelected && (
+                            <span className="text-sm font-mono">
+                              {(manualAllocations[playlist.id] || (allocation?.allocation) || Math.min(1000 * campaignData.duration_days, (playlist.avg_daily_streams || 100) * campaignData.duration_days)).toLocaleString()}
+                            </span>
                           )}
                         </TableCell>
                         <TableCell>
