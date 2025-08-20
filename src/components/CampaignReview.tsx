@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Vendor, Playlist } from "@/types";
 import { useNavigate } from "react-router-dom";
+import { APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE } from "@/lib/constants";
 
 interface CampaignReviewProps {
   campaignData: {
@@ -72,8 +73,8 @@ export default function CampaignReview({ campaignData, allocationsData, onBack }
             start_date: campaignData.start_date,
             duration_days: campaignData.duration_days,
             status: 'active',
-            source: 'campaign_manager',
-            campaign_type: 'spotify',
+            source: APP_CAMPAIGN_SOURCE,
+            campaign_type: APP_CAMPAIGN_TYPE,
             selected_playlists: allocationsData.selectedPlaylists,
             vendor_allocations: allocationsData.allocations.reduce((acc: any, alloc: any) => {
               acc[alloc.vendor_id] = (acc[alloc.vendor_id] || 0) + alloc.allocation;

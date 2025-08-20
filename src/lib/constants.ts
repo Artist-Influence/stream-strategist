@@ -11,11 +11,11 @@ export const UNIFIED_GENRES = [
 // Campaign filtering - CRITICAL for preventing cross-project data leaks
 export const APP_CAMPAIGN_SOURCE = 'campaign_manager';
 export const APP_CAMPAIGN_SOURCE_INTAKE = 'campaign_intake'; // Support both sources
-export const APP_CAMPAIGN_TYPE = 'instagram';
+export const APP_CAMPAIGN_TYPE = 'spotify';
 
 // Project identification  
-export const PROJECT_NAME = 'Artist Influence - Instagram Campaign Manager';
-export const PROJECT_ID = 'artist-influence-instagram';
+export const PROJECT_NAME = 'Artist Influence - Spotify Campaign Manager';
+export const PROJECT_ID = 'artist-influence-spotify';
 
 // Keyboard shortcuts
 export const KEYBOARD_SHORTCUTS = [
