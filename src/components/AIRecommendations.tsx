@@ -99,26 +99,31 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
       vendorCaps[vendor.id] = vendor.max_daily_streams * campaignData.duration_days;
     });
 
-    // Run allocation algorithm with enhanced parameters
-    const result = allocateStreams({
-      playlists,
-      goal: campaignData.stream_goal,
-      vendorCaps,
-      subGenre: campaignData.sub_genre,
-      durationDays: campaignData.duration_days,
-      vendors: vendors,
-      campaignBudget: campaignData.budget,
-      campaignGenres: [campaignData.sub_genre]
-    });
+    try {
+      // Run allocation algorithm with enhanced parameters
+      const result = await allocateStreams({
+        playlists,
+        goal: campaignData.stream_goal,
+        vendorCaps,
+        subGenre: campaignData.sub_genre,
+        durationDays: campaignData.duration_days,
+        vendors: vendors,
+        campaignBudget: campaignData.budget,
+        campaignGenres: [campaignData.sub_genre]
+      });
 
-    setAllocations(result.allocations);
-    setGenreMatches(result.genreMatches);
-    
-    // Auto-select top playlists
-    const topPlaylists = result.allocations.slice(0, 15).map(a => a.playlist_id);
-    setSelectedPlaylists(new Set(topPlaylists));
-    
-    setIsAllocating(false);
+      setAllocations(result.allocations);
+      setGenreMatches(result.genreMatches);
+      
+      // Auto-select top playlists
+      const topPlaylists = result.allocations.slice(0, 15).map(a => a.playlist_id);
+      setSelectedPlaylists(new Set(topPlaylists));
+      
+    } catch (error) {
+      console.error('Allocation failed:', error);
+    } finally {
+      setIsAllocating(false);
+    }
   };
 
   const togglePlaylist = (playlistId: string) => {
