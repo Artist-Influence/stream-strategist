@@ -144,10 +144,12 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
     setSelectedPlaylists(newSelected);
   };
 
-  const updateManualAllocation = (playlistId: string, allocation: number) => {
+  const updateManualAllocation = (playlistId: string, dailyStreams: number) => {
+    // Convert daily streams to campaign total for storage
+    const campaignTotal = dailyStreams * campaignData.duration_days;
     setManualAllocations(prev => ({
       ...prev,
-      [playlistId]: allocation
+      [playlistId]: campaignTotal
     }));
   };
 
@@ -175,7 +177,8 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
     selectedAllocations, 
     vendors?.reduce((acc, v) => ({ ...acc, [v.id]: v.max_daily_streams * campaignData.duration_days }), {}) || {},
     playlists || [],
-    campaignData.duration_days
+    campaignData.duration_days,
+    vendors || []
   );
 
   const handleContinue = () => {
@@ -337,6 +340,7 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                     <TableHead className="w-12">Select</TableHead>
                     <TableHead>Playlist</TableHead>
                     <TableHead>Genres</TableHead>
+                    <TableHead>Followers</TableHead>
                     <TableHead>Match Score</TableHead>
                     <TableHead>
                       <div className="flex items-center space-x-1">
@@ -415,9 +419,15 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                           </div>
                         </TableCell>
                         <TableCell>
+                          <div className="flex items-center space-x-1">
+                            <Users className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-sm">{(playlist.follower_count || 0).toLocaleString()}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           <div className="flex items-center space-x-2">
                             <Progress 
-                              value={match.relevanceScore * 100} 
+                              value={Math.min(match.relevanceScore * 100, 100)} 
                               className="w-16 h-2" 
                             />
                             <span className="text-xs font-mono">
@@ -435,10 +445,10 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                           {isSelected && (
                             <Input
                               type="number"
-                              value={manualAllocations[playlist.id] || (allocation?.allocation) || Math.min(1000 * campaignData.duration_days, (playlist.avg_daily_streams || 100) * campaignData.duration_days)}
+                              value={Math.round((manualAllocations[playlist.id] || (allocation?.allocation) || Math.min(1000 * campaignData.duration_days, (playlist.avg_daily_streams || 100) * campaignData.duration_days)) / campaignData.duration_days)}
                               onChange={(e) => updateManualAllocation(playlist.id, parseInt(e.target.value) || 0)}
                               className="w-20 h-8 text-xs"
-                              placeholder="Streams"
+                              placeholder="Daily"
                             />
                           )}
                         </TableCell>
@@ -501,7 +511,7 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                 </div>
                 
                 <Progress 
-                  value={(projections.totalStreams / campaignData.stream_goal) * 100} 
+                  value={Math.min((projections.totalStreams / campaignData.stream_goal) * 100, 100)} 
                   className="h-2"
                 />
               </div>

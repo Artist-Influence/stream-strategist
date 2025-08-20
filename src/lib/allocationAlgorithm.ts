@@ -145,13 +145,18 @@ export function validateAllocations(
   selectedAllocations: AllocationItem[],
   vendorCaps: Record<string, number>,
   playlists: Playlist[],
-  durationDays: number
+  durationDays: number,
+  vendors: Vendor[] = []
 ): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
 
   // Map playlist -> vendor and compute per-playlist cap
   const playlistMap = new Map<string, Playlist>();
   playlists.forEach(p => playlistMap.set(p.id, p));
+  
+  // Map vendor ID to vendor name
+  const vendorMap = new Map<string, string>();
+  vendors.forEach(v => vendorMap.set(v.id, v.name));
 
   // Per-vendor totals
   const byVendor: Record<string, number> = {};
@@ -163,7 +168,7 @@ export function validateAllocations(
     }
 
     if (a.allocation < 0 || !Number.isFinite(a.allocation)) {
-      errors.push(`Invalid allocation for ${playlist.name}`);
+      errors.push(`Invalid allocation amount for playlist "${playlist.name}"`);
     }
 
     // Check per-playlist capacity with same fallback logic
@@ -174,7 +179,7 @@ export function validateAllocations(
       cap = Math.max(followerBased, minimumCapacity);
     }
     if (a.allocation > cap) {
-      errors.push(`Allocation for ${playlist.name} exceeds playlist capacity (${cap.toLocaleString()}).`);
+      errors.push(`Allocation for playlist "${playlist.name}" exceeds its capacity (${cap.toLocaleString()} streams over campaign duration).`);
     }
 
     const vendorId = playlist.vendor_id;
@@ -185,7 +190,8 @@ export function validateAllocations(
   for (const [vendorId, total] of Object.entries(byVendor)) {
     const cap = vendorCaps[vendorId] ?? Infinity;
     if (total > cap) {
-      errors.push(`Vendor ${vendorId} exceeded cap (${total.toLocaleString()} > ${cap.toLocaleString()}).`);
+      const vendorName = vendorMap.get(vendorId) || `Vendor ${vendorId}`;
+      errors.push(`${vendorName} has exceeded its capacity (${total.toLocaleString()} > ${cap.toLocaleString()} streams over campaign duration).`);
     }
   }
 
