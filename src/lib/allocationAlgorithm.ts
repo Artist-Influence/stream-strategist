@@ -69,7 +69,7 @@ export async function allocateStreams(input: AllocateStreamsInput): Promise<{
     return (b.playlist.avg_daily_streams || 0) - (a.playlist.avg_daily_streams || 0);
   });
 
-  // Greedy allocation respecting vendor caps and simple playlist capacity
+  // Greedy allocation respecting vendor caps and playlist capacity with fallbacks
   const remainingByVendor: Record<string, number> = { ...vendorCaps };
   let remainingGoal = Math.max(0, goal);
   const allocations: AllocationItem[] = [];
@@ -82,8 +82,17 @@ export async function allocateStreams(input: AllocateStreamsInput): Promise<{
     const vendorRemaining = Math.max(0, remainingByVendor[vendorId] ?? Infinity);
     if (vendorRemaining <= 0) continue;
 
-    // Simple per-playlist capacity = avg_daily_streams * durationDays
-    const playlistCapacity = Math.max(0, Math.floor((p.avg_daily_streams || 0) * durationDays));
+    // Enhanced playlist capacity calculation with fallbacks
+    let playlistCapacity = Math.max(0, Math.floor((p.avg_daily_streams || 0) * durationDays));
+    
+    // Fallback capacity for playlists with 0 avg_daily_streams
+    if (playlistCapacity === 0) {
+      // Use follower count as basis for fallback capacity
+      const followerBased = Math.floor((p.follower_count || 0) * 0.01 * durationDays); // 1% of followers
+      const minimumCapacity = Math.floor(100 * durationDays); // Minimum 100 streams/day
+      playlistCapacity = Math.max(followerBased, minimumCapacity);
+    }
+    
     if (playlistCapacity <= 0) continue;
 
     const allocationAmount = Math.min(remainingGoal, vendorRemaining, playlistCapacity);
@@ -157,8 +166,13 @@ export function validateAllocations(
       errors.push(`Invalid allocation for ${playlist.name}`);
     }
 
-    // Check per-playlist capacity
-    const cap = Math.max(0, Math.floor((playlist.avg_daily_streams || 0) * durationDays));
+    // Check per-playlist capacity with same fallback logic
+    let cap = Math.max(0, Math.floor((playlist.avg_daily_streams || 0) * durationDays));
+    if (cap === 0) {
+      const followerBased = Math.floor((playlist.follower_count || 0) * 0.01 * durationDays);
+      const minimumCapacity = Math.floor(100 * durationDays);
+      cap = Math.max(followerBased, minimumCapacity);
+    }
     if (a.allocation > cap) {
       errors.push(`Allocation for ${playlist.name} exceeds playlist capacity (${cap.toLocaleString()}).`);
     }

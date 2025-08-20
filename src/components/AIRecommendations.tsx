@@ -149,7 +149,23 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
     }));
   };
 
-  const selectedAllocations = allocations.filter(a => selectedPlaylists.has(a.playlist_id));
+  // Create allocations for selected playlists (including manual ones)
+  const selectedAllocations = Array.from(selectedPlaylists).map(playlistId => {
+    const existingAllocation = allocations.find(a => a.playlist_id === playlistId);
+    const playlist = playlists?.find(p => p.id === playlistId);
+    const vendor = vendors?.find(v => v.id === playlist?.vendor_id);
+    
+    if (existingAllocation) {
+      return existingAllocation;
+    }
+    
+    // Create manual allocation for selected playlists without automatic allocation
+    return {
+      playlist_id: playlistId,
+      vendor_id: vendor?.id || '',
+      allocation: manualAllocations[playlistId] || Math.min(1000, playlist?.avg_daily_streams || 100)
+    };
+  }).filter(a => a.vendor_id); // Filter out invalid allocations
   const projections = calculateProjections(selectedAllocations, playlists || []);
   const validation = validateAllocations(
     selectedAllocations, 
@@ -276,6 +292,12 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                   Refresh
                 </Button>
               </CardTitle>
+              {allocations.length === 0 && genreMatches.length > 0 && (
+                <CardDescription className="flex items-center space-x-2 text-amber-600">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span>No automatic allocations made. Playlists may lack performance data. You can still manually select playlists below.</span>
+                </CardDescription>
+              )}
             </CardHeader>
             <CardContent>
               <Table>
@@ -351,12 +373,13 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                           </div>
                         </TableCell>
                         <TableCell>
-                          {isSelected && allocation && (
+                          {isSelected && (
                             <Input
                               type="number"
-                              value={manualAllocations[playlist.id] || allocation.allocation}
+                              value={manualAllocations[playlist.id] || (allocation?.allocation) || Math.min(1000, playlist.avg_daily_streams || 100)}
                               onChange={(e) => updateManualAllocation(playlist.id, parseInt(e.target.value) || 0)}
                               className="w-20 h-8 text-xs"
+                              placeholder="Streams"
                             />
                           )}
                         </TableCell>
