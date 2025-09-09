@@ -35,45 +35,98 @@ interface NavItem {
   adminOnly?: boolean;
 }
 
-const navItems: NavItem[] = [
-  {
-    title: "Dashboard",
-    href: "/",
-    icon: Home,
-    hotkey: "Ctrl+1"
-  },
-  {
-    title: "Vendors & Playlists",
-    href: "/playlists", 
-    icon: Database,
-    hotkey: "Ctrl+2"
-  },
-  {
-    title: "Build Campaign",
-    href: "/campaign/new",
-    icon: Plus,
-    hotkey: "Ctrl+3"
-  },
-  {
-    title: "View Campaigns",
-    href: "/campaigns",
-    icon: History,
-    hotkey: "Ctrl+4"
-  },
-  {
-    title: "Clients",
-    href: "/clients",
-    icon: Users,
-    hotkey: "Ctrl+5"
-  },
-  {
-    title: "User Management", 
-    href: "/users",
-    icon: UserPlus,
-    hotkey: "Ctrl+6",
-    adminOnly: true
-  },
-];
+// Role-based navigation items
+const getNavItemsForRole = (currentRole: string | null) => {
+  const baseItems = [
+    {
+      title: "Dashboard",
+      href: "/",
+      icon: Home,
+      hotkey: "Ctrl+1"
+    },
+  ];
+
+  if (currentRole === 'admin' || currentRole === 'manager') {
+    return [
+      ...baseItems,
+      {
+        title: "Vendors & Playlists",
+        href: "/playlists", 
+        icon: Database,
+        hotkey: "Ctrl+2"
+      },
+      {
+        title: "Build Campaign",
+        href: "/campaign/new",
+        icon: Plus,
+        hotkey: "Ctrl+3"
+      },
+      {
+        title: "View Campaigns",
+        href: "/campaigns",
+        icon: History,
+        hotkey: "Ctrl+4"
+      },
+      {
+        title: "Clients",
+        href: "/clients",
+        icon: Users,
+        hotkey: "Ctrl+5"
+      },
+      ...(currentRole === 'admin' ? [{
+        title: "User Management", 
+        href: "/users",
+        icon: UserPlus,
+        hotkey: "Ctrl+6",
+        adminOnly: true
+      }] : [])
+    ];
+  }
+
+  if (currentRole === 'salesperson') {
+    return [
+      ...baseItems,
+      {
+        title: "Submit Campaign",
+        href: "/campaign-intake",
+        icon: Plus,
+        hotkey: "Ctrl+2"
+      },
+      {
+        title: "My Campaigns", 
+        href: "/campaigns",
+        icon: History,
+        hotkey: "Ctrl+3"
+      },
+      {
+        title: "Campaign Approvals",
+        href: "/clients?tab=submissions",
+        icon: Users,
+        hotkey: "Ctrl+4"
+      }
+    ];
+  }
+
+  if (currentRole === 'vendor') {
+    return [
+      ...baseItems,
+      {
+        title: "My Playlists",
+        href: "/vendor/playlists",
+        icon: Music,
+        hotkey: "Ctrl+2"
+      },
+      {
+        title: "Campaign Requests",
+        href: "/vendor/requests",
+        icon: History,
+        hotkey: "Ctrl+3"
+      }
+    ];
+  }
+
+  return baseItems;
+};
 
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
@@ -146,9 +199,7 @@ export default function Layout({ children }: LayoutProps) {
               
               {/* Desktop Navigation */}
               <nav className="hidden lg:flex space-x-8">
-                {navItems
-                  .filter(item => !item.adminOnly || (item.adminOnly && hasRole('admin')))
-                  .map((item) => {
+                {getNavItemsForRole(currentRole).map((item) => {
                   const Icon = item.icon;
                   const isActive = location.pathname === item.href;
                   
@@ -301,9 +352,7 @@ export default function Layout({ children }: LayoutProps) {
           {mobileMenuOpen && (
             <div className="lg:hidden mt-4 pb-4 border-t border-border pt-4">
               <nav className="space-y-2">
-                {navItems
-                  .filter(item => !item.adminOnly || (item.adminOnly && hasRole('admin')))
-                  .map((item) => {
+                {getNavItemsForRole(currentRole).map((item) => {
                   const Icon = item.icon;
                   const isActive = location.pathname === item.href;
                   

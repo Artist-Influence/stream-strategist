@@ -15,6 +15,8 @@ import CampaignIntakePage from "./pages/CampaignIntakePage";
 import AuthPage from "./pages/AuthPage";
 import SalespersonDashboard from "./pages/SalespersonDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
+import VendorPlaylistsPage from "./pages/VendorPlaylistsPage";
+import VendorRequestsPage from "./pages/VendorRequestsPage";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 
@@ -55,14 +57,14 @@ const App = () => (
                 <CampaignBuilder />
               </ProtectedRoute>
             } />
-            <Route path="/campaigns" element={
-              <ProtectedRoute requiredRoles={['admin', 'manager']}>
-                <CampaignHistoryPage />
+            <Route path="/clients" element={
+              <ProtectedRoute requiredRoles={['admin', 'manager', 'salesperson']}>
+                <ClientsPage />
               </ProtectedRoute>
             } />
-            <Route path="/clients" element={
-              <ProtectedRoute requiredRoles={['admin', 'manager']}>
-                <ClientsPage />
+            <Route path="/campaigns" element={
+              <ProtectedRoute requiredRoles={['admin', 'manager', 'salesperson']}>
+                <CampaignHistoryPage />
               </ProtectedRoute>
             } />
             
@@ -77,6 +79,16 @@ const App = () => (
             <Route path="/vendor" element={
               <ProtectedRoute requiredRoles={['vendor']}>
                 <VendorDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/vendor/playlists" element={
+              <ProtectedRoute requiredRoles={['vendor']}>
+                <VendorPlaylistsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/vendor/requests" element={
+              <ProtectedRoute requiredRoles={['vendor']}>
+                <VendorRequestsPage />
               </ProtectedRoute>
             } />
             
