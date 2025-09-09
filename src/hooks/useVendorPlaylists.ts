@@ -27,20 +27,23 @@ export function useMyPlaylists() {
   return useQuery({
     queryKey: ['my-playlists'],
     queryFn: async () => {
-      // First get the vendor_id for current user
-      const { data: vendorUser, error: vendorError } = await supabase
+      // Get all vendor mappings for current user and prefer "Club Restricted"
+      const { data: mappings, error: vendorError } = await supabase
         .from('vendor_users')
-        .select('vendor_id')
-        .maybeSingle();
+        .select('vendor_id, vendors ( id, name )');
 
       if (vendorError) throw vendorError;
-      if (!vendorUser) return [];
+      const rows = (mappings as any[]) || [];
+      if (rows.length === 0) return [];
+
+      const preferred = rows.find((r: any) => r.vendors?.name === 'Club Restricted') || rows[0];
+      const vendorId = preferred.vendor_id as string;
 
       // Then get playlists for this vendor
       const { data, error } = await supabase
         .from('playlists')
         .select('*')
-        .eq('vendor_id', vendorUser.vendor_id)
+        .eq('vendor_id', vendorId)
         .order('name');
 
       if (error) throw error;
@@ -55,20 +58,23 @@ export function useCreatePlaylist() {
 
   return useMutation({
     mutationFn: async (playlistData: CreatePlaylistData) => {
-      // Get vendor_id for current user
-      const { data: vendorUser, error: vendorError } = await supabase
+      // Determine preferred vendor (Club Restricted if available)
+      const { data: mappings, error: vendorError } = await supabase
         .from('vendor_users')
-        .select('vendor_id')
-        .maybeSingle();
+        .select('vendor_id, vendors ( id, name )');
 
       if (vendorError) throw vendorError;
-      if (!vendorUser) throw new Error('No vendor association found');
+      const rows = (mappings as any[]) || [];
+      if (rows.length === 0) throw new Error('No vendor association found');
+
+      const preferred = rows.find((r: any) => r.vendors?.name === 'Club Restricted') || rows[0];
+      const vendorId = preferred.vendor_id as string;
 
       const { data, error } = await supabase
         .from('playlists')
         .insert({
           ...playlistData,
-          vendor_id: vendorUser.vendor_id
+          vendor_id: vendorId
         })
         .select()
         .single();

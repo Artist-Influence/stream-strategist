@@ -56,11 +56,14 @@ export function useMyVendor() {
             created_at,
             updated_at
           )
-        `)
-        .maybeSingle();
+        `);
 
       if (error) throw error;
-      return data?.vendors as Vendor | null;
+      const rows = (data as any[]) || [];
+      if (rows.length === 0) return null;
+
+      const club = rows.find((r: any) => r.vendors?.name === 'Club Restricted');
+      return (club?.vendors || rows[0].vendors) as Vendor;
     },
   });
 }
