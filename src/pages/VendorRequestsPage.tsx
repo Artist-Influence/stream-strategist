@@ -1,49 +1,65 @@
-import Layout from "@/components/Layout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, Clock, Music, Calendar, DollarSign } from "lucide-react";
+import React, { useState } from 'react';
+import Layout from '@/components/Layout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { useVendorCampaignRequests, useRespondToVendorRequest } from '@/hooks/useVendorCampaignRequests';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Loader2, CheckCircle, XCircle, Clock, Music, Calendar, DollarSign } from 'lucide-react';
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(amount);
+};
 
 export default function VendorRequestsPage() {
-  // Mock data for campaign requests
-  const mockRequests = [
-    {
-      id: 1,
-      campaignName: "Summer Vibes 2024",
-      clientName: "Atlantic Records", 
-      trackName: "Beach Party",
-      requestedPlaylists: ["Chill Vibes", "Summer Hits"],
-      budget: 5000,
-      startDate: "2024-03-15",
-      duration: "30 days",
-      status: "pending",
-      genres: ["Pop", "Electronic"],
-      expectedStreams: 75000
-    },
-    {
-      id: 2,
-      campaignName: "Indie Rock Promotion",
-      clientName: "Independent Artist",
-      trackName: "City Lights",
-      requestedPlaylists: ["Indie Discoveries"],
-      budget: 2500,
-      startDate: "2024-03-20",
-      duration: "21 days", 
-      status: "pending",
-      genres: ["Indie", "Rock"],
-      expectedStreams: 45000
-    }
-  ];
+  const { data: requests = [], isLoading } = useVendorCampaignRequests();
+  const respondToRequest = useRespondToVendorRequest();
+  const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
+  const [responseNotes, setResponseNotes] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [responseType, setResponseType] = useState<'approved' | 'rejected'>('approved');
 
-  const handleApprove = (requestId: number) => {
-    console.log('Approving request:', requestId);
-    // Implementation for approving request
+  const pendingRequests = requests.filter(req => req.status === 'pending');
+  const totalRevenue = pendingRequests.reduce((sum, req) => sum + (req.campaign?.budget || 0), 0);
+  const totalStreams = pendingRequests.reduce((sum, req) => sum + (req.campaign?.stream_goal || 0), 0);
+
+  const handleRespond = async (requestId: string, status: 'approved' | 'rejected') => {
+    setSelectedRequest(requestId);
+    setResponseType(status);
+    setResponseNotes('');
+    setDialogOpen(true);
   };
 
-  const handleReject = (requestId: number) => {
-    console.log('Rejecting request:', requestId);
-    // Implementation for rejecting request
+  const submitResponse = async () => {
+    if (!selectedRequest) return;
+
+    await respondToRequest.mutateAsync({
+      requestId: selectedRequest,
+      status: responseType,
+      response_notes: responseNotes.trim() || undefined,
+    });
+
+    setDialogOpen(false);
+    setSelectedRequest(null);
+    setResponseNotes('');
   };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-6 py-6">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -65,7 +81,7 @@ export default function VendorRequestsPage() {
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{mockRequests.filter(r => r.status === 'pending').length}</div>
+              <div className="text-2xl font-bold">{pendingRequests.length}</div>
               <p className="text-xs text-muted-foreground">
                 Awaiting your decision
               </p>
@@ -78,9 +94,7 @@ export default function VendorRequestsPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                ${mockRequests.reduce((sum, r) => sum + r.budget, 0).toLocaleString()}
-              </div>
+              <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
               <p className="text-xs text-muted-foreground">
                 From pending requests
               </p>
@@ -93,9 +107,7 @@ export default function VendorRequestsPage() {
               <Music className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {mockRequests.reduce((sum, r) => sum + r.expectedStreams, 0).toLocaleString()}
-              </div>
+              <div className="text-2xl font-bold">{totalStreams.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 Across all requests
               </p>
@@ -105,18 +117,18 @@ export default function VendorRequestsPage() {
 
         {/* Campaign Requests */}
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Pending Requests</h2>
+          <h2 className="text-xl font-semibold">Campaign Requests</h2>
           
-          {mockRequests.length > 0 ? (
-            mockRequests.map((request) => (
+          {requests.length > 0 ? (
+            requests.map((request) => (
               <Card key={request.id}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="text-lg">{request.campaignName}</CardTitle>
-                      <CardDescription>
-                        {request.clientName} • {request.trackName}
-                      </CardDescription>
+                      <CardTitle className="text-lg">{request.campaign?.name || 'Untitled Campaign'}</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        {request.campaign?.brand_name} • {request.campaign?.track_name || 'Track'}
+                      </p>
                     </div>
                     <Badge variant={
                       request.status === 'approved' ? 'default' :
@@ -135,58 +147,80 @@ export default function VendorRequestsPage() {
                     <div className="flex items-center gap-2">
                       <DollarSign className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <div className="text-sm font-medium">${request.budget.toLocaleString()}</div>
+                        <div className="text-sm font-medium">{formatCurrency(request.campaign?.budget || 0)}</div>
                         <div className="text-xs text-muted-foreground">Budget</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <div className="text-sm font-medium">{request.startDate}</div>
-                        <div className="text-xs text-muted-foreground">{request.duration}</div>
+                        <div className="text-sm font-medium">{request.campaign?.start_date || 'TBD'}</div>
+                        <div className="text-xs text-muted-foreground">{request.campaign?.duration_days || 0} days</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Music className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <div className="text-sm font-medium">{request.expectedStreams.toLocaleString()}</div>
+                        <div className="text-sm font-medium">{(request.campaign?.stream_goal || 0).toLocaleString()}</div>
                         <div className="text-xs text-muted-foreground">Expected streams</div>
                       </div>
                     </div>
                     <div>
                       <div className="text-sm font-medium">Playlists</div>
                       <div className="text-xs text-muted-foreground">
-                        {request.requestedPlaylists.join(', ')}
+                        {request.playlists?.map(p => p.name).join(', ') || 'No playlists'}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-wrap gap-1">
-                      {request.genres.map((genre) => (
-                        <Badge key={genre} variant="outline" className="text-xs">
-                          {genre}
-                        </Badge>
-                      ))}
-                    </div>
-                    
-                    {request.status === 'pending' && (
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          onClick={() => handleReject(request.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <XCircle className="h-4 w-4 mr-1" />
-                          Reject
-                        </Button>
-                        <Button onClick={() => handleApprove(request.id)}>
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Approve
-                        </Button>
+                  {request.playlists && request.playlists.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-muted-foreground mb-2">Requested Playlists</p>
+                      <div className="flex flex-wrap gap-2">
+                        {request.playlists.map((playlist) => (
+                          <Badge key={playlist.id} variant="outline">
+                            {playlist.name} ({playlist.avg_daily_streams.toLocaleString()} streams/day)
+                          </Badge>
+                        ))}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
+
+                  {request.campaign?.music_genres && request.campaign.music_genres.length > 0 && (
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex flex-wrap gap-1">
+                        {request.campaign.music_genres.map((genre) => (
+                          <Badge key={genre} variant="outline" className="text-xs">
+                            {genre}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {request.response_notes && (
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-muted-foreground mb-2">Response Notes</p>
+                      <p className="text-sm bg-muted p-2 rounded">{request.response_notes}</p>
+                    </div>
+                  )}
+
+                  {request.status === 'pending' && (
+                    <div className="flex gap-2 pt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => handleRespond(request.id, 'rejected')}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Reject
+                      </Button>
+                      <Button onClick={() => handleRespond(request.id, 'approved')}>
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Approve
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))
@@ -194,7 +228,7 @@ export default function VendorRequestsPage() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <Clock className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold">No pending requests</h3>
+                <h3 className="text-lg font-semibold">No campaign requests</h3>
                 <p className="text-muted-foreground">
                   You don't have any campaign participation requests at the moment.
                 </p>
@@ -202,6 +236,45 @@ export default function VendorRequestsPage() {
             </Card>
           )}
         </div>
+
+        {/* Response Dialog */}
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {responseType === 'approved' ? 'Approve Campaign Request' : 'Reject Campaign Request'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="response-notes">Notes (optional)</Label>
+                <Textarea
+                  id="response-notes"
+                  placeholder={
+                    responseType === 'approved' 
+                      ? "Add any notes about this approval..." 
+                      : "Please provide a reason for rejection..."
+                  }
+                  value={responseNotes}
+                  onChange={(e) => setResponseNotes(e.target.value)}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={submitResponse}
+                  disabled={respondToRequest.isPending}
+                  className={responseType === 'approved' ? 'bg-green-600 hover:bg-green-700' : ''}
+                >
+                  {respondToRequest.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {responseType === 'approved' ? 'Approve' : 'Reject'} Request
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

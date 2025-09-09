@@ -281,6 +281,45 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_vendor_requests: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          playlist_ids: Json
+          requested_at: string
+          responded_at: string | null
+          response_notes: string | null
+          status: string
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          playlist_ids?: Json
+          requested_at?: string
+          responded_at?: string | null
+          response_notes?: string | null
+          status?: string
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          playlist_ids?: Json
+          requested_at?: string
+          responded_at?: string | null
+          response_notes?: string | null
+          status?: string
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: []
+      }
       campaigns: {
         Row: {
           algorithm_recommendations: Json | null
