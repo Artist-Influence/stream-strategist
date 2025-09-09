@@ -24,10 +24,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Trash2, Plus, ExternalLink } from 'lucide-react';
+import { Trash2, Plus, ExternalLink, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PlaylistSelector } from './PlaylistSelector';
+import { useCampaignVendorResponses } from '@/hooks/useCampaignVendorResponses';
 
 interface PlaylistWithStatus {
   id: string;
@@ -58,6 +59,9 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
   const [loading, setLoading] = useState(false);
   const [showPlaylistSelector, setShowPlaylistSelector] = useState(false);
   const { toast } = useToast();
+  
+  // Fetch vendor responses for this campaign
+  const { data: vendorResponses = [], isLoading: vendorResponsesLoading } = useCampaignVendorResponses(campaign?.id);
 
   useEffect(() => {
     if (campaign?.id && open) {
@@ -220,6 +224,24 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
     }
   };
 
+  const getVendorResponseVariant = (status: string) => {
+    switch (status) {
+      case 'approved': return 'default';
+      case 'rejected': return 'destructive';
+      case 'pending': return 'secondary';
+      default: return 'outline';
+    }
+  };
+
+  const getVendorResponseIcon = (status: string) => {
+    switch (status) {
+      case 'approved': return <CheckCircle className="h-3 w-3 mr-1" />;
+      case 'rejected': return <XCircle className="h-3 w-3 mr-1" />;
+      case 'pending': return <Clock className="h-3 w-3 mr-1" />;
+      default: return null;
+    }
+  };
+
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleDateString();
@@ -296,6 +318,68 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
                   <ExternalLink className="h-4 w-4" />
                 </a>
               </div>
+            </div>
+          )}
+          
+          {/* Vendor Responses */}
+          {vendorResponses.length > 0 && (
+            <div className="space-y-4">
+              <Label className="text-lg font-semibold">Vendor Responses ({vendorResponses.length})</Label>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Vendor</TableHead>
+                    <TableHead>Status</TableHead> 
+                    <TableHead>Requested Playlists</TableHead>
+                    <TableHead>Response Notes</TableHead>
+                    <TableHead>Response Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {vendorResponses.map((response) => (
+                    <TableRow key={response.id}>
+                      <TableCell>
+                        <Badge variant="secondary">
+                          {(response.vendor as any)?.name || 'Unknown Vendor'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getVendorResponseVariant(response.status)}>
+                          {getVendorResponseIcon(response.status)}
+                          {response.status.charAt(0).toUpperCase() + response.status.slice(1)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {response.playlists && response.playlists.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {response.playlists.map((playlist) => (
+                              <Badge key={playlist.id} variant="outline" className="text-xs">
+                                {playlist.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">No playlists</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {response.response_notes ? (
+                          <span className="text-sm">{response.response_notes}</span>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {response.responded_at ? (
+                          <span className="text-sm">{formatDate(response.responded_at)}</span>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
           
