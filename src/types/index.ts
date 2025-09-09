@@ -65,7 +65,7 @@ export interface Campaign {
   sub_genres?: string[];
   start_date: string;
   duration_days: number;
-  status: 'draft' | 'active' | 'completed';
+  status: 'draft' | 'operator_review_complete' | 'built' | 'unreleased' | 'active' | 'paused' | 'completed' | 'cancelled';
   selected_playlists: PlaylistWithStatus[];
   vendor_allocations: Record<string, number>;
   totals: {

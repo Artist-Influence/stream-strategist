@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useParams } from "react-router-dom";
 import Layout from "@/components/Layout";
 import CampaignConfiguration from "@/components/CampaignConfiguration";
 import AIRecommendations from "@/components/AIRecommendations";
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Circle } from "lucide-react";
+import { useCampaignBuilder } from "@/hooks/useCampaignBuilder";
 
 type CampaignStep = "configuration" | "recommendations" | "review" | "complete";
 
@@ -32,8 +34,15 @@ const steps = [
 
 export default function CampaignBuilder() {
   const [currentStep, setCurrentStep] = useState<CampaignStep>("configuration");
-  const [campaignData, setCampaignData] = useState<Partial<CampaignData>>({});
   const [allocationsData, setAllocationsData] = useState<any>(null);
+  const { 
+    isEditing, 
+    isLoading, 
+    campaignData, 
+    setCampaignData, 
+    saveCampaign, 
+    campaignId 
+  } = useCampaignBuilder();
 
   const handleConfigurationNext = (data: CampaignData) => {
     console.log('CampaignBuilder received data:', data);

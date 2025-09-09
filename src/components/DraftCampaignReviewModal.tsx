@@ -60,7 +60,7 @@ export function DraftCampaignReviewModal({
       const { error } = await supabase
         .from('campaigns')
         .update({ 
-          status: 'active',
+          status: 'operator_review_complete',
           pending_operator_review: false,
           updated_at: new Date().toISOString()
         })
@@ -73,7 +73,7 @@ export function DraftCampaignReviewModal({
       queryClient.invalidateQueries({ queryKey: ['draft-campaigns'] });
       toast({
         title: "Campaign Approved",
-        description: "Campaign has been activated and is now live.",
+        description: "Campaign approved and ready for building.",
       });
       onOpenChange(false);
     },
@@ -111,7 +111,7 @@ export function DraftCampaignReviewModal({
             Review Draft Campaign
           </DialogTitle>
           <DialogDescription>
-            Review algorithm recommendations and approve campaign for activation
+            Review algorithm recommendations and approve campaign for building
           </DialogDescription>
         </DialogHeader>
 
@@ -292,8 +292,8 @@ export function DraftCampaignReviewModal({
                 "Approving..."
               ) : (
                 <>
-                  <Play className="w-4 h-4 mr-2" />
-                  Approve & Activate Campaign
+                  <Check className="w-4 h-4 mr-2" />
+                  Approve for Building
                 </>
               )}
             </Button>
