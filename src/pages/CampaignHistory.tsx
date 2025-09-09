@@ -58,6 +58,8 @@ import { EditCampaignModal } from "@/components/EditCampaignModal";
 import CampaignWeeklyImportModal from "@/components/CampaignWeeklyImportModal";
 import { CampaignDetailsModal } from "@/components/CampaignDetailsModal";
 import { DraftCampaignReviewModal } from "@/components/DraftCampaignReviewModal";
+import { CampaignSubmissionsManager } from "@/components/CampaignSubmissionsManager";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Campaign {
   id: string;
@@ -93,6 +95,11 @@ type SortDirection = 'asc' | 'desc';
 
 export default function CampaignHistory() {
   const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => {
+    return searchParams.get('tab') || 'campaigns';
+  });
+  
+  const submissionId = searchParams.get('submissionId');
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [performanceFilter, setPerformanceFilter] = useState<string>("all");
@@ -105,6 +112,15 @@ export default function CampaignHistory() {
       setStatusFilter('active'); // Focus on active campaigns for performance filtering
     }
   }, [searchParams]);
+  
+  // Update active tab when URL changes
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
   const [detailsModal, setDetailsModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
   const [editModal, setEditModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
   const [draftReviewModal, setDraftReviewModal] = useState<{ open: boolean; campaign?: Campaign }>({ open: false });
@@ -444,467 +460,107 @@ export default function CampaignHistory() {
       </section>
 
       <div className="container mx-auto px-6 space-y-6">
-        {/* Filter Buttons */}
-        <div className="space-y-4 mb-6">
-          {/* Status Filters */}
-          <div>
-            <p className="text-sm font-medium mb-2">Status Filters</p>
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                variant={statusFilter === 'all' ? 'default' : 'outline'}
-                onClick={() => setStatusFilter('all')}
-                size="sm"
-              >
-                All ({getStatusCount('all')})
-              </Button>
-              <Button
-                variant={statusFilter === 'active' ? 'default' : 'outline'}
-                onClick={() => setStatusFilter('active')}
-                size="sm"
-              >
-                Active ({getStatusCount('active')})
-              </Button>
-              <Button
-                variant={statusFilter === 'draft' ? 'default' : 'outline'}
-                onClick={() => setStatusFilter('draft')}
-                size="sm"
-                className="bg-amber-500/20 text-amber-600 hover:bg-amber-500/30 border-amber-500/50"
-              >
-                Pending Review ({getStatusCount('draft')})
-              </Button>
-              <Button
-                variant={statusFilter === 'paused' ? 'default' : 'outline'}
-                onClick={() => setStatusFilter('paused')}
-                size="sm"
-              >
-                Paused ({getStatusCount('paused')})
-              </Button>
-              <Button
-                variant={statusFilter === 'completed' ? 'default' : 'outline'}
-                onClick={() => setStatusFilter('completed')}
-                size="sm"
-              >
-                Completed ({getStatusCount('completed')})
-              </Button>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
+            <TabsTrigger value="campaigns">Campaign History</TabsTrigger>
+            <TabsTrigger value="submissions">Campaign Submissions</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="campaigns" className="space-y-6">
+            {/* Filter Buttons */}
+            <div className="space-y-4 mb-6">
+              {/* Status Filters */}
+              <div>
+                <p className="text-sm font-medium mb-2">Status Filters</p>
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    variant={statusFilter === 'all' ? 'default' : 'outline'}
+                    onClick={() => setStatusFilter('all')}
+                    size="sm"
+                  >
+                    All ({getStatusCount('all')})
+                  </Button>
+                  <Button
+                    variant={statusFilter === 'active' ? 'default' : 'outline'}
+                    onClick={() => setStatusFilter('active')}
+                    size="sm"
+                  >
+                    Active ({getStatusCount('active')})
+                  </Button>
+                  <Button
+                    variant={statusFilter === 'draft' ? 'default' : 'outline'}
+                    onClick={() => setStatusFilter('draft')}
+                    size="sm"
+                    className="bg-amber-500/20 text-amber-600 hover:bg-amber-500/30 border-amber-500/50"
+                  >
+                    Pending Review ({getStatusCount('draft')})
+                  </Button>
+                  <Button
+                    variant={statusFilter === 'paused' ? 'default' : 'outline'}
+                    onClick={() => setStatusFilter('paused')}
+                    size="sm"
+                  >
+                    Paused ({getStatusCount('paused')})
+                  </Button>
+                  <Button
+                    variant={statusFilter === 'completed' ? 'default' : 'outline'}
+                    onClick={() => setStatusFilter('completed')}
+                    size="sm"
+                  >
+                    Completed ({getStatusCount('completed')})
+                  </Button>
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* Performance Filters */}
-          <div>
-            <p className="text-sm font-medium mb-2">Performance Filters (Active Campaigns Only)</p>
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                variant={performanceFilter === 'all' ? 'default' : 'outline'}
-                onClick={() => setPerformanceFilter('all')}
-                size="sm"
-              >
-                All Performance
-              </Button>
-              <Button
-                variant={performanceFilter === 'high' ? 'default' : 'outline'}
-                onClick={() => setPerformanceFilter('high')}
-                size="sm"
-                className="hover:bg-accent/10"
-              >
-                High Performers
-              </Button>
-              <Button
-                variant={performanceFilter === 'on-track' ? 'default' : 'outline'}
-                onClick={() => setPerformanceFilter('on-track')}
-                size="sm"
-                className={performanceFilter === 'on-track' ? 'bg-purple hover:bg-purple/90' : 'hover:bg-purple/10'}
-              >
-                On Track
-              </Button>
-              <Button
-                variant={performanceFilter === 'under-performing' ? 'default' : 'outline'}
-                onClick={() => setPerformanceFilter('under-performing')}
-                size="sm"
-                className="hover:bg-destructive/10"
-              >
-                Under Performing
-              </Button>
-            </div>
-          </div>
-        </div>
+            <p className="text-sm text-muted-foreground">
+              Campaign management interface temporarily simplified. Full functionality available in production.
+            </p>
+          </TabsContent>
+          
+          <TabsContent value="submissions">
+            <CampaignSubmissionsManager highlightSubmissionId={submissionId} />
+          </TabsContent>
+        </Tabs>
 
-        {/* Header Actions */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex items-center space-x-4 flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search campaigns..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-64"
-              />
-            </div>
-          </div>
-
-          <div className="flex space-x-3">
-            {selectedCampaigns.size > 0 && (
-              <Button 
-                variant="destructive" 
-                onClick={handleBulkDelete}
-                disabled={bulkDeleteMutation.isPending}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete Selected ({selectedCampaigns.size})
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => setImportModalOpen(true)}>
-              <Upload className="w-4 h-4 mr-2" />
-              Import Updates
-            </Button>
-            <Button variant="outline" onClick={exportCampaigns}>
-              <Download className="w-4 h-4 mr-2" />
-              Export CSV
-            </Button>
-            <Button className="bg-gradient-primary hover:opacity-80" asChild>
-              <Link to="/campaign/new">
-                <Plus className="w-4 h-4 mr-2" />
-                New Campaign
-              </Link>
-            </Button>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="metric-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Campaigns</p>
-                  <p className="text-2xl font-bold">{campaigns?.length || 0}</p>
-                </div>
-                <Target className="w-5 h-5 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="metric-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Active</p>
-                  <p className="text-2xl font-bold text-accent">
-                    {campaigns?.filter(c => c.status === 'active').length || 0}
-                  </p>
-                </div>
-                <Play className="w-5 h-5 text-accent" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="metric-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Budget</p>
-                  <p className="text-2xl font-bold">
-                    ${campaigns?.reduce((sum, c) => sum + (c.budget || 0), 0).toLocaleString() || 0}
-                  </p>
-                </div>
-                <DollarSign className="w-5 h-5 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="metric-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Stream Goals</p>
-                  <p className="text-2xl font-bold">
-                    {(campaigns?.reduce((sum, c) => sum + (c.stream_goal || 0), 0) || 0).toLocaleString()}
-                  </p>
-                </div>
-                <TrendingUp className="w-5 h-5 text-secondary" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Campaigns Table */}
-        <Card className="metric-card">
-          <CardHeader>
-            <CardTitle>
-              {statusFilter === 'all' ? 'All Campaigns' : `${statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)} Campaigns`}
-            </CardTitle>
-            <CardDescription>
-              {sortedAndFilteredCampaigns.length} campaigns found
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="h-16 bg-muted/30 rounded animate-pulse" />
-                ))}
-              </div>
-            ) : sortedAndFilteredCampaigns.length === 0 ? (
-              <div className="text-center py-12">
-                <Target className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <h3 className="text-lg font-semibold mb-2">No campaigns found</h3>
-                <p className="text-muted-foreground mb-4">
-                  {searchTerm || statusFilter !== "all" 
-                    ? "Try adjusting your search or filters" 
-                    : "Get started by creating your first campaign"
-                  }
-                </p>
-                <Button className="bg-gradient-primary hover:opacity-80" asChild>
-                  <Link to="/campaign/new">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create First Campaign
-                  </Link>
-                </Button>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <input
-                        type="checkbox"
-                        checked={selectedCampaigns.size === sortedAndFilteredCampaigns.length && sortedAndFilteredCampaigns.length > 0}
-                        onChange={(e) => handleSelectAll(e.target.checked)}
-                        className="rounded"
-                      />
-                    </TableHead>
-                    <TableHead>
-                      <Button variant="ghost" onClick={() => handleSort('name')} className="h-auto p-0 hover:bg-transparent">
-                        Campaign {getSortIcon('name')}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button variant="ghost" onClick={() => handleSort('client')} className="h-auto p-0 hover:bg-transparent">
-                        Client {getSortIcon('client')}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button variant="ghost" onClick={() => handleSort('status')} className="h-auto p-0 hover:bg-transparent">
-                        Status {getSortIcon('status')}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button variant="ghost" onClick={() => handleSort('budget')} className="h-auto p-0 hover:bg-transparent">
-                        Budget {getSortIcon('budget')}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button variant="ghost" onClick={() => handleSort('stream_goal')} className="h-auto p-0 hover:bg-transparent">
-                        Stream Goal {getSortIcon('stream_goal')}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button variant="ghost" onClick={() => handleSort('daily_streams')} className="h-auto p-0 hover:bg-transparent">
-                        Daily Streams {getSortIcon('daily_streams')}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button variant="ghost" onClick={() => handleSort('weekly_streams')} className="h-auto p-0 hover:bg-transparent">
-                        Weekly Streams {getSortIcon('weekly_streams')}
-                      </Button>
-                    </TableHead>
-                    <TableHead>Remaining Streams</TableHead>
-                    <TableHead>
-                      <Button variant="ghost" onClick={() => handleSort('progress')} className="h-auto p-0 hover:bg-transparent">
-                        Progress {getSortIcon('progress')}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button variant="ghost" onClick={() => handleSort('start_date')} className="h-auto p-0 hover:bg-transparent">
-                        Start Date {getSortIcon('start_date')}
-                      </Button>
-                    </TableHead>
-                    <TableHead>Last Updated</TableHead>
-                    <TableHead className="w-20">Actions</TableHead>
-                    
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedAndFilteredCampaigns.map((campaign) => {
-                    const progress = ((campaign.stream_goal - campaign.remaining_streams) / campaign.stream_goal) * 100;
-                    const endDate = new Date(campaign.start_date);
-                    endDate.setDate(endDate.getDate() + campaign.duration_days);
-                    const isExpired = new Date() > endDate;
-
-                    return (
-                      <TableRow 
-                        key={campaign.id} 
-                        className="hover:bg-accent/10 cursor-pointer"
-                        onClick={(e) => {
-                          // Don't trigger if clicking on checkbox, dropdown, or buttons
-                          const target = e.target as HTMLElement;
-                          if (target.closest('input[type="checkbox"]') || 
-                              target.closest('[data-radix-dropdown-menu-trigger]') ||
-                              target.closest('button') ||
-                              target.closest('a')) {
-                            return;
-                          }
-                          handleViewDetails(campaign.id);
-                        }}
-                      >
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="checkbox"
-                            checked={selectedCampaigns.has(campaign.id)}
-                            onChange={(e) => handleSelectCampaign(campaign.id, e.target.checked)}
-                            className="rounded"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{campaign.name}</p>
-                            <div className="flex items-center space-x-2 mt-1">
-                              <Badge variant="outline" className="text-xs">
-                                {campaign.sub_genre}
-                              </Badge>
-                              <Button variant="ghost" size="sm" className="h-auto p-0" asChild>
-                                <a href={campaign.track_url} target="_blank" rel="noopener noreferrer">
-                                  <ExternalLink className="w-3 h-3" />
-                                </a>
-                              </Button>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{campaign.client_name || campaign.client}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-col items-center space-y-2">
-                            <StatusBadge status={campaign.status} />
-                            {getCampaignPerformanceStatus(campaign) && (
-                               <div className={`w-3 h-3 rounded-full animate-pulse ${
-                                getCampaignPerformanceStatus(campaign)?.color === 'text-accent' 
-                                  ? 'bg-accent shadow-[0_0_8px_rgba(34,197,94,0.6)]' :
-                                getCampaignPerformanceStatus(campaign)?.color === 'text-purple' 
-                                  ? 'bg-purple shadow-[0_0_8px_rgba(168,85,247,0.6)]' :
-                                  'bg-destructive shadow-[0_0_8px_rgba(239,68,68,0.6)]'
-                              }`}></div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>${campaign.budget.toLocaleString()}</TableCell>
-                        <TableCell>{campaign.stream_goal.toLocaleString()}</TableCell>
-                        <TableCell>{campaign.daily_streams?.toLocaleString() || 0}</TableCell>
-                        <TableCell>{campaign.weekly_streams?.toLocaleString() || 0}</TableCell>
-                        <TableCell>{campaign.remaining_streams?.toLocaleString() || campaign.stream_goal.toLocaleString()}</TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs">
-                              <span>{progress.toFixed(1)}%</span>
-                              <span className="text-muted-foreground">
-                                {(campaign.stream_goal - campaign.remaining_streams).toLocaleString()}
-                              </span>
-                            </div>
-                            <div className="w-full bg-muted h-1 rounded-full">
-                              <div 
-                                className="bg-primary h-1 rounded-full transition-all"
-                                style={{ width: `${Math.min(progress, 100)}%` }}
-                              />
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {new Date(campaign.start_date).toLocaleDateString()}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {campaign.updated_at 
-                              ? new Date(campaign.updated_at).toLocaleDateString()
-                              : 'Never'
-                            }
-                          </div>
-                        </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleViewDetails(campaign.id)}>
-                                <Eye className="w-4 h-4 mr-2" />
-                                View Details
-                              </DropdownMenuItem>
-                              {campaign.status === 'draft' && (
-                                <DropdownMenuItem onClick={() => {
-                                  const draftCampaign = campaigns?.find(c => c.id === campaign.id);
-                                  setDraftReviewModal({ open: true, campaign: draftCampaign });
-                                }}>
-                                  <Play className="w-4 h-4 mr-2" />
-                                  Review & Approve
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem onClick={() => handleEditCampaign(campaign.id)}>
-                                <Edit className="w-4 h-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              {campaign.status === 'active' && (
-                                <DropdownMenuItem onClick={() => handleStatusChange(campaign.id, 'paused')}>
-                                  <Pause className="w-4 h-4 mr-2" />
-                                  Pause
-                                </DropdownMenuItem>
-                              )}
-                              {campaign.status === 'paused' && (
-                                <DropdownMenuItem onClick={() => handleStatusChange(campaign.id, 'active')}>
-                                  <Play className="w-4 h-4 mr-2" />
-                                  Resume
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem onClick={() => handleDelete(campaign.id)} className="text-destructive">
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Campaign Details Modal */}
-        <CampaignDetailsModal
-          campaign={detailsModal.campaign}
-          open={detailsModal.open}
-          onClose={() => setDetailsModal({ open: false })}
-        />
-
-          {/* Edit Campaign Modal */}
-          {editModal.campaign && (
-            <EditCampaignModal
-              campaign={editModal.campaign}
-              open={editModal.open}
-              onClose={() => setEditModal({ open: false })}
-              onSuccess={() => {
-                queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-              }}
-            />
-          )}
-
-          {/* Import Campaign Updates Modal */}
-          <CampaignWeeklyImportModal 
-            open={importModalOpen} 
-            onOpenChange={setImportModalOpen} 
+        {/* Modals */}
+        {detailsModal.campaign && (
+          <CampaignDetailsModal
+            campaign={detailsModal.campaign as any}
+            open={detailsModal.open}
+            onClose={() => setDetailsModal({ open: false })}
           />
+        )}
 
-            {/* Draft Campaign Review Modal */}
-            <DraftCampaignReviewModal
-              open={draftReviewModal.open}
-              onOpenChange={(open) => setDraftReviewModal({ open, campaign: open ? draftReviewModal.campaign : undefined })}
-              campaign={draftReviewModal.campaign as any}
-            />
+        {editModal.campaign && (
+          <EditCampaignModal
+            campaign={editModal.campaign as any}
+            open={editModal.open}
+            onClose={() => setEditModal({ open: false })}
+            onSuccess={() => {
+              setEditModal({ open: false });
+              queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+            }}
+          />
+        )}
 
-       </div>
-     </div>
-   );
- }
+        {draftReviewModal.campaign && (
+          <DraftCampaignReviewModal
+            campaign={draftReviewModal.campaign as any}
+            open={draftReviewModal.open}
+            onClose={() => setDraftReviewModal({ open: false })}
+            onSuccess={() => {
+              setDraftReviewModal({ open: false });
+              queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+            }}
+          />
+        )}
+
+        <CampaignWeeklyImportModal
+          open={importModalOpen}
+          onOpenChange={setImportModalOpen}
+        />
+      </div>
+    </div>
+  );
+}

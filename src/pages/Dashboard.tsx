@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { SalespeopleManager } from "@/components/SalespeopleManager";
-import { ProjectDiagnostics } from "@/components/ProjectDiagnostics";
+import { ActiveVendorsCard } from "@/components/ActiveVendorsCard";
 
 interface DashboardStats {
   totalCampaigns: number;
@@ -179,7 +179,7 @@ export default function Dashboard() {
 
       {/* Stats Section */}
       <section className="container mx-auto px-6">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
           <div className="metric-card p-6">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm text-muted-foreground">Total Playlists</h3>
@@ -231,22 +231,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="metric-card p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm text-muted-foreground">Algorithm Accuracy</h3>
-              <Zap className="w-4 h-4 text-primary" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-2xl font-bold text-foreground">
-                {isLoading ? "..." : `${stats?.algorithmAccuracy || 0}%`}
-              </p>
-              <div className="flex items-center space-x-1 text-xs">
-                <TrendingUpIcon className="w-3 h-3 text-accent" />
-                <span className="text-accent">+2%</span>
-                <span className="text-muted-foreground">prediction rate</span>
-              </div>
-            </div>
-          </div>
+          <ActiveVendorsCard />
         </div>
       </section>
 
@@ -362,10 +347,6 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Project Security Diagnostics */}
-      <section className="container mx-auto px-6 pb-12">
-        <ProjectDiagnostics />
-      </section>
 
       {/* Salespeople Management Section */}
       <section className="container mx-auto px-6 pb-12">
