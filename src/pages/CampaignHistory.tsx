@@ -88,6 +88,7 @@ interface Campaign {
   content_types: string[];
   algorithm_recommendations: any;
   salesperson: string;
+  pending_operator_review?: boolean;
 }
 
 type SortField = 'name' | 'client' | 'budget' | 'stream_goal' | 'daily_streams' | 'weekly_streams' | 'start_date' | 'progress' | 'status';
@@ -100,6 +101,7 @@ export default function CampaignHistory() {
   });
   
   const submissionId = searchParams.get('submissionId');
+  const highlightCampaignId = searchParams.get('highlight');
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [performanceFilter, setPerformanceFilter] = useState<string>("all");
@@ -521,9 +523,99 @@ export default function CampaignHistory() {
               </div>
             </div>
 
-            <p className="text-sm text-muted-foreground">
-              Campaign management interface temporarily simplified. Full functionality available in production.
-            </p>
+            {/* Search */}
+            <div className="flex gap-4 items-center">
+              <div className="flex-1">
+                <Input
+                  placeholder="Search campaigns..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="max-w-sm"
+                />
+              </div>
+            </div>
+
+            {/* Campaigns Table */}
+            {isLoading ? (
+              <div className="flex justify-center p-8">Loading campaigns...</div>
+            ) : sortedAndFilteredCampaigns && sortedAndFilteredCampaigns.length > 0 ? (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Campaign</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Budget</TableHead>
+                      <TableHead>Stream Goal</TableHead>
+                      <TableHead>Start Date</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedAndFilteredCampaigns.map((campaign) => {
+                      const isHighlighted = highlightCampaignId === campaign.id;
+                      return (
+                        <TableRow 
+                          key={campaign.id}
+                          className={`hover:bg-muted/50 ${
+                            isHighlighted 
+                              ? 'ring-2 ring-primary bg-primary/5' 
+                              : ''
+                          }`}
+                        >
+                          <TableCell className="font-medium">
+                            <div>
+                              <div className="font-medium">{campaign.name}</div>
+                              {campaign.salesperson && (
+                                <div className="text-xs text-muted-foreground">
+                                  by {campaign.salesperson}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>{campaign.client_name || campaign.client}</TableCell>
+                          <TableCell>
+                            <StatusBadge status={campaign.status} />
+                          </TableCell>
+                          <TableCell>${campaign.budget?.toLocaleString()}</TableCell>
+                          <TableCell>{campaign.stream_goal?.toLocaleString()}</TableCell>
+                          <TableCell>
+                            {new Date(campaign.start_date).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleViewDetails(campaign.id)}
+                              >
+                                View
+                              </Button>
+                              {campaign.pending_operator_review && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEditCampaign(campaign.id)}
+                                >
+                                  Review
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <p className="text-muted-foreground">No campaigns found</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
           
           <TabsContent value="submissions">

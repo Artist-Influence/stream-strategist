@@ -354,6 +354,7 @@ export type Database = {
           stream_goal: number
           sub_genre: string
           sub_genres: string[] | null
+          submission_id: string | null
           territory_preferences: string[]
           totals: Json | null
           track_name: string | null
@@ -395,6 +396,7 @@ export type Database = {
           stream_goal?: number
           sub_genre?: string
           sub_genres?: string[] | null
+          submission_id?: string | null
           territory_preferences?: string[]
           totals?: Json | null
           track_name?: string | null
@@ -436,6 +438,7 @@ export type Database = {
           stream_goal?: number
           sub_genre?: string
           sub_genres?: string[] | null
+          submission_id?: string | null
           territory_preferences?: string[]
           totals?: Json | null
           track_name?: string | null
@@ -450,6 +453,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_submissions"
             referencedColumns: ["id"]
           },
         ]

@@ -209,7 +209,8 @@ export function useApproveCampaignSubmission() {
           results: {},
           source: APP_CAMPAIGN_SOURCE_INTAKE,
           campaign_type: APP_CAMPAIGN_TYPE,
-          salesperson: submission.salesperson
+          salesperson: submission.salesperson,
+          submission_id: submissionId
         });
 
       if (campaignError) throw campaignError;
