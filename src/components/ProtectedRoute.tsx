@@ -13,10 +13,10 @@ export function ProtectedRoute({
   requiredRoles, 
   fallbackPath = '/auth' 
 }: ProtectedRouteProps) {
-  const { user, loading, userRole } = useAuth();
+  const { user, loading, currentRole, hasRole } = useAuth();
   const location = useLocation();
 
-  console.log('ProtectedRoute - user:', user?.email, 'userRole:', userRole, 'requiredRoles:', requiredRoles, 'loading:', loading);
+  console.log('ProtectedRoute - user:', user?.email, 'currentRole:', currentRole, 'requiredRoles:', requiredRoles, 'loading:', loading);
 
   if (loading) {
     return (
@@ -31,19 +31,23 @@ export function ProtectedRoute({
     return <Navigate to={fallbackPath} state={{ from: location }} replace />;
   }
 
-  if (requiredRoles && (!userRole || !requiredRoles.includes(userRole as any))) {
-    console.log('Access denied - userRole:', userRole, 'required:', requiredRoles);
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-destructive">Access Denied</h1>
-          <p className="text-muted-foreground">You don't have permission to access this page.</p>
-          <p className="text-xs text-muted-foreground mt-2">
-            Your role: {userRole || 'none'} | Required: {requiredRoles?.join(', ')}
-          </p>
+  if (requiredRoles && requiredRoles.length > 0) {
+    const hasRequiredRole = requiredRoles.some(role => hasRole(role));
+    
+    if (!hasRequiredRole) {
+      console.log('Access denied - currentRole:', currentRole, 'required:', requiredRoles);
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-destructive">Access Denied</h1>
+            <p className="text-muted-foreground">You don't have permission to access this page.</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Current role: {currentRole || 'none'} | Required: {requiredRoles?.join(', ')}
+            </p>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
   console.log('Access granted');

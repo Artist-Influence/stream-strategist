@@ -10,11 +10,10 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-  userRole: string | null;
-  isAdmin: boolean;
-  isManager: boolean;
-  isSalesperson: boolean;
-  isVendor: boolean;
+  userRoles: string[];
+  currentRole: string | null;
+  setCurrentRole: (role: string) => void;
+  hasRole: (role: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,12 +22,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [currentRole, setCurrentRole] = useState<string | null>(null);
 
-  const isAdmin = userRole === 'admin';
-  const isManager = userRole === 'manager';
-  const isSalesperson = userRole === 'salesperson';
-  const isVendor = userRole === 'vendor';
+  const hasRole = (role: string) => userRoles.includes(role);
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -37,13 +34,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Fetch user role when auth state changes
+        // Fetch user roles when auth state changes
         if (session?.user) {
           setTimeout(() => {
-            fetchUserRole(session.user.id);
+            fetchUserRoles(session.user.id);
           }, 0);
         } else {
-          setUserRole(null);
+          setUserRoles([]);
+          setCurrentRole(null);
         }
         
         setLoading(false);
@@ -56,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchUserRole(session.user.id);
+        fetchUserRoles(session.user.id);
       }
       
       setLoading(false);
@@ -65,31 +63,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUserRole = async (userId: string) => {
+  const fetchUserRoles = async (userId: string) => {
     try {
-      console.log('Fetching role for user ID:', userId);
+      console.log('Fetching roles for user ID:', userId);
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', userId);
       
-      console.log('Role query result:', { data, error });
+      console.log('Roles query result:', { data, error });
       
       if (error) {
-        console.warn('Error fetching role:', error);
-        setUserRole(null);
+        console.warn('Error fetching roles:', error);
+        setUserRoles([]);
+        setCurrentRole(null);
       } else if (data && data.length > 0) {
-        // Take the first role if multiple exist (admin takes priority)
-        const role = data.find(r => r.role === 'admin')?.role || data[0].role;
-        console.log('Setting user role:', role);
-        setUserRole(role);
+        const roles = data.map(r => r.role);
+        console.log('Setting user roles:', roles);
+        setUserRoles(roles);
+        
+        // Set default current role (admin > manager > salesperson > vendor)
+        const priorityOrder = ['admin', 'manager', 'salesperson', 'vendor'] as const;
+        const defaultRole = priorityOrder.find(role => roles.includes(role)) || roles[0];
+        setCurrentRole(defaultRole);
+        console.log('Setting current role:', defaultRole);
       } else {
         console.log('No roles found for user');
-        setUserRole(null);
+        setUserRoles([]);
+        setCurrentRole(null);
       }
     } catch (error) {
-      console.error('Error fetching user role:', error);
-      setUserRole(null);
+      console.error('Error fetching user roles:', error);
+      setUserRoles([]);
+      setCurrentRole(null);
     }
   };
 
@@ -144,11 +150,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn,
     signUp,
     signOut,
-    userRole,
-    isAdmin,
-    isManager,
-    isSalesperson,
-    isVendor
+    userRoles,
+    currentRole,
+    setCurrentRole,
+    hasRole
   };
 
   return (
