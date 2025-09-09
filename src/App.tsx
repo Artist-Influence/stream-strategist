@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { UserManager } from "./components/UserManager";
 import Index from "./pages/Index";
 import PlaylistsPage from "./pages/PlaylistsPage";
 import CampaignBuilder from "./pages/CampaignBuilder";
@@ -15,6 +16,7 @@ import AuthPage from "./pages/AuthPage";
 import SalespersonDashboard from "./pages/SalespersonDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
 import NotFound from "./pages/NotFound";
+import Layout from "./components/Layout";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +36,13 @@ const App = () => (
             <Route path="/" element={
               <ProtectedRoute requiredRoles={['admin', 'manager']}>
                 <Index />
+              </ProtectedRoute>
+            } />
+            <Route path="/users" element={
+              <ProtectedRoute requiredRoles={['admin']}>
+                <Layout>
+                  <UserManager />
+                </Layout>
               </ProtectedRoute>
             } />
             <Route path="/playlists" element={

@@ -17,7 +17,8 @@ import {
   X,
   Key,
   Users,
-  LogOut
+  LogOut,
+  UserPlus
 } from "lucide-react";
 import SpotifySettingsModal from "./SpotifySettingsModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,7 +27,15 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-const navItems = [
+interface NavItem {
+  title: string;
+  href: string;
+  icon: any;
+  hotkey: string;
+  adminOnly?: boolean;
+}
+
+const navItems: NavItem[] = [
   {
     title: "Dashboard",
     href: "/",
@@ -57,12 +66,19 @@ const navItems = [
     icon: Users,
     hotkey: "Ctrl+5"
   },
+  {
+    title: "User Management", 
+    href: "/users",
+    icon: UserPlus,
+    hotkey: "Ctrl+6",
+    adminOnly: true
+  },
 ];
 
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, currentRole, signOut } = useAuth();
+  const { user, currentRole, signOut, hasRole } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSpotifySettings, setShowSpotifySettings] = useState(false);
@@ -130,7 +146,9 @@ export default function Layout({ children }: LayoutProps) {
               
               {/* Desktop Navigation */}
               <nav className="hidden lg:flex space-x-8">
-                {navItems.map((item) => {
+                {navItems
+                  .filter(item => !item.adminOnly || (item.adminOnly && hasRole('admin')))
+                  .map((item) => {
                   const Icon = item.icon;
                   const isActive = location.pathname === item.href;
                   
@@ -283,7 +301,9 @@ export default function Layout({ children }: LayoutProps) {
           {mobileMenuOpen && (
             <div className="lg:hidden mt-4 pb-4 border-t border-border pt-4">
               <nav className="space-y-2">
-                {navItems.map((item) => {
+                {navItems
+                  .filter(item => !item.adminOnly || (item.adminOnly && hasRole('admin')))
+                  .map((item) => {
                   const Icon = item.icon;
                   const isActive = location.pathname === item.href;
                   
