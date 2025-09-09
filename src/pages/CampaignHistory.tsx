@@ -548,11 +548,7 @@ export default function CampaignHistory() {
           <DraftCampaignReviewModal
             campaign={draftReviewModal.campaign as any}
             open={draftReviewModal.open}
-            onClose={() => setDraftReviewModal({ open: false })}
-            onSuccess={() => {
-              setDraftReviewModal({ open: false });
-              queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-            }}
+            onOpenChange={(open) => setDraftReviewModal({ open })}
           />
         )}
 
