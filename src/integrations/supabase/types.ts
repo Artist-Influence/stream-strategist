@@ -1137,6 +1137,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_salesperson: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_vendor: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_vendor_manager: {
         Args: Record<PropertyKey, never>
         Returns: boolean

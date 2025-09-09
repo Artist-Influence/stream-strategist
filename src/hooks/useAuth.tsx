@@ -10,7 +10,11 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-  isArtistInfluenceUser: boolean;
+  userRole: string | null;
+  isAdmin: boolean;
+  isManager: boolean;
+  isSalesperson: boolean;
+  isVendor: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,8 +23,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
-  const isArtistInfluenceUser = user?.email?.endsWith('@artistinfluence.com') ?? false;
+  const isAdmin = userRole === 'admin';
+  const isManager = userRole === 'manager';
+  const isSalesperson = userRole === 'salesperson';
+  const isVendor = userRole === 'vendor';
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -28,6 +36,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        
+        // Fetch user role when auth state changes
+        if (session?.user) {
+          setTimeout(() => {
+            fetchUserRole(session.user.id);
+          }, 0);
+        } else {
+          setUserRole(null);
+        }
+        
         setLoading(false);
       }
     );
@@ -36,18 +54,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        fetchUserRole(session.user.id);
+      }
+      
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    // Validate domain before attempting sign in
-    if (!email.endsWith('@artistinfluence.com')) {
-      const domainError = new Error('Access restricted to @artistinfluence.com email addresses only') as AuthError;
-      return { error: domainError };
+  const fetchUserRole = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .single();
+      
+      if (error) {
+        console.warn('No role found for user:', error);
+        setUserRole(null);
+      } else {
+        setUserRole(data.role);
+      }
+    } catch (error) {
+      console.error('Error fetching user role:', error);
+      setUserRole(null);
     }
+  };
+
+  const signIn = async (email: string, password: string) => {
+    // Allow different domains for different roles - will be validated by RLS policies
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -64,11 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string) => {
-    // Validate domain before attempting sign up
-    if (!email.endsWith('@artistinfluence.com')) {
-      const domainError = new Error('Sign up restricted to @artistinfluence.com email addresses only');
-      return { error: domainError };
-    }
+    // Allow signup for different roles - role assignment will be handled by admin
 
     const redirectUrl = `${window.location.origin}/`;
 
@@ -101,7 +136,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn,
     signUp,
     signOut,
-    isArtistInfluenceUser
+    userRole,
+    isAdmin,
+    isManager,
+    isSalesperson,
+    isVendor
   };
 
   return (
