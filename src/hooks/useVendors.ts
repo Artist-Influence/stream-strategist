@@ -57,10 +57,10 @@ export function useMyVendor() {
             updated_at
           )
         `)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      return data.vendors as Vendor;
+      return data?.vendors as Vendor | null;
     },
   });
 }

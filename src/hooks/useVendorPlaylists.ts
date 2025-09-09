@@ -31,9 +31,10 @@ export function useMyPlaylists() {
       const { data: vendorUser, error: vendorError } = await supabase
         .from('vendor_users')
         .select('vendor_id')
-        .single();
+        .maybeSingle();
 
       if (vendorError) throw vendorError;
+      if (!vendorUser) return [];
 
       // Then get playlists for this vendor
       const { data, error } = await supabase
@@ -58,9 +59,10 @@ export function useCreatePlaylist() {
       const { data: vendorUser, error: vendorError } = await supabase
         .from('vendor_users')
         .select('vendor_id')
-        .single();
+        .maybeSingle();
 
       if (vendorError) throw vendorError;
+      if (!vendorUser) throw new Error('No vendor association found');
 
       const { data, error } = await supabase
         .from('playlists')

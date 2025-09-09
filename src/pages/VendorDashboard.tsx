@@ -8,12 +8,42 @@ import { useMyPlaylists } from "@/hooks/useVendorPlaylists";
 
 export default function VendorDashboard() {
   const { user } = useAuth();
-  const { data: vendor, isLoading: vendorLoading } = useMyVendor();
-  const { data: playlists, isLoading: playlistsLoading } = useMyPlaylists();
+  const { data: vendor, isLoading: vendorLoading, error: vendorError } = useMyVendor();
+  const { data: playlists, isLoading: playlistsLoading, error: playlistsError } = useMyPlaylists();
 
   const totalStreams = playlists?.reduce((sum, playlist) => sum + playlist.avg_daily_streams, 0) || 0;
   const activeCampaigns = 3; // Mock data for now
   const pendingRequests = 2; // Mock data for now
+
+  if (vendorLoading) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-6 py-6">
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (vendorError || !vendor) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-6 py-6">
+          <div className="text-center py-12">
+            <h2 className="text-2xl font-bold text-destructive mb-4">No Vendor Association Found</h2>
+            <p className="text-muted-foreground mb-4">
+              Your account is not associated with any vendor. Please contact an administrator.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Error: {vendorError?.message || 'No vendor data found'}
+            </p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
