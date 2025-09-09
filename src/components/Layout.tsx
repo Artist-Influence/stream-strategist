@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PROJECT_NAME, PROJECT_ID } from "@/lib/constants";
@@ -16,9 +16,11 @@ import {
   Menu,
   X,
   Key,
-  Users
+  Users,
+  LogOut
 } from "lucide-react";
 import SpotifySettingsModal from "./SpotifySettingsModal";
+import { useAuth } from "@/hooks/useAuth";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -59,6 +61,8 @@ const navItems = [
 
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, currentRole, signOut } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSpotifySettings, setShowSpotifySettings] = useState(false);
@@ -180,6 +184,32 @@ export default function Layout({ children }: LayoutProps) {
                   <DropdownMenuItem onClick={() => setShowSpotifySettings(true)}>
                     <Key className="mr-2 h-4 w-4" />
                     Spotify API Settings
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  
+                  {/* User Info */}
+                  {user && (
+                    <>
+                      <DropdownMenuLabel>
+                        <div className="flex flex-col">
+                          <span className="text-sm">{user.email}</span>
+                          <span className="text-xs text-muted-foreground">Role: {currentRole || 'No role'}</span>
+                        </div>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  
+                  <DropdownMenuItem 
+                    onClick={async () => {
+                      await signOut();
+                      navigate('/auth');
+                    }}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log Out
                   </DropdownMenuItem>
                   
                   <DropdownMenuSeparator />
