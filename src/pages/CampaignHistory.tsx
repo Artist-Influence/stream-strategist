@@ -61,7 +61,7 @@ import {
 import { Link } from "react-router-dom";
 import Papa from "papaparse";
 import { EditCampaignModal } from "@/components/EditCampaignModal";
-import CampaignWeeklyImportModal from "@/components/CampaignWeeklyImportModal";
+import CampaignImportModal from "@/components/CampaignImportModal";
 import { CampaignDetailsModal } from "@/components/CampaignDetailsModal";
 import { DraftCampaignReviewModal } from "@/components/DraftCampaignReviewModal";
 import { CampaignSubmissionsManager } from "@/components/CampaignSubmissionsManager";
@@ -607,8 +607,8 @@ export default function CampaignHistory() {
               </div>
             </div>
 
-            {/* Search */}
-            <div className="flex gap-4 items-center">
+            {/* Search and Actions */}
+            <div className="flex gap-4 items-center justify-between">
               <div className="flex-1">
                 <Input
                   placeholder="Search campaigns..."
@@ -616,6 +616,26 @@ export default function CampaignHistory() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="max-w-sm"
                 />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={exportCampaigns}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Export CSV
+                </Button>
+                <Button
+                  onClick={() => setImportModalOpen(true)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  Import Campaigns
+                </Button>
               </div>
             </div>
 
@@ -880,7 +900,7 @@ export default function CampaignHistory() {
           />
         )}
 
-        <CampaignWeeklyImportModal
+        <CampaignImportModal
           open={importModalOpen}
           onOpenChange={setImportModalOpen}
         />
