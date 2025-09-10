@@ -151,7 +151,7 @@ export default function CampaignHistory() {
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
-        .in('source', [APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_SOURCE_INTAKE]) // Support both sources
+        .in('source', [APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_SOURCE_INTAKE, 'campaign_manager']) // Support all known sources
         .eq('campaign_type', APP_CAMPAIGN_TYPE)
         .order('created_at', { ascending: false });
       
