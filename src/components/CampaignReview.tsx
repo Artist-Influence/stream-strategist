@@ -74,25 +74,26 @@ export default function CampaignReview({
   const { saveCampaign, isEditing } = useCampaignBuilder();
 
   const handleLaunch = async (status: 'built' | 'unreleased' | 'active' = 'active') => {
-    setIsLaunching(true);
-    try {
-      console.log('Starting campaign launch/approval process...');
-      console.log('Campaign data:', campaignData);
-      console.log('Allocations data:', allocationsData);
-      console.log('Status:', status);
-      console.log('Is reviewing:', isReviewing);
-      
-      if (isReviewing && onApprove) {
-        console.log('Calling onApprove function...');
-        await onApprove(campaignData, allocationsData);
-        console.log('✅ Approval successful');
-      } else {
-        console.log('Saving campaign...');
-        await saveCampaign(campaignData, allocationsData, status);
-        console.log('✅ Campaign saved successfully');
-      }
-      navigate('/campaigns');
-    } catch (error) {
+        setIsLaunching(true);
+        try {
+          console.log('Starting campaign launch/approval process...');
+          console.log('Campaign data:', campaignData);
+          console.log('Allocations data:', allocationsData);
+          console.log('Status:', status);
+          console.log('Is reviewing:', isReviewing);
+          
+          if (isReviewing && onApprove) {
+            console.log('Calling onApprove function...');
+            await onApprove(campaignData, allocationsData);
+            console.log('✅ Approval successful');
+          } else {
+            console.log('Saving campaign...');
+            // For regular campaign creation, set status to 'active' by default
+            await saveCampaign(campaignData, allocationsData, status === 'built' ? 'active' : status);
+            console.log('✅ Campaign saved successfully');
+          }
+          navigate('/campaigns');
+        } catch (error) {
       console.error('❌ Error launching/approving campaign:', error);
       console.error('Error details:', {
         message: error.message,
@@ -231,21 +232,59 @@ export default function CampaignReview({
                 </div>
               </div>
               
-              {/* Detailed Playlist Breakdown */}
+              {/* Vendor-Grouped Playlist Breakdown */}
               {allocationsData.selectedPlaylists && allocationsData.selectedPlaylists.length > 0 && (
                 <div className="space-y-3 border-t pt-3">
-                  <p className="text-sm font-medium text-muted-foreground">Playlist Breakdown:</p>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {allocationsData.selectedPlaylists.map((playlist: any, index: number) => {
-                      const allocation = allocationsData.allocations?.find((a: any) => a.playlistId === playlist.id);
-                      const streams = allocation?.streams || 0;
-                      return (
-                        <div key={playlist.id || index} className="flex justify-between items-center text-sm py-1 px-2 bg-accent/5 rounded">
-                          <span className="font-medium truncate flex-1 mr-2">{playlist.name}</span>
-                          <span className="text-muted-foreground whitespace-nowrap">{streams.toLocaleString()} streams</span>
+                  <p className="text-sm font-medium text-muted-foreground">Vendor Breakdown:</p>
+                  <div className="space-y-4 max-h-64 overflow-y-auto">
+                    {(() => {
+                      // Group playlists by vendor
+                      const vendorGroups = allocationsData.selectedPlaylists.reduce((acc: any, playlist: any) => {
+                        const vendorName = playlist.vendor?.name || 'Unknown Vendor';
+                        if (!acc[vendorName]) {
+                          acc[vendorName] = {
+                            vendor: playlist.vendor,
+                            playlists: [],
+                            totalStreams: 0,
+                            totalCost: 0
+                          };
+                        }
+                        const allocation = allocationsData.allocations?.find((a: any) => a.playlistId === playlist.id);
+                        const streams = allocation?.streams || 0;
+                        const cost = streams * 0.001; // Approximate cost calculation
+                        
+                        acc[vendorName].playlists.push({
+                          ...playlist,
+                          streams,
+                          cost
+                        });
+                        acc[vendorName].totalStreams += streams;
+                        acc[vendorName].totalCost += cost;
+                        return acc;
+                      }, {});
+
+                      return Object.entries(vendorGroups).map(([vendorName, group]: [string, any]) => (
+                        <div key={vendorName} className="border rounded-lg p-3 bg-accent/5">
+                          <div className="flex justify-between items-center mb-2">
+                            <h4 className="font-medium text-sm">{vendorName}</h4>
+                            <div className="text-right text-xs text-muted-foreground">
+                              <div>{group.totalStreams.toLocaleString()} streams</div>
+                              <div className="font-medium">${group.totalCost.toFixed(2)}</div>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            {group.playlists.map((playlist: any, idx: number) => (
+                              <div key={playlist.id || idx} className="flex justify-between items-center text-xs py-1 px-2 bg-background/50 rounded">
+                                <span className="truncate flex-1 mr-2">{playlist.name}</span>
+                                <span className="text-muted-foreground whitespace-nowrap">
+                                  {playlist.streams.toLocaleString()} • ${playlist.cost.toFixed(2)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      );
-                    })}
+                      ));
+                    })()}
                   </div>
                 </div>
               )}
@@ -356,19 +395,19 @@ export default function CampaignReview({
                 
                 {isReviewing ? (
                   <Button
-                    onClick={() => handleLaunch('built')}
-                    disabled={isLaunching}
-                    className="bg-green-600 hover:bg-green-700 w-full"
-                  >
-                    {isLaunching ? (
-                      "Approving..."
-                    ) : (
-                      <>
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Approve Campaign
-                      </>
-                    )}
-                  </Button>
+                   onClick={() => handleLaunch('active')}
+                   disabled={isLaunching}
+                   className="bg-green-600 hover:bg-green-700 w-full"
+                 >
+                   {isLaunching ? (
+                     "Approving..."
+                   ) : (
+                     <>
+                       <CheckCircle className="w-4 h-4 mr-2" />
+                       Approve Campaign
+                     </>
+                   )}
+                 </Button>
                 ) : (
                   <>
                     <Button

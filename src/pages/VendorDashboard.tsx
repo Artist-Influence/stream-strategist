@@ -5,15 +5,16 @@ import { Plus, List, CheckCircle, XCircle, Music, TrendingUp } from "lucide-reac
 import { useAuth } from "@/hooks/useAuth";
 import { useMyVendor } from "@/hooks/useVendors";
 import { useMyPlaylists } from "@/hooks/useVendorPlaylists";
+import { useVendorCampaignRequests } from "@/hooks/useVendorCampaignRequests";
 
 export default function VendorDashboard() {
   const { user } = useAuth();
   const { data: vendor, isLoading: vendorLoading, error: vendorError } = useMyVendor();
   const { data: playlists, isLoading: playlistsLoading, error: playlistsError } = useMyPlaylists();
+  const { data: requests = [] } = useVendorCampaignRequests();
 
   const totalStreams = playlists?.reduce((sum, playlist) => sum + playlist.avg_daily_streams, 0) || 0;
-  const activeCampaigns = 3; // Mock data for now
-  const pendingRequests = 2; // Mock data for now
+  const pendingRequests = requests.filter(r => r.status === 'pending').length;
 
   if (vendorLoading) {
     return (
@@ -89,7 +90,7 @@ export default function VendorDashboard() {
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => window.location.href = '/vendor/requests'}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
               <XCircle className="h-4 w-4 text-muted-foreground" />
@@ -165,9 +166,44 @@ export default function VendorDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8 text-muted-foreground">
-              Campaign requests interface will be implemented here
-            </div>
+            {requests.length > 0 ? (
+              <div className="space-y-3">
+                {requests.slice(0, 3).map((request) => (
+                  <div key={request.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Music className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <div className="font-medium">{request.campaign?.name || 'Campaign Request'}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {request.playlists?.length || 0} playlists • {request.status}
+                        </div>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => window.location.href = '/vendor/requests'}>
+                      {request.status === 'pending' ? 'Review' : 'View'}
+                    </Button>
+                  </div>
+                ))}
+                {requests.length > 3 && (
+                  <Button variant="outline" className="w-full" onClick={() => window.location.href = '/vendor/requests'}>
+                    View All {requests.length} Requests
+                  </Button>
+                )}
+                {requests.length <= 3 && requests.length > 0 && (
+                  <Button variant="outline" className="w-full" onClick={() => window.location.href = '/vendor/requests'}>
+                    Manage Requests
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No requests yet</h3>
+                <p className="text-muted-foreground">
+                  Campaign participation requests will appear here when available
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

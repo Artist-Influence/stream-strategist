@@ -170,7 +170,7 @@ export function useApproveCampaignSubmission() {
         throw new Error(`Failed to fetch vendors: ${vendorsError.message}`);
       }
 
-      let algorithmRecommendations = {};
+      let algorithmRecommendations: any = {};
       console.log(`🏪 Found ${vendors?.length || 0} vendors and ${playlists?.length || 0} playlists`);
 
       if (playlists && playlists.length > 0 && vendors && vendors.length > 0) {
@@ -210,8 +210,8 @@ export function useApproveCampaignSubmission() {
         }
       }
 
-      // Create draft campaign with algorithm recommendations for Spotify playlisting
-      console.log('📝 Creating draft campaign...');
+      // Create active campaign directly (skip draft review)
+      console.log('📝 Creating active campaign...');
       const { error: campaignError } = await supabase
         .from('campaigns')
         .insert({
@@ -226,7 +226,7 @@ export function useApproveCampaignSubmission() {
           remaining_streams: submission.stream_goal,
           budget: submission.price_paid,
           start_date: submission.start_date,
-          status: 'draft',
+          status: 'active', // Set directly to active
           duration_days: submission.duration_days ?? 90,
           sub_genre: (submission.music_genres || []).join(', '),
           music_genres: submission.music_genres || [],
@@ -234,7 +234,7 @@ export function useApproveCampaignSubmission() {
           selected_playlists: [],
           vendor_allocations: {},
           algorithm_recommendations: algorithmRecommendations,
-          pending_operator_review: true,
+          pending_operator_review: false, // No review needed
           totals: {},
           results: {},
           source: APP_CAMPAIGN_SOURCE_INTAKE,
@@ -247,7 +247,60 @@ export function useApproveCampaignSubmission() {
         console.error('❌ Error creating campaign:', campaignError);
         throw new Error(`Failed to create campaign: ${campaignError.message}`);
       }
-      console.log('✅ Draft campaign created successfully');
+      console.log('✅ Active campaign created successfully');
+
+      // Get the created campaign to use for vendor requests
+      const { data: createdCampaign, error: fetchCampaignError } = await supabase
+        .from('campaigns')
+        .select('id')
+        .eq('submission_id', submissionId)
+        .single();
+
+      // Create vendor requests if we have algorithm recommendations
+      if (algorithmRecommendations?.allocations && createdCampaign) {
+        console.log('🏢 Creating vendor requests...');
+        
+        try {
+          // Group playlists by vendor from algorithm recommendations
+          const vendorGroups: Record<string, string[]> = {};
+          const allocations = algorithmRecommendations.allocations;
+          
+          // Process allocations to group by vendor
+          if (Array.isArray(allocations)) {
+            allocations.forEach((allocation: any) => {
+              if (allocation.playlistId && allocation.vendorId) {
+                if (!vendorGroups[allocation.vendorId]) {
+                  vendorGroups[allocation.vendorId] = [];
+                }
+                vendorGroups[allocation.vendorId].push(allocation.playlistId);
+              }
+            });
+          }
+
+          // Create vendor requests
+          if (Object.keys(vendorGroups).length > 0) {
+            const vendorRequests = Object.entries(vendorGroups).map(([vendorId, playlistIds]) => ({
+              campaign_id: createdCampaign.id,
+              vendor_id: vendorId,
+              playlist_ids: playlistIds,
+              status: 'pending',
+              requested_at: new Date().toISOString()
+            }));
+
+            const { error: requestsError } = await supabase
+              .from('campaign_vendor_requests')
+              .insert(vendorRequests);
+
+            if (requestsError) {
+              console.error('⚠️ Error creating vendor requests (non-critical):', requestsError);
+            } else {
+              console.log('✅ Created', vendorRequests.length, 'vendor requests');
+            }
+          }
+        } catch (error) {
+          console.error('⚠️ Error processing vendor requests (non-critical):', error);
+        }
+      }
 
       // Update submission status to approved
       console.log('✅ Updating submission status to approved...');
@@ -270,12 +323,13 @@ export function useApproveCampaignSubmission() {
     },
     onSuccess: () => {
       toast({
-        title: "Campaign Approved",
-        description: "Draft campaign created with AI playlist recommendations. Ready for operator review.",
+        title: "Campaign Approved & Active",
+        description: "Campaign has been approved and is now active! Vendor requests have been sent.",
       });
       queryClient.invalidateQueries({ queryKey: ['campaign-submissions'] });
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['vendor-campaign-requests'] });
     },
     onError: (error: any) => {
       console.error('💥 Campaign approval failed:', error);

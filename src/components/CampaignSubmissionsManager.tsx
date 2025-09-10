@@ -134,27 +134,16 @@ export function CampaignSubmissionsManager({ highlightSubmissionId }: CampaignSu
         </div>
         <div className="flex gap-2">
           <Badge variant="outline">
-            {submissions.filter(s => s.status === 'pending_approval').length} Pending
-          </Badge>
-          <Badge variant="outline">
-            {draftCampaigns.length} Drafts
+            {submissions.filter(s => s.status === 'pending_approval').length} Pending Review
           </Badge>
         </div>
       </div>
 
       <Tabs defaultValue="submissions" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-1">
           <TabsTrigger value="submissions" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
-            Submissions ({submissions.filter(s => s.status === 'pending_approval').length})
-          </TabsTrigger>
-          <TabsTrigger value="approved" className="flex items-center gap-2">
-            <ArrowRight className="h-4 w-4" />
-            Approved ({submissionsWithDrafts.filter(s => s.status === 'approved').length})
-          </TabsTrigger>
-          <TabsTrigger value="drafts" className="flex items-center gap-2">
-            <Eye className="h-4 w-4" />
-            Draft Review ({draftCampaigns.length})
+            Pending Review ({submissions.filter(s => s.status === 'pending_approval').length})
           </TabsTrigger>
         </TabsList>
 
@@ -253,7 +242,7 @@ export function CampaignSubmissionsManager({ highlightSubmissionId }: CampaignSu
                      size="sm"
                      className="bg-primary hover:bg-primary/90"
                    >
-                     Review Submission
+                     Review & Approve
                    </Button>
 
                   <Dialog>
