@@ -8,6 +8,7 @@ interface CampaignData {
   name: string;
   client: string;
   client_id?: string;
+  brand_name?: string;
   track_url: string;
   track_name?: string;
   stream_goal: number;
@@ -145,7 +146,7 @@ export function useCampaignBuilder() {
         totals: {
           projected_streams: allocationsData.totalProjectedStreams || 0
         },
-        brand_name: data.client || 'Unknown Client',
+        brand_name: data.brand_name || data.client || 'Unknown Client',
         updated_at: new Date().toISOString()
       };
 
@@ -222,7 +223,7 @@ export function useCampaignBuilder() {
         totals: {
           projected_streams: allocationsData.totalProjectedStreams || 0
         },
-        brand_name: data.client,
+        brand_name: data.client || submissionData.client_name || 'Unknown Client',
         submission_id: submissionData.id,
         source: 'artist_influence_spotify_campaigns',
         campaign_type: 'artist_influence_spotify_promotion'
