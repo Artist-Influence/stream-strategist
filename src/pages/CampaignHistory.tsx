@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_SOURCE_INTAKE, APP_CAMPAIGN_TYPE } from "@/lib/constants";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -618,6 +619,17 @@ export default function CampaignHistory() {
                 />
               </div>
               <div className="flex gap-2">
+                {selectedCampaigns.size > 0 && (
+                  <Button
+                    onClick={handleBulkDelete}
+                    variant="destructive"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Selected ({selectedCampaigns.size})
+                  </Button>
+                )}
                 <Button
                   onClick={exportCampaigns}
                   variant="outline"
@@ -647,6 +659,13 @@ export default function CampaignHistory() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={selectedCampaigns.size === sortedAndFilteredCampaigns.length && sortedAndFilteredCampaigns.length > 0}
+                          onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                          aria-label="Select all campaigns"
+                        />
+                      </TableHead>
                       <TableHead 
                         className="cursor-pointer select-none"
                         onClick={() => handleSort('name')}
@@ -733,9 +752,18 @@ export default function CampaignHistory() {
                             isHighlighted 
                               ? 'ring-2 ring-primary bg-primary/5' 
                               : ''
-                          } ${getCampaignPerformanceColor(campaign)}`}
+                          } ${getCampaignPerformanceColor(campaign)}${
+                            selectedCampaigns.has(campaign.id) ? ' bg-muted/30' : ''
+                          }`}
                           onClick={(e) => handleRowClick(campaign.id, e)}
                         >
+                          <TableCell className="w-12" onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={selectedCampaigns.has(campaign.id)}
+                              onCheckedChange={(checked) => handleSelectCampaign(campaign.id, !!checked)}
+                              aria-label={`Select campaign ${campaign.name}`}
+                            />
+                          </TableCell>
                           <TableCell className="font-medium">
                             <div>
                               <div className="font-medium">{campaign.name}</div>
