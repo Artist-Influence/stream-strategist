@@ -237,31 +237,39 @@ export default function CampaignReview({
                 <div className="space-y-3 border-t pt-3">
                   <p className="text-sm font-medium text-muted-foreground">Vendor Breakdown:</p>
                   <div className="space-y-4 max-h-64 overflow-y-auto">
-                    {(() => {
-                      // Group playlists by vendor
-                      const vendorGroups = allocationsData.selectedPlaylists.reduce((acc: any, playlist: any) => {
-                        const vendorName = playlist.vendor?.name || 'Unknown Vendor';
-                        if (!acc[vendorName]) {
-                          acc[vendorName] = {
-                            vendor: playlist.vendor,
-                            playlists: [],
-                            totalStreams: 0,
-                            totalCost: 0
-                          };
-                        }
-                        const allocation = allocationsData.allocations?.find((a: any) => a.playlistId === playlist.id);
-                        const streams = allocation?.streams || 0;
-                        const cost = streams * 0.001; // Approximate cost calculation
-                        
-                        acc[vendorName].playlists.push({
-                          ...playlist,
-                          streams,
-                          cost
-                        });
-                        acc[vendorName].totalStreams += streams;
-                        acc[vendorName].totalCost += cost;
-                        return acc;
-                      }, {});
+                     {(() => {
+                       // Group playlists by vendor - fetch vendor details if missing
+                       const vendorGroups = allocationsData.selectedPlaylists.reduce((acc: any, playlist: any) => {
+                         // Get vendor name from multiple possible sources
+                         const vendorName = playlist.vendor?.name || 
+                                          playlist.vendor_name || 
+                                          (playlist.vendor_id ? `Vendor ${playlist.vendor_id.slice(-8)}` : 'Unknown Vendor');
+                         
+                         if (!acc[vendorName]) {
+                           acc[vendorName] = {
+                             vendor: playlist.vendor || { name: vendorName },
+                             playlists: [],
+                             totalStreams: 0,
+                             totalCost: 0
+                           };
+                         }
+                         
+                         // Find allocation for this playlist
+                         const allocation = allocationsData.allocations?.find((a: any) => 
+                           a.playlistId === playlist.id || a.playlist_id === playlist.id
+                         );
+                         const streams = allocation?.streams || playlist.allocated_streams || 0;
+                         const cost = streams * 0.001; // Approximate cost calculation
+                         
+                         acc[vendorName].playlists.push({
+                           ...playlist,
+                           streams,
+                           cost
+                         });
+                         acc[vendorName].totalStreams += streams;
+                         acc[vendorName].totalCost += cost;
+                         return acc;
+                       }, {});
 
                       return Object.entries(vendorGroups).map(([vendorName, group]: [string, any]) => (
                         <div key={vendorName} className="border rounded-lg p-3 bg-accent/5">

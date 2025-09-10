@@ -166,8 +166,8 @@ export function useCampaignBuilder() {
           .from('campaigns')
           .insert({
             ...campaignPayload,
-            source: 'artist_influence_spotify_campaigns',
-            campaign_type: 'artist_influence_spotify_promotion'
+            source: 'campaign_manager',
+            campaign_type: 'spotify'
           })
           .select()
           .single();
@@ -226,8 +226,8 @@ export function useCampaignBuilder() {
         },
         brand_name: data.client || submissionData.client_name || 'Unknown Client',
         submission_id: submissionData.id,
-        source: 'artist_influence_spotify_campaigns',
-        campaign_type: 'artist_influence_spotify_promotion'
+        source: 'campaign_manager',
+        campaign_type: 'spotify'
       };
 
       const result = await supabase

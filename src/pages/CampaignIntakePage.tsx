@@ -484,8 +484,8 @@ export default function CampaignIntakePage() {
                         selected={formData.start_date ? new Date(formData.start_date + 'T00:00:00') : undefined}
                         onSelect={(date) => {
                           if (date) {
-                            const adjustedDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-                            setFormData({...formData, start_date: format(adjustedDate, 'yyyy-MM-dd')});
+                            // Format date as YYYY-MM-DD in local timezone without adjustment
+                            setFormData({...formData, start_date: format(date, 'yyyy-MM-dd')});
                           }
                         }}
                         disabled={(date) => {

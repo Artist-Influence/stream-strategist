@@ -16,6 +16,9 @@ function Calendar({
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      captionLayout="dropdown-buttons"
+      fromYear={2020}
+      toYear={2030}
       className={cn("p-4 pointer-events-auto bg-background/95 backdrop-blur-sm border border-border/50 rounded-xl shadow-xl z-50", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
