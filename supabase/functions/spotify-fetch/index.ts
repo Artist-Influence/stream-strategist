@@ -89,27 +89,44 @@ serve(async (req) => {
 
 async function extractTrackGenres(track: any, accessToken: string): Promise<string[]> {
   try {
+    console.log('🎵 Extracting genres for track:', track.name);
     const artistIds = track.artists?.map((artist: any) => artist.id).filter(Boolean) || [];
+    console.log('🎨 Artist IDs found:', artistIds);
     
-    if (artistIds.length === 0) return [];
+    if (artistIds.length === 0) {
+      console.log('❌ No artist IDs found for track');
+      return [];
+    }
     
     // Fetch artist genres
+    console.log('🔍 Fetching artist details for genre extraction...');
     const response = await fetch(`https://api.spotify.com/v1/artists?ids=${artistIds.join(',')}`, {
       headers: { 'Authorization': `Bearer ${accessToken}` }
     });
     
+    if (!response.ok) {
+      console.error('❌ Artist API request failed:', response.status, response.statusText);
+      return [];
+    }
+    
     const data = await response.json();
+    console.log('📊 Artists API response:', JSON.stringify(data, null, 2));
+    
     const genres: string[] = [];
     
-    data.artists?.forEach((artist: any) => {
-      if (artist.genres) {
+    data.artists?.forEach((artist: any, index: number) => {
+      console.log(`🎤 Artist ${index + 1}: ${artist.name}, Genres:`, artist.genres);
+      if (artist.genres && artist.genres.length > 0) {
         genres.push(...artist.genres);
+      } else {
+        console.log(`⚠️ No genres found for artist: ${artist.name}`);
       }
     });
     
+    console.log('🏷️ All extracted genres:', genres);
     return genres;
   } catch (error) {
-    console.error('Error extracting track genres:', error);
+    console.error('💥 Error extracting track genres:', error);
     return [];
   }
 }

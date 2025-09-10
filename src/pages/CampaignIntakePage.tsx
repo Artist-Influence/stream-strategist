@@ -225,6 +225,8 @@ export default function CampaignIntakePage() {
   );
 
   const handleTrackUrlChange = async (url: string) => {
+    // Immediately save the URL to form data
+    setFormData(prev => ({ ...prev, track_url: url }));
     
     if (url.includes('spotify.com/track/')) {
       try {
