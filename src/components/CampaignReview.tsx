@@ -1,5 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -17,7 +25,9 @@ import {
   Clock,
   TrendingUp,
   Users,
-  PlayCircle
+  PlayCircle,
+  XCircle,
+  AlertTriangle
 } from "lucide-react";
 import { useCampaignBuilder } from "@/hooks/useCampaignBuilder";
 
@@ -41,10 +51,24 @@ interface CampaignReviewProps {
     totalCost: number;
   };
   onBack: () => void;
+  isReviewing?: boolean;
+  submissionData?: any;
+  onApprove?: (data: any, allocationsData: any) => Promise<any>;
+  onReject?: (reason: string) => Promise<void>;
 }
 
-export default function CampaignReview({ campaignData, allocationsData, onBack }: CampaignReviewProps) {
+export default function CampaignReview({ 
+  campaignData, 
+  allocationsData, 
+  onBack, 
+  isReviewing = false, 
+  submissionData, 
+  onApprove, 
+  onReject 
+}: CampaignReviewProps) {
   const [isLaunching, setIsLaunching] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
   const { toast } = useToast();
   const navigate = useNavigate();
   const { saveCampaign, isEditing } = useCampaignBuilder();
@@ -52,12 +76,30 @@ export default function CampaignReview({ campaignData, allocationsData, onBack }
   const handleLaunch = async (status: 'built' | 'unreleased' | 'active' = 'active') => {
     setIsLaunching(true);
     try {
-      await saveCampaign(campaignData, allocationsData, status);
+      if (isReviewing && onApprove) {
+        await onApprove(campaignData, allocationsData);
+      } else {
+        await saveCampaign(campaignData, allocationsData, status);
+      }
       navigate('/campaigns');
     } catch (error) {
       console.error('Error launching campaign:', error);
     } finally {
       setIsLaunching(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!onReject || !rejectionReason.trim()) return;
+    
+    try {
+      await onReject(rejectionReason);
+      navigate('/campaigns');
+    } catch (error) {
+      console.error('Error rejecting submission:', error);
+    } finally {
+      setShowRejectDialog(false);
+      setRejectionReason("");
     }
   };
 
@@ -75,10 +117,24 @@ export default function CampaignReview({ campaignData, allocationsData, onBack }
     <div className="space-y-8">
       {/* Header */}
       <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold">Campaign Review</h2>
+        <h2 className="text-2xl font-bold">
+          {isReviewing ? 'Submission Review' : 'Campaign Review'}
+        </h2>
         <p className="text-muted-foreground">
-          Review your campaign details and launch when ready
+          {isReviewing 
+            ? 'Review the submission details and approve or reject' 
+            : 'Review your campaign details and launch when ready'
+          }
         </p>
+        {isReviewing && submissionData && (
+          <div className="bg-accent/10 border border-accent/20 rounded-lg p-4 text-sm">
+            <p><span className="font-medium">Submitted by:</span> {submissionData.salesperson}</p>
+            <p><span className="font-medium">Submission Date:</span> {new Date(submissionData.created_at).toLocaleDateString()}</p>
+            {submissionData.notes && (
+              <p><span className="font-medium">Notes:</span> {submissionData.notes}</p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -252,41 +308,113 @@ export default function CampaignReview({ campaignData, allocationsData, onBack }
                   Back to Recommendations
                 </Button>
                 
-                <Button
-                  onClick={() => handleLaunch('active')}
-                  disabled={isLaunching}
-                  className="bg-primary hover:bg-primary/90 w-full"
-                >
-                  {isLaunching ? (
-                    "Launching..."
-                  ) : (
-                    <>
-                      <Rocket className="w-4 h-4 mr-2" />
-                      {isEditing ? 'Save & Activate' : 'Launch Campaign'}
-                    </>
-                  )}
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  onClick={() => handleLaunch('unreleased')}
-                  disabled={isLaunching}
-                  className="w-full"
-                >
-                  {isLaunching ? (
-                    "Saving..."
-                  ) : (
-                    <>
-                      <Clock className="w-4 h-4 mr-2" />
-                      Save as Unreleased
-                    </>
-                  )}
-                </Button>
+                {isReviewing ? (
+                  <>
+                    <Button
+                      onClick={() => handleLaunch('built')}
+                      disabled={isLaunching}
+                      className="bg-green-600 hover:bg-green-700 w-full"
+                    >
+                      {isLaunching ? (
+                        "Approving..."
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Approve Campaign
+                        </>
+                      )}
+                    </Button>
+                    
+                    <Button
+                      variant="destructive"
+                      onClick={() => setShowRejectDialog(true)}
+                      disabled={isLaunching}
+                      className="w-full"
+                    >
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Reject Submission
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      onClick={() => handleLaunch('active')}
+                      disabled={isLaunching}
+                      className="bg-primary hover:bg-primary/90 w-full"
+                    >
+                      {isLaunching ? (
+                        "Launching..."
+                      ) : (
+                        <>
+                          <Rocket className="w-4 h-4 mr-2" />
+                          {isEditing ? 'Save & Activate' : 'Launch Campaign'}
+                        </>
+                      )}
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      onClick={() => handleLaunch('unreleased')}
+                      disabled={isLaunching}
+                      className="w-full"
+                    >
+                      {isLaunching ? (
+                        "Saving..."
+                      ) : (
+                        <>
+                          <Clock className="w-4 h-4 mr-2" />
+                          Save as Unreleased
+                        </>
+                      )}
+                    </Button>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Rejection Dialog */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Reject Submission
+            </DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this campaign submission. This will be recorded and may be sent to the submitter.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              placeholder="Enter rejection reason..."
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              className="min-h-[100px]"
+            />
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowRejectDialog(false);
+                  setRejectionReason("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleReject}
+                disabled={!rejectionReason.trim()}
+              >
+                Confirm Rejection
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

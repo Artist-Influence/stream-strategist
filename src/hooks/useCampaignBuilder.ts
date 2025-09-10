@@ -18,19 +18,23 @@ interface CampaignData {
 }
 
 export function useCampaignBuilder() {
-  const { campaignId } = useParams();
+  const { campaignId, submissionId } = useParams();
   const [isEditing, setIsEditing] = useState(!!campaignId);
+  const [isReviewing, setIsReviewing] = useState(!!submissionId);
   const [isLoading, setIsLoading] = useState(false);
   const [campaignData, setCampaignData] = useState<Partial<CampaignData>>({});
+  const [submissionData, setSubmissionData] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Load existing campaign data if editing
+  // Load existing campaign data if editing or submission data if reviewing
   useEffect(() => {
     if (campaignId) {
       loadCampaignData(campaignId);
+    } else if (submissionId) {
+      loadSubmissionData(submissionId);
     }
-  }, [campaignId]);
+  }, [campaignId, submissionId]);
 
   const loadCampaignData = async (id: string) => {
     setIsLoading(true);
@@ -60,6 +64,42 @@ export function useCampaignBuilder() {
       toast({
         title: "Error",
         description: "Failed to load campaign data.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadSubmissionData = async (id: string) => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('campaign_submissions')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+
+      setSubmissionData(data);
+      // Convert submission data to campaign data format
+      setCampaignData({
+        name: data.campaign_name,
+        client: data.client_name,
+        track_url: data.track_url,
+        stream_goal: data.stream_goal,
+        budget: data.price_paid,
+        sub_genre: data.music_genres?.[0] || '',
+        start_date: data.start_date,
+        duration_days: data.duration_days,
+      });
+      setIsReviewing(true);
+    } catch (error) {
+      console.error('Error loading submission:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load submission data.",
         variant: "destructive",
       });
     } finally {
@@ -140,12 +180,116 @@ export function useCampaignBuilder() {
     }
   };
 
+  const approveSubmission = async (data: CampaignData, allocationsData: any) => {
+    if (!submissionData) {
+      throw new Error('No submission data available');
+    }
+
+    try {
+      // Create campaign from submission
+      const campaignPayload = {
+        name: data.name,
+        client: data.client,
+        track_url: data.track_url,
+        track_name: data.track_name,
+        stream_goal: data.stream_goal,
+        budget: data.budget,
+        sub_genre: data.sub_genre,
+        start_date: data.start_date,
+        duration_days: data.duration_days,
+        status: 'built',
+        selected_playlists: allocationsData.selectedPlaylists || [],
+        vendor_allocations: allocationsData.allocations || {},
+        totals: {
+          projected_streams: allocationsData.totalProjectedStreams || 0
+        },
+        brand_name: data.client,
+        submission_id: submissionData.id,
+        source: 'artist_influence_spotify_campaigns',
+        campaign_type: 'artist_influence_spotify_promotion'
+      };
+
+      const result = await supabase
+        .from('campaigns')
+        .insert(campaignPayload)
+        .select()
+        .single();
+
+      if (result.error) throw result.error;
+
+      // Update submission status
+      await supabase
+        .from('campaign_submissions')
+        .update({
+          status: 'approved',
+          approved_at: new Date().toISOString(),
+          approved_by: 'System'
+        })
+        .eq('id', submissionData.id);
+
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['campaign-submissions'] });
+
+      toast({
+        title: "Submission Approved",
+        description: "Campaign has been created successfully.",
+      });
+
+      return result.data;
+    } catch (error) {
+      console.error('Error approving submission:', error);
+      toast({
+        title: "Error",
+        description: "Failed to approve submission.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const rejectSubmission = async (reason: string) => {
+    if (!submissionData) {
+      throw new Error('No submission data available');
+    }
+
+    try {
+      await supabase
+        .from('campaign_submissions')
+        .update({
+          status: 'rejected',
+          rejection_reason: reason
+        })
+        .eq('id', submissionData.id);
+
+      queryClient.invalidateQueries({ queryKey: ['campaign-submissions'] });
+
+      toast({
+        title: "Submission Rejected",
+        description: "Submission has been rejected.",
+      });
+    } catch (error) {
+      console.error('Error rejecting submission:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reject submission.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   return {
     isEditing,
+    isReviewing,
     isLoading,
     campaignData,
+    submissionData,
     setCampaignData,
     saveCampaign,
-    campaignId
+    approveSubmission,
+    rejectSubmission,
+    campaignId,
+    submissionId
   };
 }

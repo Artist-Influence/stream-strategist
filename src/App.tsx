@@ -57,6 +57,16 @@ const App = () => (
                 <CampaignBuilder />
               </ProtectedRoute>
             } />
+            <Route path="/campaign-builder/review/:submissionId" element={
+              <ProtectedRoute requiredRoles={['admin', 'manager']}>
+                <CampaignBuilder />
+              </ProtectedRoute>
+            } />
+            <Route path="/campaign/edit/:campaignId" element={
+              <ProtectedRoute requiredRoles={['admin', 'manager']}>
+                <CampaignBuilder />
+              </ProtectedRoute>
+            } />
             <Route path="/clients" element={
               <ProtectedRoute requiredRoles={['admin', 'manager', 'salesperson']}>
                 <ClientsPage />

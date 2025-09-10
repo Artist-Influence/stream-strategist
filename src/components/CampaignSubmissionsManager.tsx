@@ -248,14 +248,13 @@ export function CampaignSubmissionsManager({ highlightSubmissionId }: CampaignSu
               {/* Action Buttons */}
               {submission.status === 'pending_approval' && (
                 <div className="flex gap-2 pt-2">
-                  <Button
-                    onClick={() => handleApprove(submission.id)}
-                    disabled={approveMutation.isPending}
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    {approveMutation.isPending ? 'Approving...' : 'Approve & Create Campaign'}
-                  </Button>
+                   <Button
+                     onClick={() => navigate(`/campaign-builder/review/${submission.id}`)}
+                     size="sm"
+                     className="bg-primary hover:bg-primary/90"
+                   >
+                     Review Submission
+                   </Button>
 
                   <Dialog>
                     <DialogTrigger asChild>

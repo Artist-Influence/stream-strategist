@@ -37,11 +37,16 @@ export default function CampaignBuilder() {
   const [allocationsData, setAllocationsData] = useState<any>(null);
   const { 
     isEditing, 
+    isReviewing,
     isLoading, 
     campaignData, 
+    submissionData,
     setCampaignData, 
     saveCampaign, 
-    campaignId 
+    approveSubmission,
+    rejectSubmission,
+    campaignId,
+    submissionId
   } = useCampaignBuilder();
 
   const handleConfigurationNext = (data: CampaignData) => {
@@ -92,7 +97,9 @@ export default function CampaignBuilder() {
             <CardContent className="p-6">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-semibold">Campaign Builder</h2>
+                  <h2 className="text-xl font-semibold">
+                    {isReviewing ? 'Review Submission' : 'Campaign Builder'}
+                  </h2>
                   <Badge variant="outline" className="text-xs">
                     Step {steps.findIndex(s => s.id === currentStep) + 1} of {steps.length}
                   </Badge>
@@ -163,6 +170,10 @@ export default function CampaignBuilder() {
               campaignData={campaignData as CampaignData}
               allocationsData={allocationsData}
               onBack={handleBack}
+              isReviewing={isReviewing}
+              submissionData={submissionData}
+              onApprove={approveSubmission}
+              onReject={rejectSubmission}
             />
           )}
         </div>
