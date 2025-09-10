@@ -170,6 +170,51 @@ export type Database = {
           },
         ]
       }
+      campaign_invoices: {
+        Row: {
+          amount: number
+          campaign_id: string
+          created_at: string
+          due_date: string
+          id: string
+          invoice_number: string
+          issued_date: string
+          notes: string | null
+          paid_date: string | null
+          payment_method: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          campaign_id: string
+          created_at?: string
+          due_date?: string
+          id?: string
+          invoice_number: string
+          issued_date?: string
+          notes?: string | null
+          paid_date?: string | null
+          payment_method?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          campaign_id?: string
+          created_at?: string
+          due_date?: string
+          id?: string
+          invoice_number?: string
+          issued_date?: string
+          notes?: string | null
+          paid_date?: string | null
+          payment_method?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       campaign_posts: {
         Row: {
           campaign_id: string
@@ -1148,6 +1193,19 @@ export type Database = {
       get_artist_influence_project_info: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      get_campaign_invoice_status: {
+        Args: { campaign_uuid: string }
+        Returns: string
+      }
+      get_campaign_performance_status: {
+        Args: {
+          current_streams: number
+          duration_days: number
+          start_date: string
+          stream_goal: number
+        }
+        Returns: string
       }
       get_current_user_email: {
         Args: Record<PropertyKey, never>
