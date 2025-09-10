@@ -238,31 +238,33 @@ export default function CampaignReview({
                   <p className="text-sm font-medium text-muted-foreground">Vendor Breakdown:</p>
                   <div className="space-y-4 max-h-64 overflow-y-auto">
                      {(() => {
-                       // Group playlists by vendor - fetch vendor details if missing
-                       const vendorGroups = allocationsData.selectedPlaylists.reduce((acc: any, playlist: any) => {
-                         // Get vendor name from multiple possible sources
-                         const vendorName = playlist.vendor?.name || 
-                                          playlist.vendor_name || 
-                                          (playlist.vendor_id ? `Vendor ${playlist.vendor_id.slice(-8)}` : 'Unknown Vendor');
+                       // Group playlists by vendor - properly fetch and display vendor information
+                       const vendorGroups = allocationsData.selectedPlaylists.reduce((acc: any, playlistId: string) => {
+                         // Find allocation for this playlist
+                         const allocation = allocationsData.allocations?.find((a: any) => 
+                           a.playlist_id === playlistId
+                         );
+                         
+                         if (!allocation) return acc;
+                         
+                         const vendorId = allocation.vendor_id;
+                         const vendorName = allocation.vendor?.name || `Vendor ${vendorId?.slice(-8) || 'Unknown'}`;
                          
                          if (!acc[vendorName]) {
                            acc[vendorName] = {
-                             vendor: playlist.vendor || { name: vendorName },
+                             vendor: { name: vendorName, id: vendorId },
                              playlists: [],
                              totalStreams: 0,
                              totalCost: 0
                            };
                          }
                          
-                         // Find allocation for this playlist
-                         const allocation = allocationsData.allocations?.find((a: any) => 
-                           a.playlistId === playlist.id || a.playlist_id === playlist.id
-                         );
-                         const streams = allocation?.streams || playlist.allocated_streams || 0;
+                         const streams = allocation.allocation || 0;
                          const cost = streams * 0.001; // Approximate cost calculation
                          
                          acc[vendorName].playlists.push({
-                           ...playlist,
+                           id: playlistId,
+                           name: allocation.playlist?.name || `Playlist ${playlistId?.slice(-8)}`,
                            streams,
                            cost
                          });
@@ -283,9 +285,9 @@ export default function CampaignReview({
                           <div className="space-y-1">
                             {group.playlists.map((playlist: any, idx: number) => (
                               <div key={playlist.id || idx} className="flex justify-between items-center text-xs py-1 px-2 bg-background/50 rounded">
-                                <span className="truncate flex-1 mr-2">{playlist.name}</span>
+                                <span className="truncate flex-1 mr-2">{playlist.name || 'Unnamed Playlist'}</span>
                                 <span className="text-muted-foreground whitespace-nowrap">
-                                  {playlist.streams.toLocaleString()} • ${playlist.cost.toFixed(2)}
+                                  {playlist.streams ? playlist.streams.toLocaleString() : '0'} • ${playlist.cost ? playlist.cost.toFixed(2) : '0.00'}
                                 </span>
                               </div>
                             ))}

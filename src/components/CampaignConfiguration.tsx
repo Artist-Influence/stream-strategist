@@ -82,28 +82,35 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
   useEffect(() => {
     if (initialData && (initialData as any)?.client_name) {
       const submissionData = initialData as any;
+      console.log('Auto-populating client from submission data:', submissionData);
       
       // Set client name first
       if (submissionData.client_name && submissionData.client_name !== clientName) {
+        console.log('Setting client name:', submissionData.client_name);
         setClientName(submissionData.client_name);
       }
       
       // Set client_id if available
       if (submissionData.client_id && submissionData.client_id !== selectedClientId) {
+        console.log('Setting client_id from submission:', submissionData.client_id);
         setSelectedClientId(submissionData.client_id);
         setValue('client_id', submissionData.client_id);
       } else if (submissionData.client_name && !submissionData.client_id) {
         // Try to resolve client_id from client_name
+        console.log('Resolving client_id for client_name:', submissionData.client_name);
         const resolveClientId = async () => {
           try {
             const { data: client } = await supabase
               .from('clients')
-              .select('id')
+              .select('id, name')
               .eq('name', submissionData.client_name)
               .maybeSingle();
+            console.log('Client resolution result:', client);
             if (client) {
+              console.log('Setting resolved client_id:', client.id);
               setSelectedClientId(client.id);
               setValue('client_id', client.id);
+              setClientName(client.name);
             }
           } catch (error) {
             console.log('Could not resolve client_id:', error);
@@ -112,7 +119,7 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
         resolveClientId();
       }
     }
-  }, [initialData, setValue]);
+  }, [initialData, setValue, clientName, selectedClientId]);
 
   // Auto-populate track data when initialData has track_url
   useEffect(() => {

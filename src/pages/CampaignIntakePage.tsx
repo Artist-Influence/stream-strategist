@@ -475,17 +475,20 @@ export default function CampaignIntakePage() {
                         className={`w-full justify-start text-left font-normal ${!formData.start_date ? "text-muted-foreground" : ""}`}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formData.start_date ? format(new Date(formData.start_date), "PPP") : "Select start date"}
+                        {formData.start_date ? format(new Date(formData.start_date + 'T12:00:00'), "PPP") : "Select start date"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
-                        selected={formData.start_date ? new Date(formData.start_date + 'T00:00:00') : undefined}
+                        selected={formData.start_date ? new Date(formData.start_date + 'T12:00:00') : undefined}
                         onSelect={(date) => {
                           if (date) {
-                            // Format date as YYYY-MM-DD in local timezone without adjustment
-                            setFormData({...formData, start_date: format(date, 'yyyy-MM-dd')});
+                            // Create date at noon to avoid timezone issues
+                            const adjustedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0);
+                            setFormData({...formData, start_date: format(adjustedDate, 'yyyy-MM-dd')});
+                            // Close popover after selection by clicking outside
+                            setTimeout(() => document.body.click(), 100);
                           }
                         }}
                         disabled={(date) => {

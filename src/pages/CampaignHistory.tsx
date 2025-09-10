@@ -133,14 +133,14 @@ export default function CampaignHistory() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch campaigns
+  // Fetch campaigns - Support both campaign sources
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ['campaigns'],
     queryFn: async (): Promise<Campaign[]> => {
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
-        .eq('source', APP_CAMPAIGN_SOURCE)
+        .in('source', ['campaign_manager', 'campaign_intake']) // Support both sources
         .eq('campaign_type', APP_CAMPAIGN_TYPE)
         .order('created_at', { ascending: false });
       

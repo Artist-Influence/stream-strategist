@@ -56,6 +56,9 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
   const [isAllocating, setIsAllocating] = useState(false);
   const [genreMatches, setGenreMatches] = useState<GenreMatch[]>([]);
   const [manualAllocations, setManualAllocations] = useState<Record<string, number>>({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showOnlySelected, setShowOnlySelected] = useState(false);
+  const [expandedVendors, setExpandedVendors] = useState<Set<string>>(new Set());
 
   // Fetch vendors and playlists (only active vendors for AI recommendations)
   const { data: vendors } = useQuery({
@@ -79,13 +82,25 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
         .from('playlists')
         .select(`
           *,
-          vendor:vendors!inner(is_active)
+          vendor:vendors!inner(id, name, is_active)
         `)
         .eq('vendor.is_active', true)
         .order('avg_daily_streams', { ascending: false });
       
       if (error) throw error;
-      return data || [];
+      
+      // Filter playlists by campaign genres for better recommendations
+      const campaignGenres = campaignData.sub_genre.split(', ').map(g => g.trim().toLowerCase());
+      const filteredPlaylists = (data || []).filter(playlist => {
+        return playlist.genres.some(genre => 
+          campaignGenres.some(campaignGenre => 
+            genre.toLowerCase().includes(campaignGenre) || 
+            campaignGenre.includes(genre.toLowerCase())
+          )
+        );
+      });
+      
+      return filteredPlaylists;
     }
   });
 
@@ -314,23 +329,46 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
             </Card>
           </div>
 
+          {/* Search and Filter Controls */}
+          <Card className="bg-card/50">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Search playlists by name or vendor..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant={showOnlySelected ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowOnlySelected(!showOnlySelected)}
+                  >
+                    {showOnlySelected ? "Show All" : "Selected Only"}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={runAllocation}
+                    disabled={isAllocating}
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Refresh
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Recommendations Table */}
           <Card className="bg-card/50">
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Sparkles className="w-5 h-5" />
-                  <span>AI Recommendations</span>
-                </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={runAllocation}
-                  disabled={isAllocating}
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Refresh
-                </Button>
+              <CardTitle className="flex items-center space-x-2">
+                <Sparkles className="w-5 h-5" />
+                <span>AI Recommendations</span>
               </CardTitle>
               {allocations.length === 0 && genreMatches.length > 0 && (
                 <CardDescription className="flex items-center space-x-2 text-amber-600">
@@ -384,8 +422,19 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                 <TableBody>
                   {/* Group playlists by vendor and sort selected to top */}
                   {(() => {
-                    // Group matches by vendor
-                    const groupedByVendor = genreMatches.reduce((groups, match) => {
+                    // Filter matches based on search term and selection filter
+                    let filteredMatches = genreMatches.filter(match => {
+                      const matchesSearch = !searchTerm || 
+                        match.playlist.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        vendors?.find(v => v.id === match.playlist.vendor_id)?.name.toLowerCase().includes(searchTerm.toLowerCase());
+                      
+                      const matchesSelection = !showOnlySelected || selectedPlaylists.has(match.playlist.id);
+                      
+                      return matchesSearch && matchesSelection;
+                    });
+
+                    // Group filtered matches by vendor
+                    const groupedByVendor = filteredMatches.reduce((groups, match) => {
                       const vendorId = match.playlist.vendor_id;
                       if (!groups[vendorId]) {
                         groups[vendorId] = [];
@@ -401,24 +450,42 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                         const bSelected = selectedPlaylists.has(b.playlist.id);
                         if (aSelected && !bSelected) return -1;
                         if (!aSelected && bSelected) return 1;
-                        return 0;
+                        return b.relevanceScore - a.relevanceScore; // Then by relevance
                       });
                     });
 
                     // Render grouped playlists
                     return Object.entries(groupedByVendor).map(([vendorId, matches]) => {
                       const vendor = vendors?.find(v => v.id === vendorId);
+                      const vendorName = vendor?.name || 'Unknown Vendor';
+                      const isExpanded = expandedVendors.has(vendorId);
+                      const selectedCount = matches.filter(m => selectedPlaylists.has(m.playlist.id)).length;
+                      
                       return (
                         <React.Fragment key={vendorId}>
-                          {/* Vendor Header Row */}
-                          <TableRow className="bg-muted/50">
+                          {/* Vendor Header Row - Collapsible */}
+                          <TableRow 
+                            className="bg-muted/50 cursor-pointer hover:bg-muted/70"
+                            onClick={() => {
+                              const newExpanded = new Set(expandedVendors);
+                              if (isExpanded) {
+                                newExpanded.delete(vendorId);
+                              } else {
+                                newExpanded.add(vendorId);
+                              }
+                              setExpandedVendors(newExpanded);
+                            }}
+                          >
                             <TableCell colSpan={8} className="font-semibold text-primary">
-                              {vendor?.name || 'Unknown Vendor'} - {matches.length} playlists
+                              <div className="flex items-center justify-between">
+                                <span>{vendorName} - {matches.length} playlists {selectedCount > 0 && `(${selectedCount} selected)`}</span>
+                                <span className="text-xs">{isExpanded ? '▼' : '▶'}</span>
+                              </div>
                             </TableCell>
                           </TableRow>
                           
-                          {/* Vendor's Playlists */}
-                          {matches.slice(0, 20).map((match) => {
+                          {/* Vendor's Playlists - Only show selected if collapsed, all if expanded */}
+                          {(isExpanded ? matches : matches.filter(m => selectedPlaylists.has(m.playlist.id))).map((match) => {
                             const playlist = match.playlist;
                             const allocation = allocations.find(a => a.playlist_id === playlist.id);
                             const isSelected = selectedPlaylists.has(playlist.id);
