@@ -81,7 +81,7 @@ export default function CampaignIntakePage() {
         
         // Call Supabase Edge Function to fetch track data
         const { data, error } = await supabase.functions.invoke('spotify-fetch', {
-          body: { track_url: url }
+          body: { trackUrl: url }
         });
 
         if (error) {

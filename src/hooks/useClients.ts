@@ -6,33 +6,15 @@ import { APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE } from '@/lib/constants';
 
 export function useClients() {
   return useQuery({
-    queryKey: ['clients', APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE],
+    queryKey: ['clients'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clients')
-        .select(`
-          *,
-          campaigns!client_id(id, status, source, campaign_type)
-        `)
+        .select('*')
         .order('name');
       
       if (error) throw error;
-      
-      // Transform the data to include campaign counts - only count relevant campaigns
-      const clientsWithCampaignCounts = data.map(client => ({
-        ...client,
-        activeCampaignsCount: client.campaigns?.filter((c: any) => 
-          c.status === 'active' && 
-          c.source === APP_CAMPAIGN_SOURCE && 
-          c.campaign_type === APP_CAMPAIGN_TYPE
-        ).length || 0,
-        totalCampaignsCount: client.campaigns?.filter((c: any) => 
-          c.source === APP_CAMPAIGN_SOURCE && 
-          c.campaign_type === APP_CAMPAIGN_TYPE
-        ).length || 0,
-      }));
-      
-      return clientsWithCampaignCounts;
+      return data;
     },
   });
 }
@@ -82,16 +64,15 @@ export function useCreateClient() {
     },
     onSuccess: (newClient) => {
       // Optimistically update the cache with the new client
-      queryClient.setQueryData(['clients', APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE], (oldData: any) => {
+      queryClient.setQueryData(['clients'], (oldData: any) => {
         if (oldData) {
-          return [...oldData, { ...newClient, activeCampaignsCount: 0, totalCampaignsCount: 0 }];
+          return [...oldData, newClient];
         }
-        return [{ ...newClient, activeCampaignsCount: 0, totalCampaignsCount: 0 }];
+        return [newClient];
       });
       
       // Also invalidate for a full refresh
       queryClient.invalidateQueries({ queryKey: ['clients'] });
-      queryClient.invalidateQueries({ queryKey: ['clients', APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE] });
       toast({ title: 'Client created successfully' });
     },
     onError: (error) => {
@@ -121,7 +102,6 @@ export function useUpdateClient() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
-      queryClient.invalidateQueries({ queryKey: ['clients', APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE] });
       toast({ title: 'Client updated successfully' });
     },
     onError: (error) => {
