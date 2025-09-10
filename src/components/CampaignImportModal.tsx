@@ -540,6 +540,8 @@ export default function CampaignImportModal({
             .eq('id', existingCampaign.id);
           
           updatedCount++;
+        } else {
+          // Create new campaign with consolidated data
           await supabase
             .from('campaigns')
             .insert({
