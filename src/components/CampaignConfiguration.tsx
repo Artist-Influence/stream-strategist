@@ -82,13 +82,29 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
   useEffect(() => {
     if (initialData && (initialData as any)?.client_name && !selectedClientId) {
       const submissionData = initialData as any;
-      // If we have client_name from submission but no client_id, set the name for display
+      // If we have client_name from submission but no client_id, try to resolve it
       if (submissionData.client_name) {
         setClientName(submissionData.client_name);
-        console.log('Auto-populated client from submission:', submissionData.client_name);
+        // Try to find the client_id if we have client_name
+        const resolveClientId = async () => {
+          try {
+            const { data: client } = await supabase
+              .from('clients')
+              .select('id')
+              .eq('name', submissionData.client_name)
+              .single();
+            if (client) {
+              setSelectedClientId(client.id);
+              setValue('client_id', client.id);
+            }
+          } catch (error) {
+            console.log('Could not resolve client_id:', error);
+          }
+        };
+        resolveClientId();
       }
     }
-  }, [initialData, selectedClientId]);
+  }, [initialData, selectedClientId, setValue]);
 
   // Auto-populate track data when initialData has track_url
   useEffect(() => {

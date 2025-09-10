@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -382,16 +382,52 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {genreMatches.slice(0, 20).map((match) => {
-                    const playlist = match.playlist;
-                    const allocation = allocations.find(a => a.playlist_id === playlist.id);
-                    const isSelected = selectedPlaylists.has(playlist.id);
-                    
-                    return (
-                      <TableRow 
-                        key={playlist.id} 
-                        className={`${isSelected ? 'bg-primary/10 border-primary/30' : ''} hover:bg-accent/20`}
-                      >
+                  {/* Group playlists by vendor and sort selected to top */}
+                  {(() => {
+                    // Group matches by vendor
+                    const groupedByVendor = genreMatches.reduce((groups, match) => {
+                      const vendorId = match.playlist.vendor_id;
+                      if (!groups[vendorId]) {
+                        groups[vendorId] = [];
+                      }
+                      groups[vendorId].push(match);
+                      return groups;
+                    }, {} as Record<string, typeof genreMatches>);
+
+                    // Sort each vendor group by selection status
+                    Object.keys(groupedByVendor).forEach(vendorId => {
+                      groupedByVendor[vendorId].sort((a, b) => {
+                        const aSelected = selectedPlaylists.has(a.playlist.id);
+                        const bSelected = selectedPlaylists.has(b.playlist.id);
+                        if (aSelected && !bSelected) return -1;
+                        if (!aSelected && bSelected) return 1;
+                        return 0;
+                      });
+                    });
+
+                    // Render grouped playlists
+                    return Object.entries(groupedByVendor).map(([vendorId, matches]) => {
+                      const vendor = vendors?.find(v => v.id === vendorId);
+                      return (
+                        <React.Fragment key={vendorId}>
+                          {/* Vendor Header Row */}
+                          <TableRow className="bg-muted/50">
+                            <TableCell colSpan={8} className="font-semibold text-primary">
+                              {vendor?.name || 'Unknown Vendor'} - {matches.length} playlists
+                            </TableCell>
+                          </TableRow>
+                          
+                          {/* Vendor's Playlists */}
+                          {matches.slice(0, 20).map((match) => {
+                            const playlist = match.playlist;
+                            const allocation = allocations.find(a => a.playlist_id === playlist.id);
+                            const isSelected = selectedPlaylists.has(playlist.id);
+                            
+                            return (
+                              <TableRow 
+                                key={playlist.id} 
+                                className={`${isSelected ? 'bg-primary/10 border-primary/30' : ''} hover:bg-accent/20`}
+                              >
                         <TableCell>
                           <Switch
                             checked={isSelected}
@@ -472,8 +508,12 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                           </Button>
                         </TableCell>
                       </TableRow>
-                    );
-                  })}
+                            );
+                          })}
+                        </React.Fragment>
+                      );
+                    });
+                  })()}
                 </TableBody>
               </Table>
             </CardContent>

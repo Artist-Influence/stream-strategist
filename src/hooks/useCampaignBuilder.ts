@@ -210,6 +210,7 @@ export function useCampaignBuilder() {
       const campaignPayload = {
         name: data.name,
         client: data.client,
+        client_id: data.client_id,
         track_url: data.track_url,
         track_name: data.track_name,
         stream_goal: data.stream_goal,
@@ -217,7 +218,7 @@ export function useCampaignBuilder() {
         sub_genre: data.sub_genre,
         start_date: data.start_date,
         duration_days: data.duration_days,
-        status: 'built',
+        status: 'active',
         selected_playlists: allocationsData.selectedPlaylists || [],
         vendor_allocations: allocationsData.allocations || {},
         totals: {
@@ -236,6 +237,38 @@ export function useCampaignBuilder() {
         .single();
 
       if (result.error) throw result.error;
+
+      // Create vendor requests for selected playlists
+      if (allocationsData.selectedPlaylists && allocationsData.selectedPlaylists.length > 0) {
+        // Group playlists by vendor
+        const { data: playlists } = await supabase
+          .from('playlists')
+          .select('*, vendor:vendors(*)')
+          .in('id', allocationsData.selectedPlaylists);
+
+        if (playlists) {
+          const vendorGroups = playlists.reduce((groups, playlist) => {
+            const vendorId = playlist.vendor_id;
+            if (!groups[vendorId]) {
+              groups[vendorId] = [];
+            }
+            groups[vendorId].push(playlist.id);
+            return groups;
+          }, {} as Record<string, string[]>);
+
+          // Create vendor requests
+          const vendorRequests = Object.entries(vendorGroups).map(([vendorId, playlistIds]) => ({
+            campaign_id: result.data.id,
+            vendor_id: vendorId,
+            playlist_ids: playlistIds,
+            status: 'pending'
+          }));
+
+          await supabase
+            .from('campaign_vendor_requests')
+            .insert(vendorRequests);
+        }
+      }
 
       // Update submission status
       await supabase
