@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE } from "@/lib/constants";
+import { APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_SOURCE_INTAKE, APP_CAMPAIGN_TYPE } from "@/lib/constants";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Table,
@@ -140,7 +140,7 @@ export default function CampaignHistory() {
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
-        .in('source', ['campaign_manager', 'campaign_intake']) // Support both sources
+        .in('source', [APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_SOURCE_INTAKE]) // Support both sources
         .eq('campaign_type', APP_CAMPAIGN_TYPE)
         .order('created_at', { ascending: false });
       

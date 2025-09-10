@@ -9,9 +9,9 @@ export const UNIFIED_GENRES = [
 ];
 
 // Campaign filtering - CRITICAL for preventing cross-project data leaks
-export const APP_CAMPAIGN_SOURCE = 'campaign_manager';
+export const APP_CAMPAIGN_SOURCE = 'artist_influence_spotify_campaigns';
 export const APP_CAMPAIGN_SOURCE_INTAKE = 'campaign_intake'; // Support both sources
-export const APP_CAMPAIGN_TYPE = 'spotify';
+export const APP_CAMPAIGN_TYPE = 'artist_influence_spotify_promotion';
 
 // Project identification  
 export const PROJECT_NAME = 'Artist Influence - Spotify Campaign Manager';
