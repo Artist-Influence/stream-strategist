@@ -397,10 +397,28 @@ export default function CampaignImportModal({
     }
 
     setStep('importing');
-    setImportProgress({ current: 0, total: csvData!.rows.length });
     
     try {
-      // Create new playlists first
+      // STEP 1: Group CSV rows by campaign name + client for consolidation
+      setImportStatus('Grouping campaigns by name and client...');
+      const campaignGroups = new Map<string, any[]>();
+      
+      for (const row of csvData!.rows) {
+        const campaignName = row[columnMappings.name || ''];
+        const client = row[columnMappings.client || ''];
+        
+        if (campaignName && client) {
+          const groupKey = `${campaignName}|${client}`;
+          if (!campaignGroups.has(groupKey)) {
+            campaignGroups.set(groupKey, []);
+          }
+          campaignGroups.get(groupKey)!.push(row);
+        }
+      }
+
+      setImportProgress({ current: 0, total: campaignGroups.size });
+
+      // STEP 2: Create new playlists first
       const playlistsToCreate = playlistMatches.filter(m => m.action === 'create');
       const createdPlaylists: Record<string, string> = {};
 
@@ -427,88 +445,112 @@ export default function CampaignImportModal({
         }
       }
 
+      // STEP 3: Process each consolidated campaign group
       let processedCount = 0;
       let createdCount = 0;
       let updatedCount = 0;
 
-      for (const row of csvData!.rows) {
-        setImportStatus(`Processing campaign ${processedCount + 1}/${csvData!.rows.length}`);
+      for (const [groupKey, groupRows] of campaignGroups) {
+        const [campaignName, client] = groupKey.split('|');
+        setImportStatus(`Processing campaign group: ${campaignName} (${groupRows.length} vendor rows)`);
         
-        // Map CSV data to campaign fields
-        const campaignData: any = {};
-        for (const [dbField, csvColumn] of Object.entries(columnMappings)) {
-          if (csvColumn && row[csvColumn]) {
-            let value = row[csvColumn];
-            
-            // Parse numbers
-            if (['stream_goal', 'budget', 'daily_streams', 'weekly_streams', 'remaining_streams'].includes(dbField)) {
-              value = parseInt(String(value).replace(/[,\s]/g, '')) || 0;
+        // STEP 4: Consolidate data from all rows in the group
+        const consolidatedData: any = {};
+        let allSelectedPlaylists: any[] = [];
+        
+        // Initialize numerical fields for summation
+        const numericalFields = ['stream_goal', 'budget', 'daily_streams', 'weekly_streams', 'remaining_streams'];
+        numericalFields.forEach(field => consolidatedData[field] = 0);
+        
+        // Process each row in the group
+        for (const row of groupRows) {
+          // Map CSV data to campaign fields for this row
+          const rowData: any = {};
+          for (const [dbField, csvColumn] of Object.entries(columnMappings)) {
+            if (csvColumn && row[csvColumn]) {
+              let value = row[csvColumn];
+              
+              // Parse numbers
+              if (numericalFields.includes(dbField)) {
+                value = parseInt(String(value).replace(/[,\s]/g, '')) || 0;
+                consolidatedData[dbField] += value; // Sum numerical values
+              } else {
+                // For non-numerical fields, use first non-empty value
+                if (!consolidatedData[dbField] && value) {
+                  consolidatedData[dbField] = value;
+                }
+              }
+              
+              rowData[dbField] = value;
             }
+          }
+
+          // Process playlists for this specific row
+          const playlistColumn = columnMappings.playlists;
+          if (playlistColumn && row[playlistColumn]) {
+            const playlistNames = parsePlaylistNames(row[playlistColumn]);
             
-            campaignData[dbField] = value;
+            for (const name of playlistNames) {
+              const match = playlistMatches.find(m => m.originalName === name);
+              if (match?.action === 'match' && match.matchedPlaylist) {
+                // Check if we already have this playlist to avoid duplicates
+                const exists = allSelectedPlaylists.find(p => p.id === match.matchedPlaylist!.id);
+                if (!exists) {
+                  allSelectedPlaylists.push({
+                    id: match.matchedPlaylist.id,
+                    name: match.matchedPlaylist.name,
+                    vendor_name: match.matchedPlaylist.vendor_name
+                  });
+                }
+              } else if (match?.action === 'create' && createdPlaylists[name]) {
+                // Check if we already have this playlist to avoid duplicates
+                const exists = allSelectedPlaylists.find(p => p.id === createdPlaylists[name]);
+                if (!exists) {
+                  const vendor = vendors?.find(v => v.id === (match.createWithVendor || defaultVendor));
+                  allSelectedPlaylists.push({
+                    id: createdPlaylists[name],
+                    name: name,
+                    vendor_name: vendor?.name || 'Unknown'
+                  });
+                }
+              }
+            }
           }
         }
 
-        // Process playlists
-        let selectedPlaylists: any[] = [];
-        const playlistColumn = columnMappings.playlists;
-        if (playlistColumn && row[playlistColumn]) {
-          const playlistNames = parsePlaylistNames(row[playlistColumn]);
-          
-          for (const name of playlistNames) {
-            const match = playlistMatches.find(m => m.originalName === name);
-            if (match?.action === 'match' && match.matchedPlaylist) {
-              selectedPlaylists.push({
-                id: match.matchedPlaylist.id,
-                name: match.matchedPlaylist.name,
-                vendor_name: match.matchedPlaylist.vendor_name
-              });
-            } else if (match?.action === 'create' && createdPlaylists[name]) {
-              const vendor = vendors?.find(v => v.id === (match.createWithVendor || defaultVendor));
-              selectedPlaylists.push({
-                id: createdPlaylists[name],
-                name: name,
-                vendor_name: vendor?.name || 'Unknown'
-              });
-            }
-          }
-        }
-
-        // Check if campaign exists
+        // STEP 5: Check if consolidated campaign exists
         const { data: existingCampaign } = await supabase
           .from('campaigns')
           .select('*')
-          .eq('name', campaignData.name)
-          .eq('client', campaignData.client)
+          .eq('name', consolidatedData.name)
+          .eq('client', consolidatedData.client)
           .eq('source', APP_CAMPAIGN_SOURCE)
           .eq('campaign_type', APP_CAMPAIGN_TYPE)
           .maybeSingle();
 
         if (existingCampaign) {
-          // Update existing campaign
+          // Update existing campaign with consolidated data
           await supabase
             .from('campaigns')
             .update({
-              ...campaignData,
-              selected_playlists: selectedPlaylists,
+              ...consolidatedData,
+              selected_playlists: allSelectedPlaylists,
               updated_at: new Date().toISOString()
             })
             .eq('id', existingCampaign.id);
           
           updatedCount++;
-        } else {
-          // Create new campaign
           await supabase
             .from('campaigns')
             .insert({
-              ...campaignData,
-              selected_playlists: selectedPlaylists,
+              ...consolidatedData,
+              selected_playlists: allSelectedPlaylists,
               source: APP_CAMPAIGN_SOURCE,
               campaign_type: APP_CAMPAIGN_TYPE,
-              status: campaignData.status || 'active',
+              status: consolidatedData.status || 'active',
               duration_days: 90,
-              start_date: campaignData.start_date || new Date().toISOString().split('T')[0],
-              remaining_streams: campaignData.remaining_streams || campaignData.stream_goal || 0,
+              start_date: consolidatedData.start_date || new Date().toISOString().split('T')[0],
+              remaining_streams: consolidatedData.remaining_streams || consolidatedData.stream_goal || 0,
               vendor_allocations: {},
               totals: { projected_streams: 0 },
               music_genres: [],
@@ -522,11 +564,11 @@ export default function CampaignImportModal({
         }
 
         processedCount++;
-        setImportProgress({ current: processedCount, total: csvData!.rows.length });
+        setImportProgress({ current: processedCount, total: campaignGroups.size });
       }
 
       // Success
-      const summary = `Import complete! Created: ${createdCount}, Updated: ${updatedCount}`;
+      const summary = `Import complete! Created: ${createdCount}, Updated: ${updatedCount} (from ${csvData!.rows.length} total rows consolidated into ${campaignGroups.size} campaigns)`;
       setImportStatus(summary);
       
       queryClient.invalidateQueries({ queryKey: ['campaigns-enhanced'] });
