@@ -267,23 +267,6 @@ export default function CampaignIntakePage() {
                 )}
               </div>
 
-              {/* Track URL - Moved to top for auto-population */}
-              <div>
-                <Label>Track URL *</Label>
-                <Input
-                  placeholder="https://open.spotify.com/track/... (will auto-populate campaign name and genres)"
-                  value={formData.track_url}
-                  onChange={(e) => handleTrackUrlChange(e.target.value)}
-                  required
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  For released songs: Spotify URL. For unreleased: SoundCloud, Dropbox, or private streaming link.
-                </p>
-                {formData.campaign_name && formData.track_url.includes('spotify.com') && (
-                  <p className="text-xs text-green-600 mt-1">✓ Auto-populated from Spotify</p>
-                )}
-              </div>
-
               {/* Client Emails */}
               <div>
                 <Label>Client Emails (up to 5, comma-separated) *</Label>
