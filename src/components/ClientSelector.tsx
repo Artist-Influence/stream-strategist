@@ -59,7 +59,10 @@ export function ClientSelector({ value, onChange, placeholder = "Select client..
         credit_balance: 0,
       });
 
+      // Update the selected client immediately
       onChange(newClient.id);
+      
+      // Close dialog and reset form
       setShowAddDialog(false);
       setOpen(false);
       setNewClientName('');

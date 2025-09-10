@@ -80,7 +80,16 @@ export function useCreateClient() {
       if (error) throw error;
       return data as Client;
     },
-    onSuccess: () => {
+    onSuccess: (newClient) => {
+      // Optimistically update the cache with the new client
+      queryClient.setQueryData(['clients', APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE], (oldData: any) => {
+        if (oldData) {
+          return [...oldData, { ...newClient, activeCampaignsCount: 0, totalCampaignsCount: 0 }];
+        }
+        return [{ ...newClient, activeCampaignsCount: 0, totalCampaignsCount: 0 }];
+      });
+      
+      // Also invalidate for a full refresh
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       queryClient.invalidateQueries({ queryKey: ['clients', APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE] });
       toast({ title: 'Client created successfully' });
