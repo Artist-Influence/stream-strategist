@@ -94,10 +94,10 @@ export default function CampaignIntakePage() {
           return;
         }
 
-        if (data?.trackInfo) {
+        if (data?.name) {
           // Auto-populate campaign name from track info
-          const trackName = data.trackInfo.name;
-          const artistName = data.trackInfo.artists?.[0]?.name;
+          const trackName = data.name;
+          const artistName = data.artists?.[0]?.name;
           const campaignName = artistName && trackName ? `${artistName} - ${trackName}` : trackName;
           
           setFormData(prev => ({ 
@@ -576,7 +576,7 @@ export default function CampaignIntakePage() {
               Your campaign has been submitted for approval. You'll be contacted soon with an update.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+          <DialogFooter className="flex-col sm:flex-row gap-3">
             <Button
               variant="outline"
               onClick={() => {

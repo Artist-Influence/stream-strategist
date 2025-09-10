@@ -22,6 +22,7 @@ import {
   Music,
   Sparkles
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const campaignSchema = z.object({
   name: z.string().min(1, "Campaign name is required"),
@@ -54,6 +55,7 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
   );
   const [trackName, setTrackName] = useState(initialData?.track_name || "");
   const [selectedClientId, setSelectedClientId] = useState(initialData?.client_id || "");
+  const [clientName, setClientName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   
@@ -74,9 +76,32 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
     resolver: zodResolver(campaignSchema),
     defaultValues: {
       duration_days: 90,
+      // Map submission data to campaign form
+      budget: initialData?.budget || (initialData as any)?.price_paid || 0,
       ...initialData
     }
   });
+
+  // Load client name if we have a client_id from submission data
+  useEffect(() => {
+    const loadClientName = async () => {
+      if (selectedClientId && !clientName) {
+        try {
+          const { data: client } = await supabase
+            .from('clients')
+            .select('name')
+            .eq('id', selectedClientId)
+            .single();
+          if (client) {
+            setClientName(client.name);
+          }
+        } catch (error) {
+          console.log('Could not load client name:', error);
+        }
+      }
+    };
+    loadClientName();
+  }, [selectedClientId, clientName]);
 
   const watchedValues = watch();
 
@@ -276,20 +301,37 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
                      )}
                    </div>
                   
-                   <div className="space-y-2">
-                     <Label htmlFor="client">Client *</Label>
-                     <ClientSelector
-                       value={selectedClientId}
-                       onChange={(clientId) => {
-                         console.log('Client selector onChange called with:', clientId);
-                         setSelectedClientId(clientId);
-                       }}
-                       placeholder="Select or add client..."
-                     />
-                      {!selectedClientId && (
-                        <p className="text-sm text-destructive">Please select a client</p>
+                    <div className="space-y-2">
+                      <Label htmlFor="client">Client *</Label>
+                      {clientName ? (
+                        <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                          <span className="font-medium">{clientName}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setClientName("");
+                              setSelectedClientId("");
+                            }}
+                          >
+                            Change
+                          </Button>
+                        </div>
+                      ) : (
+                        <ClientSelector
+                          value={selectedClientId}
+                          onChange={(clientId) => {
+                            console.log('Client selector onChange called with:', clientId);
+                            setSelectedClientId(clientId);
+                          }}
+                          placeholder="Select or add client..."
+                        />
                       )}
-                   </div>
+                       {!selectedClientId && (
+                         <p className="text-sm text-destructive">Please select a client</p>
+                       )}
+                    </div>
                 </div>
 
                 <div className="space-y-2">
@@ -380,19 +422,26 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
                     )}
                   </div>
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="duration_days">Duration (Days) *</Label>
-                    <Input
-                      id="duration_days"
-                      type="number"
-                      {...register("duration_days", { valueAsNumber: true })}
-                      placeholder="90"
-                      className={errors.duration_days ? "border-destructive" : ""}
-                    />
-                    {errors.duration_days && (
-                      <p className="text-sm text-destructive">{errors.duration_days.message}</p>
-                    )}
-                  </div>
+                   <div className="space-y-2">
+                     <Label htmlFor="duration_days">Duration (Days) *</Label>
+                     <Select 
+                       value={watchedValues.duration_days?.toString() || "90"}
+                       onValueChange={(value) => setValue("duration_days", parseInt(value))}
+                     >
+                       <SelectTrigger className={errors.duration_days ? "border-destructive" : ""}>
+                         <SelectValue />
+                       </SelectTrigger>
+                       <SelectContent>
+                         <SelectItem value="30">30 days</SelectItem>
+                         <SelectItem value="60">60 days</SelectItem>
+                         <SelectItem value="90">90 days (recommended)</SelectItem>
+                         <SelectItem value="120">120 days</SelectItem>
+                       </SelectContent>
+                     </Select>
+                     {errors.duration_days && (
+                       <p className="text-sm text-destructive">{errors.duration_days.message}</p>
+                     )}
+                   </div>
                 </div>
               </CardContent>
             </Card>

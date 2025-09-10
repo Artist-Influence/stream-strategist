@@ -76,14 +76,37 @@ export default function CampaignReview({
   const handleLaunch = async (status: 'built' | 'unreleased' | 'active' = 'active') => {
     setIsLaunching(true);
     try {
+      console.log('Starting campaign launch/approval process...');
+      console.log('Campaign data:', campaignData);
+      console.log('Allocations data:', allocationsData);
+      console.log('Status:', status);
+      console.log('Is reviewing:', isReviewing);
+      
       if (isReviewing && onApprove) {
+        console.log('Calling onApprove function...');
         await onApprove(campaignData, allocationsData);
+        console.log('✅ Approval successful');
       } else {
+        console.log('Saving campaign...');
         await saveCampaign(campaignData, allocationsData, status);
+        console.log('✅ Campaign saved successfully');
       }
       navigate('/campaigns');
     } catch (error) {
-      console.error('Error launching campaign:', error);
+      console.error('❌ Error launching/approving campaign:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        campaignData,
+        allocationsData,
+        status,
+        isReviewing
+      });
+      toast({
+        title: "Error",
+        description: `Failed to ${isReviewing ? 'approve' : 'launch'} campaign: ${error.message}`,
+        variant: "destructive"
+      });
     } finally {
       setIsLaunching(false);
     }
