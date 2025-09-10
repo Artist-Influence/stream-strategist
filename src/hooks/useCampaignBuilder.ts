@@ -83,11 +83,29 @@ export function useCampaignBuilder() {
       if (error) throw error;
 
       setSubmissionData(data);
+      
+      // Resolve client_id from client_name if needed
+      let clientId = '';
+      if (data.client_name) {
+        try {
+          const { data: client } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('name', data.client_name)
+            .single();
+          if (client) {
+            clientId = client.id;
+          }
+        } catch (error) {
+          console.log('Could not resolve client_id:', error);
+        }
+      }
+      
       // Convert submission data to campaign data format with proper field mapping
       setCampaignData({
         name: data.campaign_name,
         client: data.client_name,
-        client_id: data.client_id, // Pass through client_id if available
+        client_id: clientId, // Use resolved client_id
         track_url: data.track_url,
         stream_goal: data.stream_goal,
         budget: data.price_paid, // Map price_paid to budget

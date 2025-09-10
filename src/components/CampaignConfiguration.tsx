@@ -59,6 +59,23 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   
+  // Initialize form FIRST before using setValue in useEffect
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+    watch
+  } = useForm<CampaignFormData>({
+    resolver: zodResolver(campaignSchema),
+    defaultValues: {
+      duration_days: 90,
+      // Map submission data to campaign form
+      budget: initialData?.budget || (initialData as any)?.price_paid || 0,
+      ...initialData
+    }
+  });
+  
   // Auto-populate track data when initialData has track_url
   useEffect(() => {
     if (initialData?.track_url && !trackName) {
@@ -77,8 +94,7 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
         duration_days: initialData.duration_days || 90,
         name: initialData.name || '',
         track_url: initialData.track_url || '',
-        sub_genre: initialData.sub_genre || '',
-        client_id: (initialData as any)?.client_id || ''
+        sub_genre: initialData.sub_genre || ''
       };
       
       // Reset form with mapped data
@@ -88,11 +104,6 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
         }
       });
 
-      // Set client if we have client data from submission
-      if ((initialData as any)?.client_id) {
-        setSelectedClientId((initialData as any).client_id);
-      }
-
       // Set genres if available
       if (initialData.sub_genre) {
         const genres = initialData.sub_genre.split(', ').filter(g => g.trim());
@@ -101,22 +112,6 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
       }
     }
   }, [initialData, setValue]);
-  
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    setValue,
-    watch
-  } = useForm<CampaignFormData>({
-    resolver: zodResolver(campaignSchema),
-    defaultValues: {
-      duration_days: 90,
-      // Map submission data to campaign form
-      budget: initialData?.budget || (initialData as any)?.price_paid || 0,
-      ...initialData
-    }
-  });
 
   // Load client name if we have a client_id from submission data
   useEffect(() => {
