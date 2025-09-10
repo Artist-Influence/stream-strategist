@@ -12,6 +12,7 @@ import { useIsVendorManager } from '@/hooks/useIsVendorManager';
 import { useCreateCampaignSubmission } from '@/hooks/useCampaignSubmissions';
 import { useSalespeople } from '@/hooks/useSalespeople';
 import { UNIFIED_GENRES } from '@/lib/constants';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FormData {
   client_id: string;
@@ -124,6 +125,47 @@ export default function CampaignIntakePage() {
     });
   };
 
+  const handleTrackUrlChange = async (url: string) => {
+    setFormData({...formData, track_url: url});
+    
+    if (url.includes('spotify.com/track/')) {
+      try {
+        const trackId = url.split('/track/')[1]?.split('?')[0];
+        if (trackId) {
+          const { data } = await supabase.functions.invoke('spotify-fetch', {
+            body: { trackId, type: 'track' }
+          });
+          
+          if (data?.name && data?.artists?.[0]?.name) {
+            const campaignName = `${data.artists[0].name} - ${data.name}`;
+            
+            // Auto-populate campaign name
+            setFormData(prev => ({
+              ...prev,
+              campaign_name: campaignName
+            }));
+            
+            // Auto-select genres from Spotify data if available
+            if (data.genres && data.genres.length > 0) {
+              const availableGenres = data.genres.filter((genre: string) => 
+                UNIFIED_GENRES.includes(genre)
+              ).slice(0, 3);
+              
+              if (availableGenres.length > 0) {
+                setFormData(prev => ({
+                  ...prev,
+                  music_genres: availableGenres
+                }));
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.log("Could not auto-fetch track data:", error);
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
@@ -205,6 +247,40 @@ export default function CampaignIntakePage() {
                     onChange={(e) => setFormData({...formData, client_name: e.target.value, client_id: ''})}
                     required
                   />
+                )}
+              </div>
+
+              {/* Track URL - Moved to top for auto-population */}
+              <div>
+                <Label>Track URL *</Label>
+                <Input
+                  placeholder="https://open.spotify.com/track/... (will auto-populate campaign name and genres)"
+                  value={formData.track_url}
+                  onChange={(e) => handleTrackUrlChange(e.target.value)}
+                  required
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  For released songs: Spotify URL. For unreleased: SoundCloud, Dropbox, or private streaming link.
+                </p>
+                {formData.campaign_name && formData.track_url.includes('spotify.com') && (
+                  <p className="text-xs text-green-600 mt-1">✓ Auto-populated from Spotify</p>
+                )}
+              </div>
+
+              {/* Track URL - Moved to top for auto-population */}
+              <div>
+                <Label>Track URL *</Label>
+                <Input
+                  placeholder="https://open.spotify.com/track/... (will auto-populate campaign name and genres)"
+                  value={formData.track_url}
+                  onChange={(e) => handleTrackUrlChange(e.target.value)}
+                  required
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  For released songs: Spotify URL. For unreleased: SoundCloud, Dropbox, or private streaming link.
+                </p>
+                {formData.campaign_name && formData.track_url.includes('spotify.com') && (
+                  <p className="text-xs text-green-600 mt-1">✓ Auto-populated from Spotify</p>
                 )}
               </div>
 
@@ -295,23 +371,13 @@ export default function CampaignIntakePage() {
                 </div>
               </div>
 
-              {/* Track URL */}
-              <div>
-                <Label>Track URL *</Label>
-                <Input
-                  placeholder="Spotify, SoundCloud, Dropbox, or other streaming link"
-                  value={formData.track_url}
-                  onChange={(e) => setFormData({...formData, track_url: e.target.value})}
-                  required
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  For released songs: Spotify URL. For unreleased: SoundCloud, Dropbox, or private streaming link.
-                </p>
-              </div>
 
               {/* Music Genres */}
               <div>
                 <Label>Music Genres (1-3 required) *</Label>
+                {formData.music_genres.length > 0 && formData.track_url.includes('spotify.com') && (
+                  <p className="text-xs text-green-600 mb-2">✓ Auto-selected from Spotify (you can edit these)</p>
+                )}
                 <div className="flex flex-wrap gap-2 mt-2 mb-2">
                   {UNIFIED_GENRES.map((genre) => (
                     <button
