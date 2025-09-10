@@ -55,6 +55,7 @@ export function ClientDetailsModal({ client, isOpen, onClose }: ClientDetailsMod
   const [isEditing, setIsEditing] = useState(false);
   const [editedClient, setEditedClient] = useState<Partial<Client>>({});
   const [newEmail, setNewEmail] = useState('');
+  const [emailError, setEmailError] = useState('');
   const [creditAmount, setCreditAmount] = useState('');
   const [creditReason, setCreditReason] = useState('');
   const [selectedCampaign, setSelectedCampaign] = useState('');
@@ -90,10 +91,15 @@ export function ClientDetailsModal({ client, isOpen, onClose }: ClientDetailsMod
       emails: [...(client?.emails || [])],
       notes: client?.notes,
     });
+    setEmailError('');
+    console.log('🔧 Edit mode started, editedClient.emails:', [...(client?.emails || [])]);
   };
 
   const handleSave = async () => {
     if (!client || !editedClient.name) return;
+    
+    console.log('🔧 Saving client with data:', editedClient);
+    console.log('🔧 Emails being saved:', editedClient.emails);
     
     try {
       await updateClient.mutateAsync({
@@ -101,6 +107,7 @@ export function ClientDetailsModal({ client, isOpen, onClose }: ClientDetailsMod
         ...editedClient,
       });
       setIsEditing(false);
+      setEmailError('');
     } catch (error) {
       console.error('Error updating client:', error);
     }
@@ -112,22 +119,60 @@ export function ClientDetailsModal({ client, isOpen, onClose }: ClientDetailsMod
   };
 
   const addEmail = () => {
-    if (!newEmail || !editedClient.emails) return;
-    if (editedClient.emails.length >= 5) return;
+    setEmailError('');
     
+    if (!newEmail.trim()) {
+      setEmailError('Email address is required');
+      return;
+    }
+    
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail.trim())) {
+      setEmailError('Please enter a valid email address');
+      return;
+    }
+    
+    // Initialize emails array if it doesn't exist
+    const currentEmails = editedClient.emails || [];
+    
+    // Check for duplicates
+    if (currentEmails.includes(newEmail.trim())) {
+      setEmailError('This email address is already added');
+      return;
+    }
+    
+    // Check maximum limit
+    if (currentEmails.length >= 5) {
+      setEmailError('Maximum of 5 email addresses allowed');
+      return;
+    }
+    
+    console.log('🔧 Adding email:', newEmail.trim());
+    console.log('🔧 Current emails:', currentEmails);
+    
+    const updatedEmails = [...currentEmails, newEmail.trim()];
     setEditedClient({
       ...editedClient,
-      emails: [...editedClient.emails, newEmail],
+      emails: updatedEmails,
     });
+    
+    console.log('🔧 Updated emails:', updatedEmails);
     setNewEmail('');
   };
 
   const removeEmail = (index: number) => {
-    if (!editedClient.emails) return;
+    const currentEmails = editedClient.emails || [];
+    const updatedEmails = currentEmails.filter((_, i) => i !== index);
+    
+    console.log('🔧 Removing email at index:', index);
+    console.log('🔧 Updated emails after removal:', updatedEmails);
+    
     setEditedClient({
       ...editedClient,
-      emails: editedClient.emails.filter((_, i) => i !== index),
+      emails: updatedEmails,
     });
+    setEmailError('');
   };
 
   const handleAddCredit = async () => {
@@ -287,17 +332,32 @@ export function ClientDetailsModal({ client, isOpen, onClose }: ClientDetailsMod
                     )}
                   </div>
                 ))}
-                {isEditing && (editedClient.emails?.length || 0) < 5 && (
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Add email address"
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
-                      type="email"
-                    />
-                    <Button type="button" onClick={addEmail} size="sm">
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                {isEditing && ((editedClient.emails?.length || 0) < 5) && (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Add email address"
+                        value={newEmail}
+                        onChange={(e) => {
+                          setNewEmail(e.target.value);
+                          if (emailError) setEmailError('');
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addEmail();
+                          }
+                        }}
+                        type="email"
+                        className={emailError ? 'border-red-500' : ''}
+                      />
+                      <Button type="button" onClick={addEmail} size="sm">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {emailError && (
+                      <p className="text-sm text-red-500">{emailError}</p>
+                    )}
                   </div>
                 )}
               </div>
