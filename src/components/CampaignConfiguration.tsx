@@ -65,6 +65,42 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
       handleTrackUrlChange(initialData.track_url);
     }
   }, [initialData?.track_url]);
+
+  // Reset form when initialData changes (for submission review)
+  useEffect(() => {
+    if (initialData) {
+      // Map submission data to form fields
+      const mappedData = {
+        budget: initialData.budget || (initialData as any)?.price_paid || 0,
+        stream_goal: initialData.stream_goal || 0,
+        start_date: initialData.start_date || '',
+        duration_days: initialData.duration_days || 90,
+        name: initialData.name || '',
+        track_url: initialData.track_url || '',
+        sub_genre: initialData.sub_genre || '',
+        client_id: (initialData as any)?.client_id || ''
+      };
+      
+      // Reset form with mapped data
+      Object.entries(mappedData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          setValue(key as any, value);
+        }
+      });
+
+      // Set client if we have client data from submission
+      if ((initialData as any)?.client_id) {
+        setSelectedClientId((initialData as any).client_id);
+      }
+
+      // Set genres if available
+      if (initialData.sub_genre) {
+        const genres = initialData.sub_genre.split(', ').filter(g => g.trim());
+        setSelectedGenres(genres);
+        setValue("sub_genre", genres.join(', '));
+      }
+    }
+  }, [initialData, setValue]);
   
   const {
     register,

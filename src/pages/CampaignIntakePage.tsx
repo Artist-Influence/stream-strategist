@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ClientSelector } from '@/components/ClientSelector';
 import { useClients } from '@/hooks/useClients';
 import { useIsVendorManager } from '@/hooks/useIsVendorManager';
@@ -17,7 +19,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { UNIFIED_GENRES } from '@/lib/constants';
 import { supabase } from '@/integrations/supabase/client';
-import { CheckCircle, RefreshCcw, Eye } from 'lucide-react';
+import { CheckCircle, RefreshCcw, Eye, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
 
 export default function CampaignIntakePage() {
   const { toast } = useToast();
@@ -219,10 +222,11 @@ export default function CampaignIntakePage() {
       return;
     }
 
-    // Date validation
+    // Date validation - allow today's date
     const startDate = new Date(formData.start_date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    startDate.setHours(0, 0, 0, 0);
     
     if (startDate < today) {
       toast({
@@ -464,13 +468,34 @@ export default function CampaignIntakePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label>Start Date *</Label>
-                  <Input
-                    type="date"
-                    value={formData.start_date}
-                    onChange={(e) => setFormData({...formData, start_date: e.target.value})}
-                    required
-                    min={new Date().toISOString().split('T')[0]}
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={`w-full justify-start text-left font-normal ${!formData.start_date ? "text-muted-foreground" : ""}`}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formData.start_date ? format(new Date(formData.start_date), "PPP") : "Select start date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={formData.start_date ? new Date(formData.start_date) : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            setFormData({...formData, start_date: format(date, 'yyyy-MM-dd')});
+                          }
+                        }}
+                        disabled={(date) => {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          return date < today;
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div>
                   <Label>Duration (Days)</Label>
@@ -576,44 +601,15 @@ export default function CampaignIntakePage() {
               Your campaign has been submitted for approval. You'll be contacted soon with an update.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex-col sm:flex-row gap-3">
+          <DialogFooter className="flex justify-center">
             <Button
-              variant="outline"
               onClick={() => {
-                // Reset form for new submission
-                setFormData({
-                  salesperson: formData.salesperson, // Keep salesperson selected
-                  client_id: '',
-                  client_name: '',
-                  client_emails: '',
-                  campaign_name: '',
-                  price_paid: '',
-                  stream_goal: '',
-                  start_date: '',
-                  duration_days: '90',
-                  track_url: '',
-                  notes: '',
-                  music_genres: [],
-                  territory_preferences: []
-                });
-                setIsNewClient(false);
-                setAvailableGenres([]);
-                setShowSuccessDialog(false);
+                window.location.reload();
               }}
-              className="w-full sm:w-auto"
+              className="w-full"
             >
               <RefreshCcw className="w-4 h-4 mr-2" />
               Submit Another Campaign
-            </Button>
-            <Button
-              onClick={() => {
-                setShowSuccessDialog(false);
-                navigate('/submissions');
-              }}
-              className="w-full sm:w-auto"
-            >
-              <Eye className="w-4 h-4 mr-2" />
-              View Submissions
             </Button>
           </DialogFooter>
         </DialogContent>

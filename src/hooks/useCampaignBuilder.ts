@@ -83,14 +83,15 @@ export function useCampaignBuilder() {
       if (error) throw error;
 
       setSubmissionData(data);
-      // Convert submission data to campaign data format
+      // Convert submission data to campaign data format with proper field mapping
       setCampaignData({
         name: data.campaign_name,
         client: data.client_name,
+        client_id: data.client_id, // Pass through client_id if available
         track_url: data.track_url,
         stream_goal: data.stream_goal,
-        budget: data.price_paid,
-        sub_genre: data.music_genres?.[0] || '',
+        budget: data.price_paid, // Map price_paid to budget
+        sub_genre: Array.isArray(data.music_genres) ? data.music_genres.join(', ') : data.music_genres || '',
         start_date: data.start_date,
         duration_days: data.duration_days,
       });
