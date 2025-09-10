@@ -377,7 +377,7 @@ export default function CampaignImportModal({
     const requiredFields = REQUIRED_FIELDS.filter(f => f.required);
     
     for (const field of requiredFields) {
-      if (!columnMappings[field.key]) {
+      if (!columnMappings[field.key] || columnMappings[field.key] === "__SKIP__") {
         errors.push(`${field.label} is required but not mapped.`);
       }
     }
@@ -464,30 +464,30 @@ export default function CampaignImportModal({
         
         // Process each row in the group
         for (const row of groupRows) {
-          // Map CSV data to campaign fields for this row
-          const rowData: any = {};
-          for (const [dbField, csvColumn] of Object.entries(columnMappings)) {
-            if (csvColumn && row[csvColumn]) {
-              let value = row[csvColumn];
-              
-              // Parse numbers
-              if (numericalFields.includes(dbField)) {
-                value = parseInt(String(value).replace(/[,\s]/g, '')) || 0;
-                consolidatedData[dbField] += value; // Sum numerical values
-              } else {
-                // For non-numerical fields, use first non-empty value
-                if (!consolidatedData[dbField] && value) {
-                  consolidatedData[dbField] = value;
-                }
+        // Map CSV data to campaign fields for this row
+        const rowData: any = {};
+        for (const [dbField, csvColumn] of Object.entries(columnMappings)) {
+          if (csvColumn && csvColumn !== "__SKIP__" && row[csvColumn]) {
+            let value = row[csvColumn];
+            
+            // Parse numbers
+            if (numericalFields.includes(dbField)) {
+              value = parseInt(String(value).replace(/[,\s]/g, '')) || 0;
+              consolidatedData[dbField] += value; // Sum numerical values
+            } else {
+              // For non-numerical fields, use first non-empty value
+              if (!consolidatedData[dbField] && value) {
+                consolidatedData[dbField] = value;
               }
-              
-              rowData[dbField] = value;
             }
+            
+            rowData[dbField] = value;
           }
+        }
 
-          // Process playlists for this specific row
-          const playlistColumn = columnMappings.playlists;
-          if (playlistColumn && row[playlistColumn]) {
+        // Process playlists for this specific row
+        const playlistColumn = columnMappings.playlists;
+        if (playlistColumn && playlistColumn !== "__SKIP__" && row[playlistColumn]) {
             const playlistNames = parsePlaylistNames(row[playlistColumn]);
             
             for (const name of playlistNames) {
@@ -719,7 +719,7 @@ export default function CampaignImportModal({
                   <SelectValue placeholder="Select column..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">-- Skip --</SelectItem>
+                  <SelectItem value="__SKIP__">-- Skip --</SelectItem>
                   {csvData!.headers.map(header => (
                     <SelectItem key={header} value={header}>{header}</SelectItem>
                   ))}
