@@ -40,7 +40,7 @@ export function ClientSelector({ value, onChange, placeholder = "Select client..
   const [newClientName, setNewClientName] = useState('');
   const [newClientEmails, setNewClientEmails] = useState('');
   
-  const { data: clients } = useClients();
+  const { data: clients, refetch: refetchClients } = useClients();
   const createClient = useCreateClient();
 
   const selectedClient = clients?.find((client) => client.id === value);
@@ -58,6 +58,9 @@ export function ClientSelector({ value, onChange, placeholder = "Select client..
         emails: emailArray,
         credit_balance: 0,
       });
+
+      // Refresh the clients list to ensure it includes the new client
+      await refetchClients();
 
       // Update the selected client immediately
       onChange(newClient.id);

@@ -188,7 +188,7 @@ export default function CampaignReview({
             </CardContent>
           </Card>
 
-          {/* Allocation Summary */}
+              {/* Allocation Summary */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -207,6 +207,25 @@ export default function CampaignReview({
                   <p className="text-2xl font-bold">{totalProjectedStreams.toLocaleString()}</p>
                 </div>
               </div>
+              
+              {/* Detailed Playlist Breakdown */}
+              {allocationsData.selectedPlaylists && allocationsData.selectedPlaylists.length > 0 && (
+                <div className="space-y-3 border-t pt-3">
+                  <p className="text-sm font-medium text-muted-foreground">Playlist Breakdown:</p>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {allocationsData.selectedPlaylists.map((playlist: any, index: number) => {
+                      const allocation = allocationsData.allocations?.find((a: any) => a.playlistId === playlist.id);
+                      const streams = allocation?.streams || 0;
+                      return (
+                        <div key={playlist.id || index} className="flex justify-between items-center text-sm py-1 px-2 bg-accent/5 rounded">
+                          <span className="font-medium truncate flex-1 mr-2">{playlist.name}</span>
+                          <span className="text-muted-foreground whitespace-nowrap">{streams.toLocaleString()} streams</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
@@ -313,32 +332,20 @@ export default function CampaignReview({
                 </Button>
                 
                 {isReviewing ? (
-                  <>
-                    <Button
-                      onClick={() => handleLaunch('built')}
-                      disabled={isLaunching}
-                      className="bg-green-600 hover:bg-green-700 w-full"
-                    >
-                      {isLaunching ? (
-                        "Approving..."
-                      ) : (
-                        <>
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          Approve Campaign
-                        </>
-                      )}
-                    </Button>
-                    
-                    <Button
-                      variant="destructive"
-                      onClick={() => setShowRejectDialog(true)}
-                      disabled={isLaunching}
-                      className="w-full"
-                    >
-                      <XCircle className="w-4 h-4 mr-2" />
-                      Reject Submission
-                    </Button>
-                  </>
+                  <Button
+                    onClick={() => handleLaunch('built')}
+                    disabled={isLaunching}
+                    className="bg-green-600 hover:bg-green-700 w-full"
+                  >
+                    {isLaunching ? (
+                      "Approving..."
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Approve Campaign
+                      </>
+                    )}
+                  </Button>
                 ) : (
                   <>
                     <Button
@@ -379,46 +386,6 @@ export default function CampaignReview({
         </div>
       </div>
 
-      {/* Rejection Dialog */}
-      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
-              Reject Submission
-            </DialogTitle>
-            <DialogDescription>
-              Please provide a reason for rejecting this campaign submission. This will be recorded and may be sent to the submitter.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Textarea
-              placeholder="Enter rejection reason..."
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              className="min-h-[100px]"
-            />
-            <div className="flex gap-2 justify-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowRejectDialog(false);
-                  setRejectionReason("");
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleReject}
-                disabled={!rejectionReason.trim()}
-              >
-                Confirm Rejection
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

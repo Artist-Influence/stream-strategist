@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import PlaylistsPage from "./pages/PlaylistsPage";
 import CampaignBuilder from "./pages/CampaignBuilder";
 import CampaignHistoryPage from "./pages/CampaignHistoryPage";
+import CampaignSubmissionsPage from "./pages/CampaignSubmissionsPage";
 import ClientsPage from "./pages/ClientsPage";
 import CampaignIntakePage from "./pages/CampaignIntakePage";
 import AuthPage from "./pages/AuthPage";
@@ -75,6 +76,11 @@ const App = () => (
             <Route path="/campaigns" element={
               <ProtectedRoute requiredRoles={['admin', 'manager', 'salesperson']}>
                 <CampaignHistoryPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/submissions" element={
+              <ProtectedRoute requiredRoles={['admin', 'manager']}>
+                <CampaignSubmissionsPage />
               </ProtectedRoute>
             } />
             

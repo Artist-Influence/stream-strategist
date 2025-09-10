@@ -39,7 +39,7 @@ interface CreateSubmissionData {
   territory_preferences: string[];
 }
 
-// Hook to fetch all submissions (for admin)
+// Hook to fetch all submissions (for admin) - Only pending and rejected submissions for better performance
 export function useCampaignSubmissions() {
   return useQuery({
     queryKey: ['campaign-submissions'],
@@ -47,6 +47,7 @@ export function useCampaignSubmissions() {
       const { data, error } = await supabase
         .from('campaign_submissions')
         .select('*')
+        .in('status', ['pending_approval', 'rejected']) // Only fetch non-approved submissions
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -74,10 +75,7 @@ export function useCreateCampaignSubmission() {
       return true;
     },
     onSuccess: () => {
-      toast({
-        title: "Campaign Submitted",
-        description: "Your campaign has been submitted for approval. You'll be contacted soon!",
-      });
+      // Don't show toast here - let the component handle the success UI
       queryClient.invalidateQueries({ queryKey: ['campaign-submissions'] });
     },
     onError: (error: any) => {
@@ -97,6 +95,8 @@ export function useApproveCampaignSubmission() {
 
   return useMutation({
     mutationFn: async (submissionId: string) => {
+      console.log('🚀 Starting approval process for submission:', submissionId);
+      
       // First, get the submission data
       const { data: submission, error: fetchError } = await supabase
         .from('campaign_submissions')
@@ -104,10 +104,16 @@ export function useApproveCampaignSubmission() {
         .eq('id', submissionId)
         .single();
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('❌ Error fetching submission:', fetchError);
+        throw new Error(`Failed to fetch submission: ${fetchError.message}`);
+      }
+      
+      console.log('✅ Submission data fetched:', submission.campaign_name);
 
       // Try to find existing client by name (case-insensitive)
-      const { data: existingClient } = await supabase
+      console.log('🔍 Looking for existing client:', submission.client_name);
+      const { data: existingClient, error: clientFindError } = await supabase
         .from('clients')
         .select('id')
         .ilike('name', submission.client_name)
@@ -118,6 +124,7 @@ export function useApproveCampaignSubmission() {
 
       // If client doesn't exist, create them
       if (!clientId) {
+        console.log('👤 Creating new client:', submission.client_name);
         const { data: newClient, error: clientError } = await supabase
           .from('clients')
           .insert([{
@@ -127,38 +134,57 @@ export function useApproveCampaignSubmission() {
           .select('id')
           .single();
 
-        if (clientError) throw clientError;
+        if (clientError) {
+          console.error('❌ Error creating client:', clientError);
+          throw new Error(`Failed to create client: ${clientError.message}`);
+        }
         clientId = newClient.id;
+        console.log('✅ Client created with ID:', clientId);
+      } else {
+        console.log('✅ Found existing client with ID:', clientId);
       }
 
       // Run allocation algorithm to generate playlist recommendations for Spotify campaigns
-      const { data: playlists } = await supabase
+      console.log('🎵 Fetching playlists and vendors for allocation algorithm...');
+      const { data: playlists, error: playlistsError } = await supabase
         .from('playlists')
         .select(`
           *,
           vendor:vendors(*)
         `);
 
-      const { data: vendors } = await supabase
+      if (playlistsError) {
+        console.error('❌ Error fetching playlists:', playlistsError);
+        throw new Error(`Failed to fetch playlists: ${playlistsError.message}`);
+      }
+
+      const { data: vendors, error: vendorsError } = await supabase
         .from('vendors')
         .select('*')
         .eq('is_active', true);
 
+      if (vendorsError) {
+        console.error('❌ Error fetching vendors:', vendorsError);
+        throw new Error(`Failed to fetch vendors: ${vendorsError.message}`);
+      }
+
       let algorithmRecommendations = {};
+      console.log(`🏪 Found ${vendors?.length || 0} vendors and ${playlists?.length || 0} playlists`);
 
       if (playlists && playlists.length > 0 && vendors && vendors.length > 0) {
-        // Import the allocation algorithm
-        const { allocateStreams } = await import('@/lib/allocationAlgorithm');
-        
-        // Build vendor caps (assume max daily streams * duration for simplicity)
-        const vendorCaps: Record<string, number> = {};
-        vendors.forEach(vendor => {
-          const vendorPlaylists = playlists.filter(p => p.vendor_id === vendor.id);
-          const totalCapacity = vendorPlaylists.reduce((sum, p) => sum + (p.avg_daily_streams || 0), 0);
-          vendorCaps[vendor.id] = Math.floor(totalCapacity * (submission.duration_days ?? 90));
-        });
-
         try {
+          console.log('🤖 Running allocation algorithm...');
+          // Import the allocation algorithm
+          const { allocateStreams } = await import('@/lib/allocationAlgorithm');
+          
+          // Build vendor caps (assume max daily streams * duration for simplicity)
+          const vendorCaps: Record<string, number> = {};
+          vendors.forEach(vendor => {
+            const vendorPlaylists = playlists.filter(p => p.vendor_id === vendor.id);
+            const totalCapacity = vendorPlaylists.reduce((sum, p) => sum + (p.avg_daily_streams || 0), 0);
+            vendorCaps[vendor.id] = Math.floor(totalCapacity * (submission.duration_days ?? 90));
+          });
+
           const algorithmResult = await allocateStreams({
             playlists: playlists,
             goal: submission.stream_goal,
@@ -176,12 +202,14 @@ export function useApproveCampaignSubmission() {
             insights: algorithmResult.insights,
             timestamp: new Date().toISOString()
           };
+          console.log('✅ Algorithm completed successfully');
         } catch (error) {
-          console.warn('Algorithm failed, creating draft without recommendations:', error);
+          console.warn('⚠️ Algorithm failed, creating draft without recommendations:', error);
         }
       }
 
       // Create draft campaign with algorithm recommendations for Spotify playlisting
+      console.log('📝 Creating draft campaign...');
       const { error: campaignError } = await supabase
         .from('campaigns')
         .insert({
@@ -213,9 +241,14 @@ export function useApproveCampaignSubmission() {
           submission_id: submissionId
         });
 
-      if (campaignError) throw campaignError;
+      if (campaignError) {
+        console.error('❌ Error creating campaign:', campaignError);
+        throw new Error(`Failed to create campaign: ${campaignError.message}`);
+      }
+      console.log('✅ Draft campaign created successfully');
 
       // Update submission status to approved
+      console.log('✅ Updating submission status to approved...');
       const { error: updateError } = await supabase
         .from('campaign_submissions')
         .update({ 
@@ -225,8 +258,12 @@ export function useApproveCampaignSubmission() {
         })
         .eq('id', submissionId);
 
-      if (updateError) throw updateError;
-
+      if (updateError) {
+        console.error('❌ Error updating submission status:', updateError);
+        throw new Error(`Failed to update submission status: ${updateError.message}`);
+      }
+      
+      console.log('🎉 Approval process completed successfully');
       return submission;
     },
     onSuccess: () => {
@@ -239,9 +276,10 @@ export function useApproveCampaignSubmission() {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
     },
     onError: (error: any) => {
+      console.error('💥 Campaign approval failed:', error);
       toast({
         title: "Approval Failed",
-        description: error.message || "Failed to approve campaign.",
+        description: error.message || "Failed to approve campaign. Check console for details.",
         variant: "destructive",
       });
     },

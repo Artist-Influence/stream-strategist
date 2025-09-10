@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ClientSelector } from '@/components/ClientSelector';
 import { useClients } from '@/hooks/useClients';
 import { useIsVendorManager } from '@/hooks/useIsVendorManager';
@@ -15,26 +17,17 @@ import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { UNIFIED_GENRES } from '@/lib/constants';
 import { supabase } from '@/integrations/supabase/client';
-
-interface FormData {
-  client_id: string;
-  client_name: string;
-  client_emails: string;
-  campaign_name: string;
-  price_paid: string;
-  stream_goal: string;
-  start_date: string;
-  duration_days: string;
-  track_url: string;
-  notes: string;
-  salesperson: string;
-  music_genres: string[];
-  territory_preferences: string[];
-}
+import { CheckCircle, RefreshCcw, Eye } from 'lucide-react';
 
 export default function CampaignIntakePage() {
-  const [isNewClient, setIsNewClient] = useState(false);
-  const [formData, setFormData] = useState<FormData>({
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const { data: clients } = useClients();
+  const { data: salespeople = [] } = useSalespeople();
+  const { data: isVendorManager } = useIsVendorManager();
+
+  const [formData, setFormData] = useState({
+    salesperson: '',
     client_id: '',
     client_name: '',
     client_emails: '',
@@ -45,119 +38,205 @@ export default function CampaignIntakePage() {
     duration_days: '90',
     track_url: '',
     notes: '',
-    salesperson: '',
-    music_genres: [],
-    territory_preferences: []
+    music_genres: [] as string[],
+    territory_preferences: [] as string[]
   });
+  const [isNewClient, setIsNewClient] = useState(false);
+  const [availableGenres, setAvailableGenres] = useState<string[]>([]);
+  const [isLoadingSpotify, setIsLoadingSpotify] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
-  const { data: clients = [] } = useClients();
-  const { data: salespeople = [] } = useSalespeople();
-  const { data: isVendorManager } = useIsVendorManager();
-  const createSubmission = useCreateCampaignSubmission();
-  const { toast } = useToast();
+  const createSubmissionMutation = useCreateCampaignSubmission();
   const queryClient = useQueryClient();
 
-  const validateForm = () => {
-    if (!formData.salesperson) {
-      toast({ title: "Validation Error", description: "Please select a salesperson", variant: "destructive" });
-      return false;
+  // Success handler for showing dialog instead of toast
+  const handleSubmissionSuccess = () => {
+    setShowSuccessDialog(true);
+  };
+
+  const getSelectedClient = () => {
+    return clients?.find(c => c.id === formData.client_id);
+  };
+
+  const handleClientSelection = (clientId: string) => {
+    const client = clients?.find(c => c.id === clientId);
+    if (client) {
+      const emailsString = client.emails?.join(', ') || '';
+      setFormData(prev => ({
+        ...prev,
+        client_id: clientId,
+        client_name: client.name,
+        client_emails: emailsString
+      }));
     }
-    if (!formData.client_name) {
-      toast({ title: "Validation Error", description: "Please enter client name", variant: "destructive" });
-      return false;
+  };
+
+  const handleTrackUrlChange = async (url: string) => {
+    // Immediately save the URL to form data
+    setFormData(prev => ({ ...prev, track_url: url }));
+    
+    if (url.includes('spotify.com/track/')) {
+      try {
+        setIsLoadingSpotify(true);
+        
+        // Call Supabase Edge Function to fetch track data
+        const { data, error } = await supabase.functions.invoke('spotify-fetch', {
+          body: { track_url: url }
+        });
+
+        if (error) {
+          console.error('Error fetching Spotify data:', error);
+          toast({
+            title: "Spotify Error",
+            description: "Could not fetch track information. Please enter manually.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        if (data?.trackInfo) {
+          // Auto-populate campaign name from track info
+          const trackName = data.trackInfo.name;
+          const artistName = data.trackInfo.artists?.[0]?.name;
+          const campaignName = artistName && trackName ? `${artistName} - ${trackName}` : trackName;
+          
+          setFormData(prev => ({ 
+            ...prev, 
+            campaign_name: campaignName || prev.campaign_name
+          }));
+          
+          toast({
+            title: "Track Info Retrieved",
+            description: `Campaign name set to "${campaignName}"`,
+          });
+        }
+
+        if (data?.genres && data.genres.length > 0) {
+          // Auto-populate genres
+          setAvailableGenres(data.genres);
+          setFormData(prev => ({ 
+            ...prev, 
+            music_genres: data.genres 
+          }));
+          
+          toast({
+            title: "Genres Auto-Selected",
+            description: `Selected: ${data.genres.join(', ')}`,
+          });
+        } else {
+          toast({
+            title: "No Genres Found",
+            description: "Please select genres manually from the list below.",
+            variant: "default"
+          });
+        }
+        
+      } catch (error) {
+        console.error('Spotify API error:', error);
+        toast({
+          title: "Spotify Error", 
+          description: "Could not fetch track information. Please enter manually.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoadingSpotify(false);
+      }
     }
-    if (!formData.client_emails) {
-      toast({ title: "Validation Error", description: "Please enter client emails", variant: "destructive" });
-      return false;
-    }
-    const emailArray = formData.client_emails.split(',').map(e => e.trim()).filter(e => e.length > 0);
-    if (emailArray.length === 0 || emailArray.length > 5) {
-      toast({ title: "Validation Error", description: "Please enter 1-5 valid email addresses", variant: "destructive" });
-      return false;
-    }
-    if (!formData.track_url) {
-      toast({ title: "Validation Error", description: "Please enter track URL", variant: "destructive" });
-      return false;
-    }
-    if (!formData.campaign_name) {
-      toast({ title: "Validation Error", description: "Please enter campaign name", variant: "destructive" });
-      return false;
-    }
-    if (!formData.price_paid || parseFloat(formData.price_paid) <= 0) {
-      toast({ title: "Validation Error", description: "Please enter a valid price", variant: "destructive" });
-      return false;
-    }
-    if (!formData.stream_goal || parseInt(formData.stream_goal) <= 0) {
-      toast({ title: "Validation Error", description: "Please enter a valid stream goal", variant: "destructive" });
-      return false;
-    }
-    if (!formData.start_date) {
-      toast({ title: "Validation Error", description: "Please select a start date", variant: "destructive" });
-      return false;
-    }
-    if (!formData.duration_days || parseInt(formData.duration_days) < 1 || parseInt(formData.duration_days) > 365) {
-      toast({ title: "Validation Error", description: "Duration must be between 1 and 365 days", variant: "destructive" });
-      return false;
-    }
-    if (formData.music_genres.length === 0) {
-      toast({ title: "Validation Error", description: "Please select at least one music genre", variant: "destructive" });
-      return false;
-    }
-    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    // Validation
+    if (!formData.salesperson || !formData.campaign_name || !formData.price_paid || 
+        !formData.stream_goal || !formData.start_date || !formData.track_url) {
+      toast({
+        title: "Missing Required Fields",
+        description: "Please fill in all required fields before submitting.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Client validation
+    const selectedClient = getSelectedClient();
+    const selectedClientName = selectedClient?.name;
+
+    if (!isNewClient && !selectedClientName) {
+      toast({
+        title: "Client Required",
+        description: "Please select an existing client or create a new one.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (isNewClient && !formData.client_name.trim()) {
+      toast({
+        title: "Client Name Required",
+        description: "Please enter a client name for the new client.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Email validation
+    const emailsArray = formData.client_emails.split(',').map(e => e.trim()).filter(e => e);
+    if (emailsArray.length === 0) {
+      toast({
+        title: "Client Email Required",
+        description: "At least one client email is required.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (emailsArray.length > 5) {
+      toast({
+        title: "Too Many Emails",
+        description: "Maximum 5 client emails allowed.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Budget and goal validation
+    if (parseFloat(formData.price_paid) <= 0) {
+      toast({
+        title: "Invalid Budget",
+        description: "Campaign budget must be greater than $0.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (parseInt(formData.stream_goal) <= 0) {
+      toast({
+        title: "Invalid Stream Goal",
+        description: "Stream goal must be greater than 0.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Date validation
+    const startDate = new Date(formData.start_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (startDate < today) {
+      toast({
+        title: "Invalid Start Date",
+        description: "Campaign start date cannot be in the past.",
+        variant: "destructive"
+      });
       return;
     }
 
     try {
-      // Process emails into array
-      const emailArray = formData.client_emails
-        .split(',')
-        .map(e => e.trim())
-        .filter(e => e.length > 0)
-        .slice(0, 5);
-
-      // If new client and user is manager, try to create client in database
-      if (isNewClient && isVendorManager) {
-        try {
-          const { data: existingClient } = await supabase
-            .from('clients')
-            .select('id')
-            .ilike('name', formData.client_name)
-            .single();
-
-          if (!existingClient) {
-            const { data: newClient, error } = await supabase
-              .from('clients')
-              .insert({
-                name: formData.client_name,
-                emails: emailArray
-              })
-              .select('id')
-              .single();
-
-            if (!error && newClient) {
-              queryClient.invalidateQueries({ queryKey: ['clients'] });
-              toast({ 
-                title: "Client Created", 
-                description: `Client "${formData.client_name}" has been added to the database` 
-              });
-            }
-          }
-        } catch (error) {
-          // Silent fail - client will be created during approval process
-          console.log('Client creation failed, will be handled during approval:', error);
-        }
-      }
-
-      // Create campaign submission
-      await createSubmission.mutateAsync({
-        client_name: formData.client_name,
-        client_emails: emailArray,
+      await createSubmissionMutation.mutateAsync({
+        client_name: isNewClient ? formData.client_name : selectedClientName || '',
+        client_emails: emailsArray,
         campaign_name: formData.campaign_name,
         price_paid: parseFloat(formData.price_paid),
         stream_goal: parseInt(formData.stream_goal),
@@ -170,133 +249,63 @@ export default function CampaignIntakePage() {
         territory_preferences: formData.territory_preferences
       });
 
-      // Reset form on success
-      setFormData({
-        client_id: '',
-        client_name: '',
-        client_emails: '',
-        campaign_name: '',
-        price_paid: '',
-        stream_goal: '',
-        start_date: '',
-        duration_days: '90',
-        track_url: '',
-        notes: '',
-        salesperson: '',
-        music_genres: [],
-        territory_preferences: []
-      });
-      setIsNewClient(false);
-
+      // Show success dialog instead of resetting form immediately
+      handleSubmissionSuccess();
     } catch (error) {
-      console.error('Error submitting campaign:', error);
+      console.error('Submission error:', error);
     }
   };
 
-  const handleClientSelection = (clientId: string) => {
-    const client = clients.find(c => c.id === clientId);
-    const clientEmails = client?.emails && client.emails.length > 0 
-      ? client.emails.join(', ') 
-      : '';
-    setFormData({
-      ...formData,
-      client_id: clientId,
-      client_name: client?.name || '',
-      client_emails: clientEmails
-    });
+  const handleGenreToggle = (genre: string) => {
+    setFormData(prev => ({
+      ...prev,
+      music_genres: prev.music_genres.includes(genre)
+        ? prev.music_genres.filter(g => g !== genre)
+        : [...prev.music_genres, genre]
+    }));
   };
+
+  const handleTerritoryToggle = (territory: string) => {
+    setFormData(prev => ({
+      ...prev,
+      territory_preferences: prev.territory_preferences.includes(territory)
+        ? prev.territory_preferences.filter(t => t !== territory)
+        : [...prev.territory_preferences, territory]
+    }));
+  };
+
+  // Available territories
+  const territories = [
+    'United States', 'Canada', 'United Kingdom', 'Australia', 'Germany', 'France', 
+    'Spain', 'Italy', 'Netherlands', 'Sweden', 'Norway', 'Global'
+  ];
 
   const renderTrackUrlField = () => (
     <div>
-      <Label>Track URL *</Label>
+      <Label>Track URL (Spotify) *</Label>
       <Input
-        placeholder="https://open.spotify.com/track/... (will auto-populate campaign name and genres)"
+        placeholder="https://open.spotify.com/track/..."
         value={formData.track_url}
         onChange={(e) => handleTrackUrlChange(e.target.value)}
         required
+        disabled={isLoadingSpotify}
       />
       <p className="text-xs text-muted-foreground mt-1">
-        For released songs: Spotify URL. For unreleased: SoundCloud, Dropbox, or private streaming link.
+        {isLoadingSpotify ? (
+          "🎵 Fetching track information from Spotify..."
+        ) : (
+          "Paste Spotify track URL to auto-populate campaign name and genres"
+        )}
       </p>
-      {formData.campaign_name && formData.track_url.includes('spotify.com') && (
-        <p className="text-xs text-green-600 mt-1">✓ Auto-populated from Spotify</p>
-      )}
     </div>
   );
 
-  const handleTrackUrlChange = async (url: string) => {
-    // Immediately save the URL to form data
-    setFormData(prev => ({ ...prev, track_url: url }));
-    
-    if (url.includes('spotify.com/track/')) {
-      try {
-        console.log('🎵 Fetching Spotify track data for:', url);
-        
-        const trackId = url.split('/track/')[1]?.split('?')[0];
-        if (trackId) {
-          const { data, error } = await supabase.functions.invoke('spotify-fetch', {
-            body: { trackId, type: 'track' }
-          });
-          
-          if (error) {
-            console.error('❌ Spotify API error:', error);
-            throw error;
-          }
-          
-          console.log('📊 Spotify API response:', data);
-          
-          if (data?.name && data?.artists?.[0]?.name) {
-            const campaignName = `${data.artists[0].name} - ${data.name}`;
-            
-            // Auto-populate campaign name
-            setFormData(prev => ({
-              ...prev,
-              campaign_name: campaignName
-            }));
-            
-            // Auto-select genres from Spotify data if available
-            if (data.genres && data.genres.length > 0) {
-              console.log('🏷️ Raw genres from Spotify:', data.genres);
-              
-              // Filter genres to only include ones that exist in UNIFIED_GENRES (case-insensitive)
-              const availableGenres = data.genres.filter((genre: string) => 
-                UNIFIED_GENRES.includes(genre.toLowerCase())
-              ).slice(0, 3);
-              
-              console.log('✅ Available genres for selection:', availableGenres);
-              
-              if (availableGenres.length > 0) {
-                setFormData(prev => ({
-                  ...prev,
-                  music_genres: availableGenres
-                }));
-                console.log('🎯 Auto-populated genres:', availableGenres);
-              } else {
-                console.log('⚠️ No genres matched the available options. Available:', UNIFIED_GENRES);
-                console.log('⚠️ Spotify returned:', data.genres);
-              }
-            } else {
-              console.log('⚠️ No genres returned from Spotify API');
-            }
-          }
-        }
-      } catch (error) {
-        console.error('💥 Error fetching Spotify data:', error);
-      }
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-destructive mb-2">
-            ARTIST INFLUENCE
-          </h1>
-          <h2 className="text-2xl font-semibold text-foreground mb-4">
-            Campaign Submission Form
-          </h2>
+        <div className="text-center space-y-4">
+          <h1 className="text-3xl font-bold">Campaign Submission</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
             Submit new campaign details for approval. All fields marked with * are required.
           </p>
@@ -398,51 +407,61 @@ export default function CampaignIntakePage() {
                   ) : !isNewClient && !formData.client_emails ? (
                     "⚠️ This client has no emails on file - contact admin to add client emails before submitting"
                   ) : (
-                    "Emails are managed from the admin client view - contact admin for changes"
+                    "Emails from client database record (read-only). To modify, contact admin or create new client."
                   )}
                 </p>
               </div>
 
-              {/* Track URL - Show under emails for new clients */}
+              {/* Track URL for new clients */}
               {isNewClient && renderTrackUrlField()}
 
-              {/* Campaign Details */}
+              {/* Campaign Name */}
+              <div>
+                <Label>Campaign Name *</Label>
+                <Input
+                  placeholder="Artist Name - Track Title"
+                  value={formData.campaign_name}
+                  onChange={(e) => setFormData({...formData, campaign_name: e.target.value})}
+                  required
+                  disabled={isLoadingSpotify}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {isLoadingSpotify ? 
+                    "Auto-populating from Spotify..." : 
+                    "Use format: Artist Name - Track Title (auto-filled from Spotify URL)"
+                  }
+                </p>
+              </div>
+
+              {/* Budget and Stream Goal Row */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label>Campaign Name *</Label>
-                  <Input
-                    placeholder="Artist - Song Title"
-                    value={formData.campaign_name}
-                    onChange={(e) => setFormData({...formData, campaign_name: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label>Price Paid ($) *</Label>
+                  <Label>Campaign Budget (USD) *</Label>
                   <Input
                     type="number"
-                    step="0.01"
-                    placeholder="Amount paid"
+                    placeholder="5000"
                     value={formData.price_paid}
                     onChange={(e) => setFormData({...formData, price_paid: e.target.value})}
                     required
+                    min="1"
+                    step="0.01"
                   />
-                  {formData.price_paid && formData.stream_goal && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Cost per stream: ${(parseFloat(formData.price_paid) / parseInt(formData.stream_goal || '1')).toFixed(4)}
-                    </p>
-                  )}
                 </div>
                 <div>
                   <Label>Stream Goal *</Label>
                   <Input
                     type="number"
-                    placeholder="Target streams"
+                    placeholder="100000"
                     value={formData.stream_goal}
                     onChange={(e) => setFormData({...formData, stream_goal: e.target.value})}
                     required
+                    min="1"
                   />
                 </div>
+              </div>
+
+              {/* Date and Duration Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label>Start Date *</Label>
                   <Input
@@ -450,140 +469,76 @@ export default function CampaignIntakePage() {
                     value={formData.start_date}
                     onChange={(e) => setFormData({...formData, start_date: e.target.value})}
                     required
+                    min={new Date().toISOString().split('T')[0]}
                   />
                 </div>
                 <div>
-                  <Label>Campaign Duration (Days) *</Label>
-                  <Input
-                    type="number"
-                    placeholder="90"
-                    value={formData.duration_days}
-                    onChange={(e) => setFormData({...formData, duration_days: e.target.value})}
-                    required
-                    min="1"
-                    max="365"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Recommended: 90 days for optimal results
-                  </p>
+                  <Label>Duration (Days)</Label>
+                  <Select 
+                    value={formData.duration_days} 
+                    onValueChange={(value) => setFormData({...formData, duration_days: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="30">30 days</SelectItem>
+                      <SelectItem value="60">60 days</SelectItem>
+                      <SelectItem value="90">90 days (recommended)</SelectItem>
+                      <SelectItem value="120">120 days</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
-
               {/* Music Genres */}
               <div>
-                <Label>Music Genres (1-3 required) *</Label>
-                {formData.music_genres.length > 0 && formData.track_url.includes('spotify.com') && (
-                  <p className="text-xs text-green-600 mb-2">✓ Auto-selected from Spotify (you can edit these)</p>
-                )}
-                <div className="flex flex-wrap gap-2 mt-2 mb-2">
-                  {UNIFIED_GENRES.map((genre) => (
-                    <button
+                <Label>Music Genres {formData.music_genres.length > 0 && `(${formData.music_genres.length} selected)`}</Label>
+                <div className="flex flex-wrap gap-2 mt-2 p-4 border rounded-md bg-muted/20">
+                  {(availableGenres.length > 0 ? availableGenres : UNIFIED_GENRES).map(genre => (
+                    <Badge
                       key={genre}
-                      type="button"
-                      onClick={() => {
-                        const currentGenres = formData.music_genres;
-                        if (currentGenres.includes(genre)) {
-                          setFormData({
-                            ...formData,
-                            music_genres: currentGenres.filter(g => g !== genre)
-                          });
-                        } else if (currentGenres.length < 3) {
-                          setFormData({
-                            ...formData,
-                            music_genres: [...currentGenres, genre]
-                          });
-                        }
-                      }}
-                      className={`px-3 py-1 rounded-full text-sm transition-all hover:scale-105 ${
-                        formData.music_genres.includes(genre)
-                          ? 'bg-destructive text-destructive-foreground shadow-md'
-                          : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
-                      }`}
-                      disabled={!formData.music_genres.includes(genre) && formData.music_genres.length >= 3}
+                      variant={formData.music_genres.includes(genre) ? "default" : "outline"}
+                      className="cursor-pointer hover:bg-primary/80"
+                      onClick={() => handleGenreToggle(genre)}
                     >
                       {genre}
-                    </button>
+                    </Badge>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Selected genres ({formData.music_genres.length}/3): {formData.music_genres.join(', ') || 'None selected'}
+                <p className="text-xs text-muted-foreground mt-1">
+                  {availableGenres.length > 0 ? 
+                    "Genres auto-detected from Spotify. Click to modify selection." :
+                    "Select genres that best describe the track. Multiple selections allowed."
+                  }
                 </p>
-                {formData.music_genres.length === 0 && (
-                  <p className="text-xs text-destructive mt-1">Please select at least one genre</p>
-                )}
               </div>
 
               {/* Territory Preferences */}
               <div>
-                <Label>Territory Preferences (Optional)</Label>
-                <div className="flex flex-wrap gap-2 mt-2 mb-2">
-                  {['US', 'UK', 'Germany', 'France', 'Canada', 'Australia', 'Brazil', 'Global'].map((territory) => (
-                    <button
+                <Label>Territory Preferences (Optional) {formData.territory_preferences.length > 0 && `(${formData.territory_preferences.length} selected)`}</Label>
+                <div className="flex flex-wrap gap-2 mt-2 p-4 border rounded-md bg-muted/20">
+                  {territories.map(territory => (
+                    <Badge
                       key={territory}
-                      type="button"
-                      onClick={() => {
-                        const currentTerritories = formData.territory_preferences;
-                        if (currentTerritories.includes(territory)) {
-                          setFormData({
-                            ...formData,
-                            territory_preferences: currentTerritories.filter(t => t !== territory)
-                          });
-                        } else {
-                          setFormData({
-                            ...formData,
-                            territory_preferences: [...currentTerritories, territory]
-                          });
-                        }
-                      }}
-                      className={`px-3 py-1 rounded-full text-sm transition-all hover:scale-105 ${
-                        formData.territory_preferences.includes(territory)
-                          ? 'bg-destructive text-destructive-foreground shadow-md'
-                          : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
-                      }`}
+                      variant={formData.territory_preferences.includes(territory) ? "default" : "outline"}
+                      className="cursor-pointer hover:bg-primary/80"
+                      onClick={() => handleTerritoryToggle(territory)}
                     >
                       {territory}
-                    </button>
+                    </Badge>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Selected territories: {formData.territory_preferences.join(', ') || 'None selected'}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Select preferred territories for playlist placement. Leave empty for global placement.
                 </p>
               </div>
 
-              {/* Margin Calculation */}
-              {formData.price_paid && formData.stream_goal && (
-                <div>
-                  <Label>Margin Analysis</Label>
-                  <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm">Price Paid:</span>
-                      <span className="font-mono">${parseFloat(formData.price_paid).toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Estimated Cost (60% of price):</span>
-                      <span className="font-mono">${(parseFloat(formData.price_paid) * 0.6).toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Projected Margin (40%):</span>
-                      <span className={`font-mono ${(parseFloat(formData.price_paid) * 0.4) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        ${(parseFloat(formData.price_paid) * 0.4).toFixed(2)}
-                      </span>
-                    </div>
-                    {(parseFloat(formData.price_paid) * 0.4) < (parseFloat(formData.price_paid) * 0.4) && (
-                      <p className="text-xs text-amber-600 mt-2">
-                        ⚠️ Margin below 40% target - consider adjusting pricing
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
               {/* Notes */}
               <div>
-                <Label>Notes</Label>
+                <Label>Notes (Optional)</Label>
                 <Textarea
-                  placeholder="Any special requirements or additional information"
+                  placeholder="Additional information, special requests, or campaign details..."
                   value={formData.notes}
                   onChange={(e) => setFormData({...formData, notes: e.target.value})}
                   rows={3}
@@ -591,25 +546,78 @@ export default function CampaignIntakePage() {
               </div>
 
               {/* Submit Button */}
-              <Button 
-                type="submit" 
-                className="w-full bg-destructive hover:bg-destructive/90"
-                disabled={createSubmission.isPending}
-              >
-                {createSubmission.isPending 
-                  ? "Submitting..." 
-                  : "Submit Campaign for Approval"
-                }
-              </Button>
+              <div className="flex justify-center pt-4">
+                <Button 
+                  type="submit" 
+                  size="lg" 
+                  disabled={createSubmissionMutation.isPending || isLoadingSpotify}
+                  className="w-full md:w-auto px-8"
+                >
+                  {createSubmissionMutation.isPending ? 
+                    'Submitting Campaign...' : 
+                    'Submit Campaign for Approval'
+                  }
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>
-
-        {/* Footer */}
-        <div className="text-center mt-8 text-sm text-muted-foreground">
-          <p>Need help? Contact the Artist Influence team</p>
-        </div>
       </div>
+
+      {/* Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-500" />
+              Campaign Submitted Successfully!
+            </DialogTitle>
+            <DialogDescription>
+              Your campaign has been submitted for approval. You'll be contacted soon with an update.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                // Reset form for new submission
+                setFormData({
+                  salesperson: formData.salesperson, // Keep salesperson selected
+                  client_id: '',
+                  client_name: '',
+                  client_emails: '',
+                  campaign_name: '',
+                  price_paid: '',
+                  stream_goal: '',
+                  start_date: '',
+                  duration_days: '90',
+                  track_url: '',
+                  notes: '',
+                  music_genres: [],
+                  territory_preferences: []
+                });
+                setIsNewClient(false);
+                setAvailableGenres([]);
+                setShowSuccessDialog(false);
+              }}
+              className="w-full sm:w-auto"
+            >
+              <RefreshCcw className="w-4 h-4 mr-2" />
+              Submit Another Campaign
+            </Button>
+            <Button
+              onClick={() => {
+                setShowSuccessDialog(false);
+                navigate('/submissions');
+              }}
+              className="w-full sm:w-auto"
+            >
+              <Eye className="w-4 h-4 mr-2" />
+              View Submissions
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
