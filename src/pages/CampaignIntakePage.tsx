@@ -11,6 +11,8 @@ import { useClients } from '@/hooks/useClients';
 import { useIsVendorManager } from '@/hooks/useIsVendorManager';
 import { useCreateCampaignSubmission } from '@/hooks/useCampaignSubmissions';
 import { useSalespeople } from '@/hooks/useSalespeople';
+import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import { UNIFIED_GENRES } from '@/lib/constants';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -51,17 +53,63 @@ export default function CampaignIntakePage() {
   const { data: clients = [] } = useClients();
   const { data: salespeople = [] } = useSalespeople();
   const { data: isVendorManager } = useIsVendorManager();
-  // Removed client creation hook - handled by admin during approval process
   const createSubmission = useCreateCampaignSubmission();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const validateForm = () => {
+    if (!formData.salesperson) {
+      toast({ title: "Validation Error", description: "Please select a salesperson", variant: "destructive" });
+      return false;
+    }
+    if (!formData.client_name) {
+      toast({ title: "Validation Error", description: "Please enter client name", variant: "destructive" });
+      return false;
+    }
+    if (!formData.client_emails) {
+      toast({ title: "Validation Error", description: "Please enter client emails", variant: "destructive" });
+      return false;
+    }
+    const emailArray = formData.client_emails.split(',').map(e => e.trim()).filter(e => e.length > 0);
+    if (emailArray.length === 0 || emailArray.length > 5) {
+      toast({ title: "Validation Error", description: "Please enter 1-5 valid email addresses", variant: "destructive" });
+      return false;
+    }
+    if (!formData.track_url) {
+      toast({ title: "Validation Error", description: "Please enter track URL", variant: "destructive" });
+      return false;
+    }
+    if (!formData.campaign_name) {
+      toast({ title: "Validation Error", description: "Please enter campaign name", variant: "destructive" });
+      return false;
+    }
+    if (!formData.price_paid || parseFloat(formData.price_paid) <= 0) {
+      toast({ title: "Validation Error", description: "Please enter a valid price", variant: "destructive" });
+      return false;
+    }
+    if (!formData.stream_goal || parseInt(formData.stream_goal) <= 0) {
+      toast({ title: "Validation Error", description: "Please enter a valid stream goal", variant: "destructive" });
+      return false;
+    }
+    if (!formData.start_date) {
+      toast({ title: "Validation Error", description: "Please select a start date", variant: "destructive" });
+      return false;
+    }
+    if (!formData.duration_days || parseInt(formData.duration_days) < 1 || parseInt(formData.duration_days) > 365) {
+      toast({ title: "Validation Error", description: "Duration must be between 1 and 365 days", variant: "destructive" });
+      return false;
+    }
+    if (formData.music_genres.length === 0) {
+      toast({ title: "Validation Error", description: "Please select at least one music genre", variant: "destructive" });
+      return false;
+    }
+    return true;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate required fields
-    if (!formData.client_name || !formData.client_emails || !formData.campaign_name || 
-        !formData.price_paid || !formData.stream_goal || !formData.start_date || 
-        !formData.duration_days || !formData.track_url || !formData.salesperson || 
-        formData.music_genres.length === 0) {
+    if (!validateForm()) {
       return;
     }
 
@@ -72,6 +120,39 @@ export default function CampaignIntakePage() {
         .map(e => e.trim())
         .filter(e => e.length > 0)
         .slice(0, 5);
+
+      // If new client and user is manager, try to create client in database
+      if (isNewClient && isVendorManager) {
+        try {
+          const { data: existingClient } = await supabase
+            .from('clients')
+            .select('id')
+            .ilike('name', formData.client_name)
+            .single();
+
+          if (!existingClient) {
+            const { data: newClient, error } = await supabase
+              .from('clients')
+              .insert({
+                name: formData.client_name,
+                emails: emailArray
+              })
+              .select('id')
+              .single();
+
+            if (!error && newClient) {
+              queryClient.invalidateQueries({ queryKey: ['clients'] });
+              toast({ 
+                title: "Client Created", 
+                description: `Client "${formData.client_name}" has been added to the database` 
+              });
+            }
+          }
+        } catch (error) {
+          // Silent fail - client will be created during approval process
+          console.log('Client creation failed, will be handled during approval:', error);
+        }
+      }
 
       // Create campaign submission
       await createSubmission.mutateAsync({
@@ -125,8 +206,25 @@ export default function CampaignIntakePage() {
     });
   };
 
+  const renderTrackUrlField = () => (
+    <div>
+      <Label>Track URL *</Label>
+      <Input
+        placeholder="https://open.spotify.com/track/... (will auto-populate campaign name and genres)"
+        value={formData.track_url}
+        onChange={(e) => handleTrackUrlChange(e.target.value)}
+        required
+      />
+      <p className="text-xs text-muted-foreground mt-1">
+        For released songs: Spotify URL. For unreleased: SoundCloud, Dropbox, or private streaming link.
+      </p>
+      {formData.campaign_name && formData.track_url.includes('spotify.com') && (
+        <p className="text-xs text-green-600 mt-1">✓ Auto-populated from Spotify</p>
+      )}
+    </div>
+  );
+
   const handleTrackUrlChange = async (url: string) => {
-    setFormData({...formData, track_url: url});
     
     if (url.includes('spotify.com/track/')) {
       try {
@@ -270,22 +368,8 @@ export default function CampaignIntakePage() {
                 )}
               </div>
 
-              {/* Track URL - Moved to top for auto-population */}
-              <div>
-                <Label>Track URL *</Label>
-                <Input
-                  placeholder="https://open.spotify.com/track/... (will auto-populate campaign name and genres)"
-                  value={formData.track_url}
-                  onChange={(e) => handleTrackUrlChange(e.target.value)}
-                  required
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  For released songs: Spotify URL. For unreleased: SoundCloud, Dropbox, or private streaming link.
-                </p>
-                {formData.campaign_name && formData.track_url.includes('spotify.com') && (
-                  <p className="text-xs text-green-600 mt-1">✓ Auto-populated from Spotify</p>
-                )}
-              </div>
+              {/* Track URL - Show at top for existing clients, under emails for new clients */}
+              {!isNewClient && renderTrackUrlField()}
 
               {/* Client Emails */}
               <div>
@@ -302,7 +386,13 @@ export default function CampaignIntakePage() {
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   {isNewClient ? (
-                    `${formData.client_emails.split(',').filter(e => e.trim()).length}/5 emails`
+                    <>
+                      {`${formData.client_emails.split(',').filter(e => e.trim()).length}/5 emails. `}
+                      {isVendorManager ? 
+                        'Client will be created in database automatically.' : 
+                        'Client will be created during approval process.'
+                      }
+                    </>
                   ) : !isNewClient && !formData.client_emails ? (
                     "⚠️ This client has no emails on file - contact admin to add client emails before submitting"
                   ) : (
@@ -310,6 +400,9 @@ export default function CampaignIntakePage() {
                   )}
                 </p>
               </div>
+
+              {/* Track URL - Show under emails for new clients */}
+              {isNewClient && renderTrackUrlField()}
 
               {/* Campaign Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
