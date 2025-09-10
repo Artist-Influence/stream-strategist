@@ -201,10 +201,17 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
   );
 
   const handleContinue = () => {
-    const finalAllocations = selectedAllocations.map(allocation => ({
-      ...allocation,
-      allocation: manualAllocations[allocation.playlist_id] || allocation.allocation
-    }));
+    const finalAllocations = selectedAllocations.map(allocation => {
+      const playlist = playlists?.find(p => p.id === allocation.playlist_id);
+      const vendor = vendors?.find(v => v.id === allocation.vendor_id);
+      
+      return {
+        ...allocation,
+        allocation: manualAllocations[allocation.playlist_id] || allocation.allocation,
+        vendor: vendor ? { id: vendor.id, name: vendor.name } : null,
+        playlist: playlist ? { id: playlist.id, name: playlist.name } : null
+      };
+    });
     
     onNext({
       allocations: finalAllocations,
