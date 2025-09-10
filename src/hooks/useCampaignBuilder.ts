@@ -85,17 +85,30 @@ export function useCampaignBuilder() {
 
       setSubmissionData(data);
       
-      // Resolve client_id from client_name if needed
-      let clientId = '';
-      if (data.client_name) {
+      // Resolve client_id from client_name if needed (case-insensitive), prefer provided client_id
+      let clientId = (data as any).client_id || '';
+      const incomingClientName = (data as any).client_name || (data as any).brand_name || '';
+      if (!clientId && incomingClientName) {
         try {
-          const { data: client } = await supabase
+          // Try case-insensitive exact match
+          let { data: client } = await supabase
             .from('clients')
             .select('id')
-            .eq('name', data.client_name)
-            .single();
+            .ilike('name', incomingClientName.trim())
+            .maybeSingle();
+
+          // Fallback to prefix match
+          if (!client) {
+            const { data: candidates } = await supabase
+              .from('clients')
+              .select('id, name')
+              .ilike('name', `${incomingClientName.trim()}%`)
+              .limit(1);
+            client = candidates?.[0];
+          }
+
           if (client) {
-            clientId = client.id;
+            clientId = client.id as string;
           }
         } catch (error) {
           console.log('Could not resolve client_id:', error);
@@ -107,6 +120,7 @@ export function useCampaignBuilder() {
         name: data.campaign_name,
         client: data.client_name,
         client_id: clientId, // Use resolved client_id
+        brand_name: data.client_name,
         track_url: data.track_url,
         stream_goal: data.stream_goal,
         budget: data.price_paid, // Map price_paid to budget

@@ -86,46 +86,55 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
     }
   });
   
-  // Auto-populate client from submission data
+  // Auto-populate client from submission or existing campaign data
   useEffect(() => {
-    if (initialData && (initialData as any)?.client_name) {
-      const submissionData = initialData as any;
-      console.log('Auto-populating client from submission data:', submissionData);
-      
-      // Set client name first
-      if (submissionData.client_name && submissionData.client_name !== clientName) {
-        console.log('Setting client name:', submissionData.client_name);
-        setClientName(submissionData.client_name);
-      }
-      
-      // Set client_id if available
-      if (submissionData.client_id && submissionData.client_id !== selectedClientId) {
-        console.log('Setting client_id from submission:', submissionData.client_id);
-        setSelectedClientId(submissionData.client_id);
-        setValue('client_id', submissionData.client_id);
-      } else if (submissionData.client_name && !submissionData.client_id) {
-        // Try to resolve client_id from client_name
-        console.log('Resolving client_id for client_name:', submissionData.client_name);
-        const resolveClientId = async () => {
-          try {
-            const { data: client } = await supabase
+    if (!initialData) return;
+    const submissionData = initialData as any;
+
+    const incomingClientId: string | undefined = submissionData.client_id;
+    const incomingClientName: string | undefined = submissionData.client_name || submissionData.client || submissionData.brand_name;
+
+    // If we have a client_id already, we may load its name in a separate effect
+    if (incomingClientId && incomingClientId !== selectedClientId) {
+      setSelectedClientId(incomingClientId);
+      setValue('client_id', incomingClientId);
+    }
+
+    // If we don't have a client_id yet but we do have a name, try to resolve it
+    if (!incomingClientId && incomingClientName) {
+      const nameToResolve = String(incomingClientName).trim();
+      if (!nameToResolve) return;
+
+      const resolveClientId = async () => {
+        try {
+          // Case-insensitive exact match first
+          let { data: client } = await supabase
+            .from('clients')
+            .select('id, name')
+            .ilike('name', nameToResolve)
+            .maybeSingle();
+
+          // If not found, try prefix match as a fallback
+          if (!client) {
+            const { data: candidates } = await supabase
               .from('clients')
               .select('id, name')
-              .eq('name', submissionData.client_name)
-              .maybeSingle();
-            console.log('Client resolution result:', client);
-            if (client) {
-              console.log('Setting resolved client_id:', client.id);
-              setSelectedClientId(client.id);
-              setValue('client_id', client.id);
-              setClientName(client.name);
-            }
-          } catch (error) {
-            console.log('Could not resolve client_id:', error);
+              .ilike('name', `${nameToResolve}%`)
+              .limit(1);
+            client = candidates?.[0];
           }
-        };
-        resolveClientId();
-      }
+
+          if (client) {
+            setSelectedClientId(client.id);
+            setValue('client_id', client.id);
+            setClientName(client.name);
+          }
+        } catch (error) {
+          console.log('Could not resolve client_id:', error);
+        }
+      };
+
+      resolveClientId();
     }
   }, [initialData, setValue, clientName, selectedClientId]);
 
@@ -399,10 +408,11 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => {
-                              setClientName("");
-                              setSelectedClientId("");
-                            }}
+                              onClick={() => {
+                                setClientName("");
+                                setSelectedClientId("");
+                                setValue('client_id', '');
+                              }}
                           >
                             Change
                           </Button>
@@ -413,6 +423,7 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
                           onChange={(clientId) => {
                             console.log('Client selector onChange called with:', clientId);
                             setSelectedClientId(clientId);
+                            setValue('client_id', clientId);
                           }}
                           placeholder="Select or add client..."
                         />
