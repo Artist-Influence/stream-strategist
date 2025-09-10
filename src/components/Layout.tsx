@@ -50,13 +50,13 @@ const getNavItemsForRole = (currentRole: string | null) => {
     return [
       ...baseItems,
       {
-        title: "Vendors & Playlists",
+        title: "Vendors",
         href: "/playlists", 
         icon: Database,
         hotkey: "Ctrl+2"
       },
       {
-        title: "View Campaigns",
+        title: "Campaigns",
         href: "/campaigns",
         icon: History,
         hotkey: "Ctrl+4"
@@ -68,7 +68,7 @@ const getNavItemsForRole = (currentRole: string | null) => {
         hotkey: "Ctrl+5"
       },
       ...(currentRole === 'admin' ? [{
-        title: "User Management", 
+        title: "Users", 
         href: "/users",
         icon: UserPlus,
         hotkey: "Ctrl+6",
