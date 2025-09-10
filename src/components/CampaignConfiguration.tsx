@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,8 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ClientSelector } from "@/components/ClientSelector";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import { 
   ArrowLeft, 
@@ -18,7 +22,7 @@ import {
   Zap, 
   Target, 
   DollarSign,
-  Calendar,
+  CalendarIcon,
   Music,
   Sparkles
 } from "lucide-react";
@@ -56,6 +60,9 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
   const [trackName, setTrackName] = useState(initialData?.track_name || "");
   const [selectedClientId, setSelectedClientId] = useState(initialData?.client_id || "");
   const [clientName, setClientName] = useState("");
+  const [startDate, setStartDate] = useState<Date | undefined>(
+    initialData?.start_date ? new Date(initialData.start_date) : undefined
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   
@@ -148,6 +155,11 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
           setValue(key as any, value);
         }
       });
+
+      // Set start date state
+      if (initialData.start_date) {
+        setStartDate(new Date(initialData.start_date));
+      }
 
       // Set genres if available
       if (initialData.sub_genre) {
@@ -485,18 +497,41 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="start_date">Start Date *</Label>
-                    <Input
-                      id="start_date"
-                      type="date"
-                      {...register("start_date")}
-                      className={errors.start_date ? "border-destructive" : ""}
-                    />
-                    {errors.start_date && (
-                      <p className="text-sm text-destructive">{errors.start_date.message}</p>
-                    )}
-                  </div>
+                   <div className="space-y-2">
+                     <Label htmlFor="start_date">Start Date *</Label>
+                     <Popover>
+                       <PopoverTrigger asChild>
+                         <Button
+                           variant="outline"
+                           className={cn(
+                             "w-full justify-start text-left font-normal",
+                             !startDate && "text-muted-foreground",
+                             errors.start_date && "border-destructive"
+                           )}
+                         >
+                           <CalendarIcon className="mr-2 h-4 w-4" />
+                           {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
+                         </Button>
+                       </PopoverTrigger>
+                       <PopoverContent className="w-auto p-0" align="start">
+                         <Calendar
+                           mode="single"
+                           selected={startDate}
+                           onSelect={(date) => {
+                             setStartDate(date);
+                             if (date) {
+                               setValue("start_date", format(date, "yyyy-MM-dd"));
+                             }
+                           }}
+                           initialFocus
+                           className="pointer-events-auto"
+                         />
+                       </PopoverContent>
+                     </Popover>
+                     {errors.start_date && (
+                       <p className="text-sm text-destructive">{errors.start_date.message}</p>
+                     )}
+                   </div>
                   
                    <div className="space-y-2">
                      <Label htmlFor="duration_days">Duration (Days) *</Label>
