@@ -103,14 +103,18 @@ export default function CampaignReview({
     }
   };
 
+  // Safely get allocation data with fallbacks
+  const totalProjectedStreams = allocationsData.totalProjectedStreams || 0;
+  const totalCost = allocationsData.totalCost || (totalProjectedStreams * 0.001) || 0;
+
   // Calculate metrics
   const calculateCPSt = () => {
-    return allocationsData.totalProjectedStreams > 0 
-      ? (campaignData.budget / allocationsData.totalProjectedStreams * 1000).toFixed(3)
+    return totalProjectedStreams > 0 
+      ? (campaignData.budget / totalProjectedStreams * 1000).toFixed(3)
       : "0.000";
   };
 
-  const coverage = Math.min((allocationsData.totalProjectedStreams / campaignData.stream_goal) * 100, 100);
+  const coverage = Math.min((totalProjectedStreams / campaignData.stream_goal) * 100, 100);
   const endDate = new Date(new Date(campaignData.start_date).getTime() + campaignData.duration_days * 24 * 60 * 60 * 1000);
 
   return (
@@ -200,7 +204,7 @@ export default function CampaignReview({
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Projected Streams</p>
-                  <p className="text-2xl font-bold">{allocationsData.totalProjectedStreams.toLocaleString()}</p>
+                  <p className="text-2xl font-bold">{totalProjectedStreams.toLocaleString()}</p>
                 </div>
               </div>
               
@@ -233,7 +237,7 @@ export default function CampaignReview({
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Projected Cost</p>
-                  <p className="text-xl font-bold">${allocationsData.totalCost.toLocaleString()}</p>
+                  <p className="text-xl font-bold">${totalCost.toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">CPSt</p>
@@ -244,11 +248,11 @@ export default function CampaignReview({
               <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                 <div>
                   <p className="text-sm text-muted-foreground">Expected Daily Streams</p>
-                  <p className="font-medium">{Math.round(allocationsData.totalProjectedStreams / campaignData.duration_days).toLocaleString()}</p>
+                  <p className="font-medium">{Math.round(totalProjectedStreams / campaignData.duration_days).toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Daily Budget</p>
-                  <p className="font-medium">${(allocationsData.totalCost / campaignData.duration_days).toFixed(2)}</p>
+                  <p className="font-medium">${(totalCost / campaignData.duration_days).toFixed(2)}</p>
                 </div>
               </div>
             </CardContent>
@@ -291,7 +295,7 @@ export default function CampaignReview({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Projected Streams</span>
-                  <span className="text-sm font-medium">{allocationsData.totalProjectedStreams.toLocaleString()}</span>
+                  <span className="text-sm font-medium">{totalProjectedStreams.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Duration</span>

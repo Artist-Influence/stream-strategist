@@ -52,17 +52,21 @@ export function ClientSelector({ value, onChange, placeholder = "Select client..
       ? newClientEmails.split(',').map(e => e.trim()).filter(e => e).slice(0, 5)
       : [];
 
-    const newClient = await createClient.mutateAsync({
-      name: newClientName.trim(),
-      emails: emailArray,
-      credit_balance: 0,
-    });
+    try {
+      const newClient = await createClient.mutateAsync({
+        name: newClientName.trim(),
+        emails: emailArray,
+        credit_balance: 0,
+      });
 
-    onChange(newClient.id);
-    setShowAddDialog(false);
-    setOpen(false);
-    setNewClientName('');
-    setNewClientEmails('');
+      onChange(newClient.id);
+      setShowAddDialog(false);
+      setOpen(false);
+      setNewClientName('');
+      setNewClientEmails('');
+    } catch (error) {
+      console.error("Error creating client:", error);
+    }
   };
 
   return (
@@ -79,7 +83,7 @@ export function ClientSelector({ value, onChange, placeholder = "Select client..
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-full p-0">
+        <PopoverContent className="w-full p-0 z-50 bg-popover">
           <Command>
             <CommandInput placeholder="Search clients..." />
             <CommandList>

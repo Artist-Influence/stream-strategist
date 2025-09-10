@@ -194,7 +194,9 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
     onNext({
       allocations: finalAllocations,
       projections,
-      selectedPlaylists: Array.from(selectedPlaylists)
+      selectedPlaylists: Array.from(selectedPlaylists),
+      totalProjectedStreams: projections.totalStreams,
+      totalCost: projections.totalStreams * 0.001 // Estimated cost per stream
     });
   };
 

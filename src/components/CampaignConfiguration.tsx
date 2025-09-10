@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -57,9 +57,12 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   
-  // Debug logging for client selection
-  console.log('CampaignConfiguration - selectedClientId:', selectedClientId);
-  console.log('CampaignConfiguration - selectedGenres:', selectedGenres);
+  // Auto-populate track data when initialData has track_url
+  useEffect(() => {
+    if (initialData?.track_url && !trackName) {
+      handleTrackUrlChange(initialData.track_url);
+    }
+  }, [initialData?.track_url]);
   
   const {
     register,
@@ -202,6 +205,18 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
             setTrackName(data.name);
             setValue("track_name", data.name);
             setValue("name", campaignName); // Auto-populate campaign name
+            
+            // Auto-select genres from Spotify data if available
+            if (data.genres && data.genres.length > 0) {
+              const spotifyGenres = data.genres.filter((genre: string) => 
+                popularGenres.includes(genre)
+              ).slice(0, 3);
+              
+              if (spotifyGenres.length > 0) {
+                setSelectedGenres(spotifyGenres);
+                setValue("sub_genre", spotifyGenres.join(', '));
+              }
+            }
           }
         }
       } catch (error) {
@@ -271,12 +286,9 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
                        }}
                        placeholder="Select or add client..."
                      />
-                     {!selectedClientId && (
-                       <p className="text-sm text-destructive">Please select a client</p>
-                     )}
-                     {selectedClientId && (
-                       <p className="text-sm text-accent">✓ Client selected: {selectedClientId}</p>
-                     )}
+                      {!selectedClientId && (
+                        <p className="text-sm text-destructive">Please select a client</p>
+                      )}
                    </div>
                 </div>
 
