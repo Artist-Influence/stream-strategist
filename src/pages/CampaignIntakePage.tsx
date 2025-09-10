@@ -481,10 +481,11 @@ export default function CampaignIntakePage() {
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
-                        selected={formData.start_date ? new Date(formData.start_date) : undefined}
+                        selected={formData.start_date ? new Date(formData.start_date + 'T00:00:00') : undefined}
                         onSelect={(date) => {
                           if (date) {
-                            setFormData({...formData, start_date: format(date, 'yyyy-MM-dd')});
+                            const adjustedDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+                            setFormData({...formData, start_date: format(adjustedDate, 'yyyy-MM-dd')});
                           }
                         }}
                         disabled={(date) => {

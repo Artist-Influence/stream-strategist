@@ -71,11 +71,25 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
     defaultValues: {
       duration_days: 90,
       // Map submission data to campaign form
-      budget: initialData?.budget || (initialData as any)?.price_paid || 0,
+        // Map submission data to campaign form, specifically handling client auto-population
+        client_id: initialData?.client_id || '',
+        budget: initialData?.budget || (initialData as any)?.price_paid || 0,
       ...initialData
     }
   });
   
+  // Auto-populate client from submission data
+  useEffect(() => {
+    if (initialData && (initialData as any)?.client_name && !selectedClientId) {
+      const submissionData = initialData as any;
+      // If we have client_name from submission but no client_id, set the name for display
+      if (submissionData.client_name) {
+        setClientName(submissionData.client_name);
+        console.log('Auto-populated client from submission:', submissionData.client_name);
+      }
+    }
+  }, [initialData, selectedClientId]);
+
   // Auto-populate track data when initialData has track_url
   useEffect(() => {
     if (initialData?.track_url && !trackName) {

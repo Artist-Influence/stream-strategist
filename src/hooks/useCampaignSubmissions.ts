@@ -47,12 +47,14 @@ export function useCampaignSubmissions() {
       const { data, error } = await supabase
         .from('campaign_submissions')
         .select('*')
-        .in('status', ['pending_approval', 'rejected']) // Only fetch non-approved submissions
-        .order('created_at', { ascending: false });
+        .in('status', ['pending_approval', 'rejected'])
+        .order('created_at', { ascending: false })
+        .limit(50); // Add limit for better performance
 
       if (error) throw error;
       return data as CampaignSubmission[];
     },
+    staleTime: 30000, // Cache for 30 seconds
   });
 }
 
@@ -111,14 +113,14 @@ export function useApproveCampaignSubmission() {
       
       console.log('✅ Submission data fetched:', submission.campaign_name);
 
-      // Try to find existing client by name (case-insensitive)
+      // Store rejection reason in algorithm_recommendations and update submission
+      // Use the indexed lookup for better performance
       console.log('🔍 Looking for existing client:', submission.client_name);
       const { data: existingClient, error: clientFindError } = await supabase
         .from('clients')
         .select('id')
         .ilike('name', submission.client_name)
-        .limit(1)
-        .single();
+        .maybeSingle(); // Use maybeSingle to avoid errors when no client found
 
       let clientId = existingClient?.id;
 

@@ -14,11 +14,13 @@ export function useDraftCampaigns() {
           submission:campaign_submissions!submission_id(*)
         `)
         .eq('pending_operator_review', true)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(25); // Add limit for better performance
 
       if (error) throw error;
       return data || [];
     },
+    staleTime: 30000, // Cache for 30 seconds
   });
 }
 
