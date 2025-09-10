@@ -130,11 +130,20 @@ export default function CampaignIntakePage() {
     
     if (url.includes('spotify.com/track/')) {
       try {
+        console.log('🎵 Fetching Spotify track data for:', url);
+        
         const trackId = url.split('/track/')[1]?.split('?')[0];
         if (trackId) {
-          const { data } = await supabase.functions.invoke('spotify-fetch', {
+          const { data, error } = await supabase.functions.invoke('spotify-fetch', {
             body: { trackId, type: 'track' }
           });
+          
+          if (error) {
+            console.error('❌ Spotify API error:', error);
+            throw error;
+          }
+          
+          console.log('📊 Spotify API response:', data);
           
           if (data?.name && data?.artists?.[0]?.name) {
             const campaignName = `${data.artists[0].name} - ${data.name}`;
@@ -147,21 +156,32 @@ export default function CampaignIntakePage() {
             
             // Auto-select genres from Spotify data if available
             if (data.genres && data.genres.length > 0) {
+              console.log('🏷️ Raw genres from Spotify:', data.genres);
+              
+              // Filter genres to only include ones that exist in UNIFIED_GENRES (case-insensitive)
               const availableGenres = data.genres.filter((genre: string) => 
-                UNIFIED_GENRES.includes(genre)
+                UNIFIED_GENRES.includes(genre.toLowerCase())
               ).slice(0, 3);
+              
+              console.log('✅ Available genres for selection:', availableGenres);
               
               if (availableGenres.length > 0) {
                 setFormData(prev => ({
                   ...prev,
                   music_genres: availableGenres
                 }));
+                console.log('🎯 Auto-populated genres:', availableGenres);
+              } else {
+                console.log('⚠️ No genres matched the available options. Available:', UNIFIED_GENRES);
+                console.log('⚠️ Spotify returned:', data.genres);
               }
+            } else {
+              console.log('⚠️ No genres returned from Spotify API');
             }
           }
         }
       } catch (error) {
-        console.log("Could not auto-fetch track data:", error);
+        console.error('💥 Error fetching Spotify data:', error);
       }
     }
   };

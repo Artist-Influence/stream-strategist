@@ -154,75 +154,171 @@ async function extractPlaylistGenres(playlist: any, accessToken: string): Promis
 }
 
 function mapToMainGenres(spotifyGenres: string[]): string[] {
-  // Enhanced genre mapping with more specific sub-genres
+  // UNIFIED_GENRES from constants.ts - these are the ONLY valid genres our app accepts
+  const VALID_GENRES = [
+    'phonk', 'tech house', 'techno', 'minimal', 'house', 'progressive house',
+    'bass house', 'big room', 'afro house', 'afrobeats', 'hardstyle', 
+    'dubstep', 'trap', 'melodic bass', 'trance', 'dance', 'pop', 'indie', 
+    'alternative', 'rock', 'hip-hop', 'r&b', 'country', 'jazz', 'folk', 
+    'metal', 'classical', 'reggae', 'latin', 'brazilian', 'blues', 'punk', 
+    'chill', 'ambient', 'experimental'
+  ];
+
+  // Comprehensive sub-genre to umbrella-genre mappings
   const GENRE_MAPPINGS: Record<string, string[]> = {
-    // House music sub-genres (prioritized)
-    'Progressive House': ['progressive house', 'prog house'],
-    'Afro House': ['afro house', 'afrohouse', 'african house'],
-    'Deep House': ['deep house', 'deephouse'],
-    'Tech House': ['tech house', 'techhouse'],
-    'Future House': ['future house', 'future bass house'],
-    'Tribal House': ['tribal house', 'tribal'],
-    'Big Room House': ['big room', 'big room house', 'festival house'],
-    'Melodic House': ['melodic house', 'melodic techno'],
+    // Hip-hop and rap variations
+    'hip-hop': [
+      'midwestern rap', 'atlanta trap', 'drill', 'boom bap', 'conscious rap', 
+      'gangsta rap', 'underground hip hop', 'southern rap', 'east coast hip hop',
+      'west coast hip hop', 'chicago rap', 'detroit rap', 'memphis rap', 'trap music',
+      'rap', 'hip hop', 'hip-hop', 'underground rap', 'old school rap', 'new school rap'
+    ],
     
-    // Electronic sub-genres
-    'Future Bass': ['future bass', 'futurebass'],
-    'Bass Music': ['bass music', 'bass', 'dubstep', 'trap music'],
-    'Ambient': ['ambient', 'chillout', 'downtempo', 'lo-fi', 'chillhop'],
-    'Techno': ['techno', 'minimal techno', 'industrial techno'],
-    'Trance': ['trance', 'progressive trance', 'uplifting trance'],
-    'Drum & Bass': ['drum and bass', 'dnb', 'jungle'],
-    'Synthwave': ['synthwave', 'retrowave', 'vaporwave'],
+    // Dubstep and bass music
+    'dubstep': [
+      'riddim', 'brostep', 'melodic dubstep', 'future riddim', 'bass music',
+      'heavy dubstep', 'melodic bass', 'future bass', 'neurofunk', 'drum and bass',
+      'dnb', 'liquid dnb'
+    ],
     
-    // Other specific genres
-    'phonk': ['drift phonk', 'gym phonk', 'phonk house'],
-    'workout': ['gym', 'motivational', 'pump up', 'training'],
-    'rock': ['indie rock', 'alt rock', 'alternative rock', 'garage rock'],
-    'indie': ['indie', 'indie pop', 'indie folk', 'indie electronic'],
-    'hip-hop': ['trap', 'rap', 'underground hip hop', 'boom bap', 'hip hop'],
-    'pop': ['pop', 'electropop', 'indie pop', 'dance pop'],
-    'r&b': ['r&b', 'neo soul', 'contemporary r&b'],
-    'jazz': ['jazz', 'smooth jazz', 'jazz fusion'],
-    'classical': ['classical', 'orchestral', 'chamber music'],
-    'reggae': ['reggae', 'reggaeton', 'dancehall'],
-    'country': ['country', 'folk', 'americana'],
-    'metal': ['metal', 'heavy metal', 'death metal', 'black metal'],
-    'punk': ['punk', 'hardcore', 'post-punk'],
-    'blues': ['blues', 'electric blues', 'delta blues'],
-    'funk': ['funk', 'soul', 'disco'],
+    // Techno variations  
+    'techno': [
+      'melodic techno', 'industrial techno', 'detroit techno', 'berlin techno',
+      'acid techno', 'hard techno', 'deep techno', 'progressive techno'
+    ],
     
-    // Broader fallbacks (lower priority)
-    'electronic': ['house', 'edm', 'dance', 'electronica', 'electronic']
+    // Phonk variations
+    'phonk': [
+      'brazilian phonk', 'drift phonk', 'gym phonk', 'memphis phonk', 
+      'aggressive phonk', 'house phonk', 'trap phonk'
+    ],
+    
+    // House music sub-genres
+    'house': [
+      'deep house', 'future house', 'tribal house', 'vocal house', 'soulful house',
+      'chicago house', 'garage house', 'electro house', 'funky house'
+    ],
+    'tech house': ['tech house', 'techhouse'],
+    'progressive house': ['progressive house', 'prog house'],
+    'bass house': ['bass house', 'basshouse', 'g house'],
+    'big room': ['big room', 'big room house', 'festival house', 'mainstage'],
+    'afro house': ['afro house', 'afrohouse', 'african house'],
+    
+    // Electronic and dance
+    'dance': ['edm', 'electronic dance music', 'dance music', 'festival'],
+    'trance': ['trance', 'progressive trance', 'uplifting trance', 'psytrance', 'vocal trance'],
+    'hardstyle': ['hardstyle', 'hardcore', 'hard dance', 'rawstyle'],
+    'trap': ['trap', 'future trap', 'hybrid trap', 'festival trap'],
+    'melodic bass': ['melodic bass', 'future bass', 'melodic dubstep', 'chillstep'],
+    
+    // Minimal and ambient
+    'minimal': ['minimal', 'minimal techno', 'microhouse', 'minimal house'],
+    'ambient': ['ambient', 'chillout', 'downtempo', 'atmospheric'],
+    'chill': ['chill', 'chillwave', 'lo-fi', 'chillhop', 'study music'],
+    
+    // Traditional genres
+    'pop': ['pop', 'electropop', 'dance pop', 'synth pop', 'indie pop', 'pop rock'],
+    'rock': ['rock', 'indie rock', 'alt rock', 'alternative rock', 'garage rock', 'punk rock'],
+    'alternative': ['alternative', 'alt', 'indie alternative', 'modern rock'],
+    'indie': ['indie', 'indie folk', 'indie electronic', 'indie dance'],
+    'r&b': ['r&b', 'neo soul', 'contemporary r&b', 'rnb', 'soul'],
+    'jazz': ['jazz', 'smooth jazz', 'jazz fusion', 'contemporary jazz', 'nu jazz'],
+    'folk': ['folk', 'americana', 'country folk', 'indie folk'],
+    'country': ['country', 'country pop', 'country rock', 'nashville'],
+    'classical': ['classical', 'orchestral', 'chamber music', 'contemporary classical'],
+    'metal': ['metal', 'heavy metal', 'death metal', 'black metal', 'progressive metal'],
+    'punk': ['punk', 'hardcore punk', 'post-punk', 'pop punk'],
+    'blues': ['blues', 'electric blues', 'delta blues', 'chicago blues'],
+    'experimental': ['experimental', 'avant-garde', 'noise', 'industrial'],
+    
+    // Regional and cultural
+    'reggae': ['reggae', 'dancehall', 'dub', 'ska'],
+    'latin': ['reggaeton', 'latin pop', 'latin trap', 'cumbia', 'salsa', 'bachata'],
+    'brazilian': ['brazilian funk', 'bossa nova', 'samba', 'mpb', 'brazilian bass'],
+    'afrobeats': ['afrobeats', 'afropop', 'afro', 'nigerian pop', 'ghanaian pop']
   };
   
-  const mainGenres = new Set<string>();
-  const lowerSpotifyGenres = spotifyGenres.map(g => g.toLowerCase());
+  console.log('Raw Spotify genres received:', spotifyGenres);
   
-  console.log('Mapping Spotify genres:', spotifyGenres);
+  if (!spotifyGenres || spotifyGenres.length === 0) {
+    console.log('No genres provided');
+    return [];
+  }
   
-  // First pass: Look for specific sub-genres (prioritize specific over generic)
+  const mappedGenres = new Set<string>();
+  const lowerSpotifyGenres = spotifyGenres.map(g => g.toLowerCase().trim());
+  
+  console.log('Normalized Spotify genres:', lowerSpotifyGenres);
+  
+  // First pass: Exact matches and sub-genre mapping
   for (const [mainGenre, subGenres] of Object.entries(GENRE_MAPPINGS)) {
     for (const subGenre of subGenres) {
-      if (lowerSpotifyGenres.some(spotifyGenre => 
-        spotifyGenre.includes(subGenre) || subGenre.includes(spotifyGenre)
-      )) {
-        mainGenres.add(mainGenre);
-        console.log(`Mapped "${subGenre}" to "${mainGenre}"`);
-        break;
+      const lowerSubGenre = subGenre.toLowerCase();
+      
+      // Check for exact matches or partial matches
+      const hasMatch = lowerSpotifyGenres.some(spotifyGenre => {
+        return spotifyGenre === lowerSubGenre || 
+               spotifyGenre.includes(lowerSubGenre) || 
+               lowerSubGenre.includes(spotifyGenre);
+      });
+      
+      if (hasMatch) {
+        mappedGenres.add(mainGenre);
+        console.log(`✓ Mapped Spotify genre containing "${subGenre}" to "${mainGenre}"`);
+        break; // Move to next main genre
       }
     }
   }
   
-  // Prioritize specific genres over generic ones
-  const result = Array.from(mainGenres);
-  const houseGenres = result.filter(g => g.includes('House'));
-  const specificGenres = result.filter(g => !['electronic', 'pop', 'rock'].includes(g) && !g.includes('House'));
-  const genericGenres = result.filter(g => ['electronic', 'pop', 'rock'].includes(g));
+  // Second pass: Fuzzy matching with common sense
+  for (const spotifyGenre of lowerSpotifyGenres) {
+    if (mappedGenres.size >= 3) break; // Limit to 3 genres
+    
+    // Check for regional prefixes and remove them for better matching
+    let cleanGenre = spotifyGenre;
+    const regionalPrefixes = ['brazilian', 'mexican', 'uk', 'chicago', 'detroit', 'atlanta', 'miami', 'new york', 'london', 'berlin'];
+    for (const prefix of regionalPrefixes) {
+      if (spotifyGenre.startsWith(prefix + ' ')) {
+        cleanGenre = spotifyGenre.replace(prefix + ' ', '');
+        
+        // Map regional variations
+        if (prefix === 'brazilian' && cleanGenre.includes('funk')) {
+          mappedGenres.add('brazilian');
+          console.log(`✓ Mapped regional "${spotifyGenre}" to "brazilian"`);
+          continue;
+        }
+      }
+    }
+    
+    // Check if clean genre matches any valid genre directly
+    if (VALID_GENRES.includes(cleanGenre)) {
+      mappedGenres.add(cleanGenre);
+      console.log(`✓ Direct match: "${spotifyGenre}" → "${cleanGenre}"`);
+      continue;
+    }
+    
+    // Fuzzy matching for common variations
+    if (cleanGenre.includes('house') && !mappedGenres.has('house')) {
+      mappedGenres.add('house');
+      console.log(`✓ Fuzzy match: "${spotifyGenre}" → "house"`);
+    } else if ((cleanGenre.includes('hip') || cleanGenre.includes('rap')) && !mappedGenres.has('hip-hop')) {
+      mappedGenres.add('hip-hop');
+      console.log(`✓ Fuzzy match: "${spotifyGenre}" → "hip-hop"`);
+    } else if (cleanGenre.includes('electronic') && !mappedGenres.has('dance')) {
+      mappedGenres.add('dance');
+      console.log(`✓ Fuzzy match: "${spotifyGenre}" → "dance"`);
+    }
+  }
   
-  const finalGenres = [...houseGenres, ...specificGenres, ...genericGenres].slice(0, 3);
-  console.log('Final mapped genres:', finalGenres);
+  const result = Array.from(mappedGenres).slice(0, 3);
+  console.log('Final mapped genres:', result);
   
-  // If no mapping found, return original genres (up to 2)
-  return finalGenres.length > 0 ? finalGenres : spotifyGenres.slice(0, 2);
+  // Fallback: if no mappings found, try to use original genres if they match VALID_GENRES
+  if (result.length === 0) {
+    const fallbackGenres = lowerSpotifyGenres.filter(genre => VALID_GENRES.includes(genre)).slice(0, 2);
+    console.log('Using fallback genres:', fallbackGenres);
+    return fallbackGenres;
+  }
+  
+  return result;
 }
