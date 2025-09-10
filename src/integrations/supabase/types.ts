@@ -324,7 +324,7 @@ export type Database = {
         Row: {
           algorithm_recommendations: Json | null
           allocated_streams: number | null
-          brand_name: string
+          brand_name: string | null
           budget: number
           campaign_type: string
           client: string
@@ -366,7 +366,7 @@ export type Database = {
         Insert: {
           algorithm_recommendations?: Json | null
           allocated_streams?: number | null
-          brand_name: string
+          brand_name?: string | null
           budget: number
           campaign_type?: string
           client?: string
@@ -408,7 +408,7 @@ export type Database = {
         Update: {
           algorithm_recommendations?: Json | null
           allocated_streams?: number | null
-          brand_name?: string
+          brand_name?: string | null
           budget?: number
           campaign_type?: string
           client?: string
