@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_SOURCE_INTAKE, APP_CAMPAIGN_TYPE } from "@/lib/constants";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -50,7 +51,12 @@ import {
   Edit,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Receipt,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  FileText
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Papa from "papaparse";
@@ -89,9 +95,13 @@ interface Campaign {
   algorithm_recommendations: any;
   salesperson: string;
   pending_operator_review?: boolean;
+  // Enhanced fields
+  invoice_status?: string;
+  performance_status?: string;
+  progress_percentage?: number;
 }
 
-type SortField = 'name' | 'client' | 'budget' | 'stream_goal' | 'daily_streams' | 'weekly_streams' | 'start_date' | 'progress' | 'status';
+type SortField = 'name' | 'client' | 'budget' | 'stream_goal' | 'daily_streams' | 'weekly_streams' | 'remaining_streams' | 'start_date' | 'progress' | 'status' | 'invoice_status' | 'performance_status';
 type SortDirection = 'asc' | 'desc';
 
 export default function CampaignHistory() {
@@ -133,9 +143,9 @@ export default function CampaignHistory() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch campaigns - Support both campaign sources
+  // Fetch campaigns with enhanced data - Support both campaign sources
   const { data: campaigns, isLoading } = useQuery({
-    queryKey: ['campaigns'],
+    queryKey: ['campaigns-enhanced'],
     queryFn: async (): Promise<Campaign[]> => {
       const { data, error } = await supabase
         .from('campaigns')
@@ -145,7 +155,25 @@ export default function CampaignHistory() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data || [];
+      
+      // Enhance campaigns with calculated fields
+      const enhancedCampaigns = (data || []).map(campaign => {
+        const streamsCompleted = campaign.stream_goal - (campaign.remaining_streams || campaign.stream_goal);
+        const progressPercentage = Math.round((streamsCompleted / campaign.stream_goal) * 100);
+        
+        return {
+          ...campaign,
+          progress_percentage: progressPercentage,
+          daily_streams: campaign.daily_streams || 0,
+          weekly_streams: campaign.weekly_streams || 0,
+          remaining_streams: campaign.remaining_streams || campaign.stream_goal,
+          // These will be calculated by the database functions we created
+          invoice_status: 'not_invoiced', // Will be replaced by actual query later
+          performance_status: 'pending' // Will be replaced by actual query later
+        };
+      });
+      
+      return enhancedCampaigns;
     }
   });
 
@@ -165,7 +193,7 @@ export default function CampaignHistory() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['campaigns-enhanced'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     }
   });
@@ -182,7 +210,7 @@ export default function CampaignHistory() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['campaigns-enhanced'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast({
         title: "Campaign Deleted",
@@ -203,7 +231,7 @@ export default function CampaignHistory() {
       if (error) throw error;
     },
     onSuccess: (_, campaignIds) => {
-      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['campaigns-enhanced'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       setSelectedCampaigns(new Set());
       toast({
@@ -249,8 +277,11 @@ export default function CampaignHistory() {
 
       // Handle special cases
       if (sortField === 'progress') {
-        aValue = ((a.stream_goal - a.remaining_streams) / a.stream_goal) * 100;
-        bValue = ((b.stream_goal - b.remaining_streams) / b.stream_goal) * 100;
+        aValue = a.progress_percentage || 0;
+        bValue = b.progress_percentage || 0;
+      } else if (sortField === 'remaining_streams') {
+        aValue = a.remaining_streams || 0;
+        bValue = b.remaining_streams || 0;
       }
 
       // Handle null/undefined values
@@ -305,6 +336,14 @@ export default function CampaignHistory() {
     setEditModal({ open: true, campaign });
   };
 
+  const handleRowClick = (campaignId: string, event: React.MouseEvent) => {
+    // Don't trigger row click if clicking on action buttons
+    if ((event.target as HTMLElement).closest('button')) {
+      return;
+    }
+    handleEditCampaign(campaignId);
+  };
+
   const exportCampaigns = async () => {
     try {
       if (!campaigns || campaigns.length === 0) return;
@@ -318,7 +357,9 @@ export default function CampaignHistory() {
         'Daily Streams': campaign.daily_streams || 0,
         'Weekly Streams': campaign.weekly_streams || 0,
         'Remaining Streams': campaign.remaining_streams || campaign.stream_goal,
-        'Progress': `${Math.round(((campaign.stream_goal - campaign.remaining_streams) || 0) / campaign.stream_goal * 100)}%`,
+        'Progress': `${campaign.progress_percentage || 0}%`,
+        'Invoice Status': campaign.invoice_status || 'not_invoiced',
+        'Performance': campaign.performance_status || 'pending',
         'Start Date': campaign.start_date,
         'Playlists': campaign.playlists?.map(p => 
           typeof p === 'string' ? p : p.name
@@ -449,6 +490,49 @@ export default function CampaignHistory() {
     return { label: 'Under Performing', color: 'text-destructive' };
   };
 
+  // Helper function to get invoice status badge
+  const getInvoiceStatusBadge = (status: string) => {
+    const statusConfig = {
+      'not_invoiced': { label: 'Not Invoiced', color: 'bg-gray-500/10 text-gray-400 border-gray-500/30', icon: FileText },
+      'pending': { label: 'Pending', color: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30', icon: Clock },
+      'sent': { label: 'Sent', color: 'bg-blue-500/10 text-blue-400 border-blue-500/30', icon: Receipt },
+      'paid': { label: 'Paid', color: 'bg-green-500/10 text-green-400 border-green-500/30', icon: CheckCircle },
+      'overdue': { label: 'Overdue', color: 'bg-red-500/10 text-red-400 border-red-500/30', icon: AlertTriangle },
+    };
+    
+    const config = statusConfig[status] || statusConfig['not_invoiced'];
+    const Icon = config.icon;
+    
+    return (
+      <Badge className={`${config.color} border gap-1`}>
+        <Icon className="w-3 h-3" />
+        {config.label}
+      </Badge>
+    );
+  };
+
+  // Helper function to get performance status badge
+  const getPerformanceStatusBadge = (campaign: Campaign) => {
+    if (campaign.status !== 'active') {
+      return <Badge variant="outline" className="text-muted-foreground">N/A</Badge>;
+    }
+    
+    const performance = getCampaignPerformanceStatus(campaign);
+    if (!performance) {
+      return <Badge variant="outline" className="text-muted-foreground">Pending</Badge>;
+    }
+    
+    const colorClass = performance.color === 'text-accent' ? 'bg-green-500/10 text-green-400 border-green-500/30' :
+                      performance.color === 'text-purple' ? 'bg-purple-500/10 text-purple-400 border-purple-500/30' :
+                      'bg-red-500/10 text-red-400 border-red-500/30';
+    
+    return (
+      <Badge className={`${colorClass} border`}>
+        {performance.label}
+      </Badge>
+    );
+  };
+
   return (
     <div className="space-y-8">
       {/* Hero Section */}
@@ -543,12 +627,79 @@ export default function CampaignHistory() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Campaign</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Budget</TableHead>
-                      <TableHead>Stream Goal</TableHead>
-                      <TableHead>Start Date</TableHead>
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('name')}
+                      >
+                        <div className="flex items-center">
+                          Campaign
+                          {getSortIcon('name')}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('client')}
+                      >
+                        <div className="flex items-center">
+                          Client
+                          {getSortIcon('client')}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('status')}
+                      >
+                        <div className="flex items-center">
+                          Status
+                          {getSortIcon('status')}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('daily_streams')}
+                      >
+                        <div className="flex items-center">
+                          Daily Streams
+                          {getSortIcon('daily_streams')}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('weekly_streams')}
+                      >
+                        <div className="flex items-center">
+                          Weekly Streams
+                          {getSortIcon('weekly_streams')}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('remaining_streams')}
+                      >
+                        <div className="flex items-center">
+                          Remaining
+                          {getSortIcon('remaining_streams')}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('progress')}
+                      >
+                        <div className="flex items-center">
+                          Progress
+                          {getSortIcon('progress')}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('invoice_status')}
+                      >
+                        <div className="flex items-center">
+                          Invoice
+                          {getSortIcon('invoice_status')}
+                        </div>
+                      </TableHead>
+                      <TableHead>Performance</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -558,11 +709,12 @@ export default function CampaignHistory() {
                       return (
                         <TableRow 
                           key={campaign.id}
-                          className={`hover:bg-muted/50 ${
+                          className={`hover:bg-muted/50 cursor-pointer transition-colors ${
                             isHighlighted 
                               ? 'ring-2 ring-primary bg-primary/5' 
                               : ''
-                          }`}
+                          } ${getCampaignPerformanceColor(campaign)}`}
+                          onClick={(e) => handleRowClick(campaign.id, e)}
                         >
                           <TableCell className="font-medium">
                             <div>
@@ -572,36 +724,112 @@ export default function CampaignHistory() {
                                   by {campaign.salesperson}
                                 </div>
                               )}
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Budget: ${campaign.budget?.toLocaleString()} | Goal: {campaign.stream_goal?.toLocaleString()}
+                              </div>
                             </div>
                           </TableCell>
-                          <TableCell>{campaign.client_name || campaign.client}</TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{campaign.client_name || campaign.client}</div>
+                              <div className="text-xs text-muted-foreground">
+                                Started: {new Date(campaign.start_date).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </TableCell>
                           <TableCell>
                             <StatusBadge status={campaign.status} />
                           </TableCell>
-                          <TableCell>${campaign.budget?.toLocaleString()}</TableCell>
-                          <TableCell>{campaign.stream_goal?.toLocaleString()}</TableCell>
                           <TableCell>
-                            {new Date(campaign.start_date).toLocaleDateString()}
+                            <div className="text-center">
+                              <div className="font-semibold text-sm">
+                                {campaign.daily_streams?.toLocaleString() || '0'}
+                              </div>
+                              <div className="text-xs text-muted-foreground">per day</div>
+                            </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleViewDetails(campaign.id)}
-                              >
-                                View
-                              </Button>
-                              {campaign.pending_operator_review && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleEditCampaign(campaign.id)}
-                                >
-                                  Review
-                                </Button>
-                              )}
+                            <div className="text-center">
+                              <div className="font-semibold text-sm">
+                                {campaign.weekly_streams?.toLocaleString() || '0'}
+                              </div>
+                              <div className="text-xs text-muted-foreground">per week</div>
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-center">
+                              <div className="font-semibold text-sm">
+                                {campaign.remaining_streams?.toLocaleString()}
+                              </div>
+                              <div className="text-xs text-muted-foreground">remaining</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-xs">
+                                <span>{campaign.progress_percentage || 0}%</span>
+                                <span className="text-muted-foreground">
+                                  {campaign.stream_goal - (campaign.remaining_streams || campaign.stream_goal)} / {campaign.stream_goal}
+                                </span>
+                              </div>
+                              <Progress 
+                                value={campaign.progress_percentage || 0} 
+                                className="h-2"
+                              />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {getInvoiceStatusBadge(campaign.invoice_status || 'not_invoiced')}
+                          </TableCell>
+                          <TableCell>
+                            {getPerformanceStatusBadge(campaign)}
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <span className="sr-only">Open menu</span>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleViewDetails(campaign.id)}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEditCampaign(campaign.id)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit Campaign
+                                </DropdownMenuItem>
+                                {campaign.status === 'active' && (
+                                  <DropdownMenuItem 
+                                    onClick={() => handleStatusChange(campaign.id, 'paused')}
+                                  >
+                                    <Pause className="mr-2 h-4 w-4" />
+                                    Pause Campaign
+                                  </DropdownMenuItem>
+                                )}
+                                {campaign.status === 'paused' && (
+                                  <DropdownMenuItem 
+                                    onClick={() => handleStatusChange(campaign.id, 'active')}
+                                  >
+                                    <Play className="mr-2 h-4 w-4" />
+                                    Resume Campaign
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem onClick={() => window.open(campaign.track_url, '_blank')}>
+                                  <ExternalLink className="mr-2 h-4 w-4" />
+                                  Open Track
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDelete(campaign.id)}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete Campaign
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       );
@@ -639,7 +867,7 @@ export default function CampaignHistory() {
             onClose={() => setEditModal({ open: false })}
             onSuccess={() => {
               setEditModal({ open: false });
-              queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+              queryClient.invalidateQueries({ queryKey: ['campaigns-enhanced'] });
             }}
           />
         )}
