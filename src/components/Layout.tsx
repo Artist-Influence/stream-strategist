@@ -56,12 +56,6 @@ const getNavItemsForRole = (currentRole: string | null) => {
         hotkey: "Ctrl+2"
       },
       {
-        title: "Build Campaign",
-        href: "/campaign/new",
-        icon: Plus,
-        hotkey: "Ctrl+3"
-      },
-      {
         title: "View Campaigns",
         href: "/campaigns",
         icon: History,
@@ -312,12 +306,6 @@ export default function Layout({ children }: LayoutProps) {
                     <span className="flex justify-between w-full">
                       <span>Browse Playlists</span>
                       <kbd className="text-xs bg-muted px-1 rounded">Ctrl+2</kbd>
-                    </span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem disabled>
-                    <span className="flex justify-between w-full">
-                      <span>Build Campaign</span>
-                      <kbd className="text-xs bg-muted px-1 rounded">Ctrl+3</kbd>
                     </span>
                   </DropdownMenuItem>
                   <DropdownMenuItem disabled>
