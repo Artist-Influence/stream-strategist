@@ -61,8 +61,9 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
   const [selectedClientId, setSelectedClientId] = useState(initialData?.client_id || "");
   const [clientName, setClientName] = useState("");
   const [startDate, setStartDate] = useState<Date | undefined>(
-    initialData?.start_date ? new Date(initialData.start_date) : undefined
+    initialData?.start_date ? new Date(`${initialData.start_date}T12:00:00`) : undefined
   );
+  const [isStartDateOpen, setIsStartDateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   
@@ -158,7 +159,7 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
 
       // Set start date state
       if (initialData.start_date) {
-        setStartDate(new Date(initialData.start_date));
+        setStartDate(new Date(`${initialData.start_date}T12:00:00`));
       }
 
       // Set genres if available
@@ -499,7 +500,7 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                    <div className="space-y-2">
                      <Label htmlFor="start_date">Start Date *</Label>
-                     <Popover>
+                     <Popover open={isStartDateOpen} onOpenChange={setIsStartDateOpen}>
                        <PopoverTrigger asChild>
                          <Button
                            variant="outline"
@@ -521,10 +522,11 @@ export default function CampaignConfiguration({ onNext, onBack, initialData }: C
                              setStartDate(date);
                              if (date) {
                                setValue("start_date", format(date, "yyyy-MM-dd"));
+                               setIsStartDateOpen(false);
                              }
                            }}
                            initialFocus
-                           className="pointer-events-auto"
+                           className={cn("p-3 pointer-events-auto")}
                          />
                        </PopoverContent>
                      </Popover>

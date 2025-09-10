@@ -28,6 +28,7 @@ export default function AddPerformanceEntryModal({
     daily_streams: "",
     date_recorded: new Date(),
   });
+  const [dateOpen, setDateOpen] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -105,7 +106,7 @@ export default function AddPerformanceEntryModal({
           
           <div className="space-y-2">
             <Label>Date Recorded</Label>
-            <Popover>
+            <Popover open={dateOpen} onOpenChange={setDateOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -119,8 +120,9 @@ export default function AddPerformanceEntryModal({
                 <Calendar
                   mode="single"
                   selected={formData.date_recorded}
-                  onSelect={(date) => date && setFormData({ ...formData, date_recorded: date })}
+                  onSelect={(date) => { if (date) { setFormData({ ...formData, date_recorded: date }); setDateOpen(false); } }}
                   initialFocus
+                  className="p-3 pointer-events-auto"
                 />
               </PopoverContent>
             </Popover>

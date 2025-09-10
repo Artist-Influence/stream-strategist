@@ -16,7 +16,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, CalendarIcon } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { UNIFIED_GENRES, APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE } from '@/lib/constants';
@@ -66,6 +69,8 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
   const [showPlaylistSelector, setShowPlaylistSelector] = useState(false);
   const [availablePlaylists, setAvailablePlaylists] = useState<any[]>([]);
   const [playlistSearch, setPlaylistSearch] = useState('');
+  const [isStartDateOpen, setIsStartDateOpen] = useState(false);
+  const [startDate, setStartDate] = useState<Date | undefined>(formData.start_date ? new Date(`${formData.start_date}T12:00:00`) : undefined);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -308,11 +313,32 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
 
           <div>
             <Label>Start Date</Label>
-            <Input
-              type="date"
-              value={formData.start_date}
-              onChange={(e) => setFormData({...formData, start_date: e.target.value})}
-            />
+            <Popover open={isStartDateOpen} onOpenChange={setIsStartDateOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? format(startDate, 'PPP') : 'Pick a date'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={startDate}
+                  onSelect={(date) => {
+                    setStartDate(date || undefined);
+                    if (date) {
+                      setFormData({ ...formData, start_date: format(date, 'yyyy-MM-dd') });
+                      setIsStartDateOpen(false);
+                    }
+                  }}
+                  initialFocus
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
         
