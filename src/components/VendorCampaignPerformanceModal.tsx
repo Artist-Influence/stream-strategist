@@ -4,9 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
-import { Music, TrendingUp, Target, ExternalLink, RotateCcw, Plus, X } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Music, TrendingUp, Target, ExternalLink, RotateCcw, Plus, X, BarChart3 } from 'lucide-react';
 import { useUpdatePlaylistAllocation } from '@/hooks/useVendorCampaigns';
 import { useMyPlaylists } from '@/hooks/useVendorPlaylists';
+import { useCampaignPerformanceData, useCampaignOverallPerformance } from '@/hooks/useCampaignPerformanceData';
+import { VendorPerformanceChart } from '@/components/VendorPerformanceChart';
 import AddPlaylistModal from '@/components/AddPlaylistModal';
 
 interface VendorCampaignPerformanceModalProps {
@@ -21,6 +24,8 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
   
   const updatePlaylistAllocation = useUpdatePlaylistAllocation();
   const { data: myPlaylists } = useMyPlaylists();
+  const { data: performanceData, isLoading: performanceLoading } = useCampaignPerformanceData(campaign?.id);
+  const { data: overallPerformance } = useCampaignOverallPerformance(campaign?.id);
 
   if (!campaign) return null;
 
@@ -60,16 +65,33 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[1000px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl">{campaign.name}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-xl">
+            {campaign.name}
+            <Badge variant="outline" className="text-xs">
+              {overallPerformance?.progress_percentage.toFixed(1)}% complete
+            </Badge>
+          </DialogTitle>
           <DialogDescription>
             {campaign.brand_name && `${campaign.brand_name} • `}
             Campaign Performance & Playlist Management
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="performance" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Performance Analytics
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
           {/* Performance Overview */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 border rounded-lg">
@@ -255,9 +277,34 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
               </div>
             </div>
           )}
-        </div>
+          </TabsContent>
 
-        <div className="flex justify-end pt-4">
+          <TabsContent value="performance" className="space-y-6">
+            {performanceLoading ? (
+              <div className="text-center py-8">
+                <div className="text-muted-foreground">Loading performance data...</div>
+              </div>
+            ) : performanceData && performanceData.length > 0 ? (
+              <VendorPerformanceChart 
+                data={performanceData} 
+                campaignGoal={campaign.stream_goal || 0} 
+              />
+            ) : (
+              <div className="text-center py-8 border-2 border-dashed rounded-lg">
+                <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <div className="text-lg font-semibold mb-2">No Performance Data Available</div>
+                <div className="text-sm text-muted-foreground mb-4">
+                  Performance data will appear here once the campaign starts collecting stream data from Spotify.
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Data is collected through web scraping and updated weekly.
+                </div>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        <div className="flex justify-end pt-4 border-t">
           <Button onClick={onClose}>
             Close
           </Button>
