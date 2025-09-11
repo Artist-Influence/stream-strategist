@@ -71,6 +71,7 @@ export interface Campaign {
   totals: {
     projected_streams: number;
   };
+  notes?: string;
   created_at: string;
   updated_at: string;
 }

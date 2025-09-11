@@ -384,6 +384,7 @@ export type Database = {
           id: string
           music_genres: string[]
           name: string
+          notes: string | null
           pending_operator_review: boolean | null
           post_types: string[]
           public_access_enabled: boolean | null
@@ -426,6 +427,7 @@ export type Database = {
           id?: string
           music_genres?: string[]
           name: string
+          notes?: string | null
           pending_operator_review?: boolean | null
           post_types?: string[]
           public_access_enabled?: boolean | null
@@ -468,6 +470,7 @@ export type Database = {
           id?: string
           music_genres?: string[]
           name?: string
+          notes?: string | null
           pending_operator_review?: boolean | null
           post_types?: string[]
           public_access_enabled?: boolean | null
