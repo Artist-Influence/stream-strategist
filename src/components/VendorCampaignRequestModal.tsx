@@ -171,9 +171,9 @@ export function VendorCampaignRequestModal({ request, isOpen, onClose }: VendorC
             
             {isResponding ? (
               <div className="space-y-3">
-                <div className="text-sm text-muted-foreground">
-                  Select which playlists to include in your response:
-                </div>
+                 <div className="text-sm text-muted-foreground">
+                   Select which playlists to include in your response (you can approve with no playlists and add them later):
+                 </div>
                 <MultiSelect
                   options={myPlaylists?.map(p => p.name) || []}
                   selected={selectedPlaylistIds.map(id => {
@@ -189,22 +189,28 @@ export function VendorCampaignRequestModal({ request, isOpen, onClose }: VendorC
                   }}
                   placeholder="Select playlists for this campaign..."
                 />
-                {selectedPlaylistIds.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium">Selected Playlists:</div>
-                    {selectedPlaylistIds.map(id => {
-                      const playlist = myPlaylists?.find(p => p.id === id);
-                      return playlist ? (
-                        <div key={id} className="flex justify-between items-center py-2 px-3 bg-muted/10 rounded-md text-sm">
-                          <span className="font-medium">{playlist.name}</span>
-                          <span className="text-muted-foreground">
-                            {playlist.avg_daily_streams.toLocaleString()} daily streams
-                          </span>
-                        </div>
-                      ) : null;
-                    })}
-                  </div>
-                )}
+                 <div className="space-y-2">
+                   <div className="text-sm font-medium">
+                     {selectedPlaylistIds.length === 0 ? 'No playlists selected - will approve for future assignment' : 'Selected Playlists:'}
+                   </div>
+                   {selectedPlaylistIds.length === 0 ? (
+                     <div className="py-2 px-3 bg-yellow-50 border border-yellow-200 rounded-md text-sm text-yellow-800">
+                       You can approve this request without selecting playlists and assign them later from your active campaigns.
+                     </div>
+                   ) : (
+                     selectedPlaylistIds.map(id => {
+                       const playlist = myPlaylists?.find(p => p.id === id);
+                       return playlist ? (
+                         <div key={id} className="flex justify-between items-center py-2 px-3 bg-muted/10 rounded-md text-sm">
+                           <span className="font-medium">{playlist.name}</span>
+                           <span className="text-muted-foreground">
+                             {playlist.avg_daily_streams.toLocaleString()} daily streams
+                           </span>
+                         </div>
+                       ) : null;
+                     })
+                   )}
+                 </div>
               </div>
             ) : (
               <div className="space-y-2">

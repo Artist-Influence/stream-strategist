@@ -151,8 +151,8 @@ export function useRespondToVendorRequest() {
 
       if (error) throw error;
 
-      // If approved, add playlists to campaign's selected_playlists
-      if (status === 'approved' && playlistsToUse && Array.isArray(playlistsToUse)) {
+      // If approved, add playlists to campaign's selected_playlists (only if playlists selected)
+      if (status === 'approved' && playlistsToUse && Array.isArray(playlistsToUse) && playlistsToUse.length > 0) {
         const { data: campaign, error: campaignError } = await supabase
           .from('campaigns')
           .select('selected_playlists')
