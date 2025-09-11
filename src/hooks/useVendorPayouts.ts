@@ -96,18 +96,31 @@ export const useVendorPayouts = () => {
       // Process campaigns with vendor_allocations data (for approved campaigns not yet in allocations table)
       if (campaigns) {
         for (const campaign of campaigns) {
-          const vendorAllocations = campaign.vendor_allocations || {};
+          const vendorAllocations = campaign.vendor_allocations || [];
           
-          for (const [vendorId, allocation] of Object.entries(vendorAllocations)) {
+          // Handle both array and object formats for backward compatibility
+          const allocationsArray = Array.isArray(vendorAllocations) 
+            ? vendorAllocations 
+            : Object.entries(vendorAllocations).map(([vendorId, allocation]) => ({
+                vendor_id: vendorId,
+                ...(allocation as any)
+              }));
+          
+          for (const allocation of allocationsArray) {
+            if (!allocation || typeof allocation !== 'object') continue;
+            
+            const vendorId = allocation.vendor_id;
+            if (!vendorId) continue;
+            
             // Check if this allocation already exists in allocations table
             const existingAllocation = allocations?.find(a => 
               a.campaign_id === campaign.id && a.vendor_id === vendorId
             );
             
-            if (!existingAllocation && allocation && typeof allocation === 'object') {
+            if (!existingAllocation) {
               const vendor = vendorMap.get(vendorId);
               if (vendor) {
-                const allocatedStreams = (allocation as any).allocatedStreams || 0;
+                const allocatedStreams = allocation.allocation || allocation.allocatedStreams || 0;
                 const costPer1k = vendor.cost_per_1k_streams || 0;
                 const costPerStream = costPer1k / 1000;
                 
@@ -117,7 +130,7 @@ export const useVendorPayouts = () => {
                   vendor_id: vendorId,
                   allocated_streams: allocatedStreams,
                   predicted_streams: allocatedStreams,
-                  actual_streams: 0, // Will be updated when performance data comes in
+                  actual_streams: allocatedStreams, // Use allocated as actual for campaigns not in performance table
                   cost_per_stream: costPerStream,
                   actual_cost_per_stream: costPerStream,
                   performance_score: 0,
