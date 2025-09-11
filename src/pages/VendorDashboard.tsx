@@ -1,13 +1,21 @@
+import { useState } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, List, CheckCircle, XCircle, Music, TrendingUp, Users, ExternalLink, RotateCcw } from "lucide-react";
+import { Plus, List, CheckCircle, XCircle, Music, TrendingUp, Users, ExternalLink, RotateCcw, Edit2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyVendor } from "@/hooks/useVendors";
-import { useMyPlaylists } from "@/hooks/useVendorPlaylists";
+import { useMyPlaylists, useCreatePlaylist } from "@/hooks/useVendorPlaylists";
 import { useVendorCampaignRequests } from "@/hooks/useVendorCampaignRequests";
-import { useVendorCampaigns, useUpdatePlaylistAllocation } from "@/hooks/useVendorCampaigns";
+import { useVendorCampaigns } from "@/hooks/useVendorCampaigns";
+import { VendorPlaylistEditModal } from "@/components/VendorPlaylistEditModal";
+import { VendorCampaignRequestModal } from "@/components/VendorCampaignRequestModal";
+import { VendorCampaignPerformanceModal } from "@/components/VendorCampaignPerformanceModal";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 
 export default function VendorDashboard() {
   const { user } = useAuth();
@@ -15,10 +23,64 @@ export default function VendorDashboard() {
   const { data: playlists, isLoading: playlistsLoading, error: playlistsError } = useMyPlaylists();
   const { data: requests = [] } = useVendorCampaignRequests();
   const { data: campaigns = [] } = useVendorCampaigns();
-  const updatePlaylistAllocation = useUpdatePlaylistAllocation();
+  const createPlaylist = useCreatePlaylist();
+
+  // Modal states
+  const [selectedPlaylist, setSelectedPlaylist] = useState<any>(null);
+  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
+  const [showCreatePlaylistModal, setShowCreatePlaylistModal] = useState(false);
+  const [createFormData, setCreateFormData] = useState({
+    name: '',
+    url: '',
+    genres: [] as string[],
+    avg_daily_streams: 0,
+    follower_count: 0
+  });
+  const [genreInput, setGenreInput] = useState('');
 
   const totalStreams = playlists?.reduce((sum, playlist) => sum + playlist.avg_daily_streams, 0) || 0;
   const pendingRequests = requests.filter(r => r.status === 'pending').length;
+
+  const resetCreateForm = () => {
+    setCreateFormData({
+      name: '',
+      url: '',
+      genres: [],
+      avg_daily_streams: 0,
+      follower_count: 0
+    });
+    setGenreInput('');
+  };
+
+  const handleCreatePlaylist = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createFormData.name || !createFormData.url) return;
+
+    createPlaylist.mutate(createFormData, {
+      onSuccess: () => {
+        setShowCreatePlaylistModal(false);
+        resetCreateForm();
+      }
+    });
+  };
+
+  const addGenre = () => {
+    if (genreInput.trim() && !createFormData.genres.includes(genreInput.trim())) {
+      setCreateFormData(prev => ({
+        ...prev,
+        genres: [...prev.genres, genreInput.trim()]
+      }));
+      setGenreInput('');
+    }
+  };
+
+  const removeGenre = (genre: string) => {
+    setCreateFormData(prev => ({
+      ...prev,
+      genres: prev.genres.filter(g => g !== genre)
+    }));
+  };
 
   if (vendorLoading) {
     return (
@@ -90,7 +152,7 @@ export default function VendorDashboard() {
             </CardContent>
           </Card>
           
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => window.location.href = '/vendor/requests'}>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedRequest(requests[0])}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
               <XCircle className="h-4 w-4 text-muted-foreground" />
@@ -115,72 +177,50 @@ export default function VendorDashboard() {
           <CardContent>
             {campaigns.length > 0 ? (
               <div className="space-y-4">
-                {campaigns.map((campaign) => (
-                  <div key={campaign.id} className="border rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="space-y-1">
-                        <h3 className="font-semibold">{campaign.name}</h3>
-                        {campaign.brand_name && (
-                          <p className="text-sm text-muted-foreground">{campaign.brand_name}</p>
-                        )}
-                      </div>
-                      <div className="text-right text-sm">
-                        <div className="font-medium">{campaign.vendor_stream_goal?.toLocaleString() || 0} streams</div>
-                        <div className="text-muted-foreground">Your goal</div>
-                      </div>
-                    </div>
-                    
-                    {campaign.track_url && (
-                      <div className="flex items-center gap-2 mb-3">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => window.open(campaign.track_url, '_blank')}
-                        >
-                          <ExternalLink className="h-3 w-3 mr-1" />
-                          Listen to Track
-                        </Button>
-                      </div>
-                    )}
+                {campaigns.map((campaign) => {
+                  const vendorStreamGoal = campaign.vendor_stream_goal || 0;
+                  const currentStreams = campaign.vendor_playlists?.reduce((sum: number, p: any) => 
+                    p.is_allocated ? (p.current_streams || 0) : 0, 0) || 0;
+                  const progressPercentage = vendorStreamGoal > 0 ? (currentStreams / vendorStreamGoal) * 100 : 0;
+                  
+                  const getPerformanceColor = () => {
+                    if (progressPercentage >= 110) return 'text-green-600';
+                    if (progressPercentage >= 80) return 'text-blue-600';
+                    if (progressPercentage >= 50) return 'text-yellow-600';
+                    return 'text-red-600';
+                  };
 
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium text-muted-foreground">Your Playlists:</div>
-                      <div className="grid grid-cols-1 gap-2">
-                        {campaign.vendor_playlists?.map((playlist) => (
-                          <div key={playlist.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                            <div className="flex items-center gap-2">
-                              <Music className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-sm">{playlist.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                ({playlist.avg_daily_streams.toLocaleString()} streams)
-                              </span>
-                            </div>
-                            <Button
-                              variant={playlist.is_allocated ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => 
-                                updatePlaylistAllocation.mutate({
-                                  campaignId: campaign.id,
-                                  playlistId: playlist.id,
-                                  action: playlist.is_allocated ? 'remove' : 'add'
-                                })
-                              }
-                              disabled={updatePlaylistAllocation.isPending}
-                            >
-                              {updatePlaylistAllocation.isPending ? (
-                                <RotateCcw className="h-3 w-3 animate-spin" />
-                              ) : playlist.is_allocated ? (
-                                'Active'
-                              ) : (
-                                'Activate'
-                              )}
-                            </Button>
+                  return (
+                    <Card key={campaign.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedCampaign(campaign)}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="space-y-1">
+                            <h3 className="font-semibold">{campaign.name}</h3>
+                            {campaign.brand_name && (
+                              <p className="text-sm text-muted-foreground">{campaign.brand_name}</p>
+                            )}
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                          <div className="text-right text-sm">
+                            <div className="font-medium">{vendorStreamGoal.toLocaleString()} streams</div>
+                            <div className="text-muted-foreground">Your goal</div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="text-muted-foreground">Progress:</span>
+                            <span className={`font-medium ${getPerformanceColor()}`}>
+                              {currentStreams.toLocaleString()} ({progressPercentage.toFixed(1)}%)
+                            </span>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {campaign.vendor_playlists?.filter((p: any) => p.is_allocated).length || 0} active playlists
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8">
@@ -203,7 +243,7 @@ export default function VendorDashboard() {
                 Your active playlists available for campaigns
               </CardDescription>
             </div>
-            <Button onClick={() => window.location.href = '/vendor/playlists'} size="sm">
+            <Button onClick={() => setShowCreatePlaylistModal(true)} size="sm">
               <Plus className="h-4 w-4 mr-2" />
               Add Playlist
             </Button>
@@ -232,15 +272,16 @@ export default function VendorDashboard() {
                             </div>
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => window.location.href = '/vendor/playlists'}>
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedPlaylist(playlist)}>
+                          <Edit2 className="h-3 w-3 mr-1" />
                           Manage
                         </Button>
                       </div>
                     ))}
                   </div>
                 </ScrollArea>
-                <Button variant="outline" className="w-full" onClick={() => window.location.href = '/vendor/playlists'}>
-                  View All {playlists.length} Playlists
+                <Button variant="outline" className="w-full" onClick={() => setShowCreatePlaylistModal(true)}>
+                  Add More Playlists
                 </Button>
               </div>
             ) : (
@@ -250,7 +291,7 @@ export default function VendorDashboard() {
                 <p className="text-muted-foreground mb-4">
                   Add your first playlist to start participating in campaigns
                 </p>
-                <Button onClick={() => window.location.href = '/vendor/playlists'}>
+                <Button onClick={() => setShowCreatePlaylistModal(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Add Your First Playlist
                 </Button>
@@ -281,20 +322,15 @@ export default function VendorDashboard() {
                         </div>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => window.location.href = '/vendor/requests'}>
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedRequest(request)}>
                       {request.status === 'pending' ? 'Review' : 'View'}
                     </Button>
                   </div>
                 ))}
-                {requests.length > 3 && (
-                  <Button variant="outline" className="w-full" onClick={() => window.location.href = '/vendor/requests'}>
-                    View All {requests.length} Requests
-                  </Button>
-                )}
-                {requests.length <= 3 && requests.length > 0 && (
-                  <Button variant="outline" className="w-full" onClick={() => window.location.href = '/vendor/requests'}>
-                    Manage Requests
-                  </Button>
+                {requests.length > 0 && (
+                  <div className="text-center text-sm text-muted-foreground">
+                    Click on a request above to review it
+                  </div>
                 )}
               </div>
             ) : (
@@ -307,8 +343,119 @@ export default function VendorDashboard() {
               </div>
             )}
           </CardContent>
-        </Card>
-      </div>
-    </Layout>
-  );
-}
+          </Card>
+        </div>
+
+        {/* Modals */}
+        <VendorPlaylistEditModal
+          playlist={selectedPlaylist}
+          isOpen={!!selectedPlaylist}
+          onClose={() => setSelectedPlaylist(null)}
+        />
+
+        <VendorCampaignRequestModal
+          request={selectedRequest}
+          isOpen={!!selectedRequest}
+          onClose={() => setSelectedRequest(null)}
+        />
+
+        <VendorCampaignPerformanceModal
+          campaign={selectedCampaign}
+          isOpen={!!selectedCampaign}
+          onClose={() => setSelectedCampaign(null)}
+        />
+
+        {/* Create Playlist Modal */}
+        <Dialog open={showCreatePlaylistModal} onOpenChange={setShowCreatePlaylistModal}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Add New Playlist</DialogTitle>
+              <DialogDescription>
+                Add a new playlist to make it available for campaign participation.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleCreatePlaylist}>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">Name</Label>
+                  <Input
+                    id="name"
+                    value={createFormData.name}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, name: e.target.value }))}
+                    className="col-span-3"
+                    placeholder="Playlist name"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="url" className="text-right">Spotify URL</Label>
+                  <Input
+                    id="url"
+                    value={createFormData.url}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, url: e.target.value }))}
+                    className="col-span-3"
+                    placeholder="https://open.spotify.com/playlist/..."
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="streams" className="text-right">Daily Streams</Label>
+                  <Input
+                    id="streams"
+                    type="number"
+                    value={createFormData.avg_daily_streams}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, avg_daily_streams: parseInt(e.target.value) || 0 }))}
+                    className="col-span-3"
+                    placeholder="Average daily streams"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="followers" className="text-right">Followers</Label>
+                  <Input
+                    id="followers"
+                    type="number"
+                    value={createFormData.follower_count}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, follower_count: parseInt(e.target.value) || 0 }))}
+                    className="col-span-3"
+                    placeholder="Number of followers"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <Label className="text-right">Genres</Label>
+                  <div className="col-span-3 space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        value={genreInput}
+                        onChange={(e) => setGenreInput(e.target.value)}
+                        placeholder="Add genre"
+                        onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addGenre())}
+                      />
+                      <Button type="button" onClick={addGenre} size="sm">Add</Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {createFormData.genres.map((genre) => (
+                        <Badge key={genre} variant="secondary" className="cursor-pointer" onClick={() => removeGenre(genre)}>
+                          {genre} ×
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => {
+                  setShowCreatePlaylistModal(false);
+                  resetCreateForm();
+                }}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createPlaylist.isPending}>
+                  {createPlaylist.isPending ? 'Adding...' : 'Add Playlist'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </Layout>
+    );
+  }
