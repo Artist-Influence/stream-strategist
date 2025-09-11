@@ -5,7 +5,7 @@ import { toast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, List, CheckCircle, XCircle, Music, TrendingUp, Users, ExternalLink, RotateCcw, Edit2, Loader2 } from "lucide-react";
+import { Plus, List, CheckCircle, XCircle, Music, TrendingUp, Users, ExternalLink, RotateCcw, Edit2, Loader2, ChevronUp, ChevronDown, ArrowUpDown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyVendor } from "@/hooks/useVendors";
 import { useMyPlaylists, useCreatePlaylist } from "@/hooks/useVendorPlaylists";
@@ -42,9 +42,32 @@ export default function VendorDashboard() {
   const [genreInput, setGenreInput] = useState('');
   const [isSpotifyFetchingCreate, setIsSpotifyFetchingCreate] = useState(false);
   const [spotifyCreateError, setSpotifyCreateError] = useState<string | null>(null);
+  const [lastFetchedUrl, setLastFetchedUrl] = useState<string>('');
+  
+  // Sorting state for campaigns
+  const [sortBy, setSortBy] = useState<'name' | 'start_date'>('start_date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const totalStreams = playlists?.reduce((sum, playlist) => sum + playlist.avg_daily_streams, 0) || 0;
   const pendingRequests = requests.filter(r => r.status === 'pending').length;
+
+  // Sort campaigns
+  const sortedCampaigns = [...campaigns].sort((a, b) => {
+    const aValue = sortBy === 'name' ? a.name : a.start_date;
+    const bValue = sortBy === 'name' ? b.name : b.start_date;
+    
+    const comparison = aValue.localeCompare(bValue);
+    return sortOrder === 'asc' ? comparison : -comparison;
+  });
+
+  const toggleSort = (newSortBy: 'name' | 'start_date') => {
+    if (sortBy === newSortBy) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(newSortBy);
+      setSortOrder('asc');
+    }
+  };
 
   const resetCreateForm = () => {
     setCreateFormData({
@@ -121,10 +144,15 @@ export default function VendorDashboard() {
           follower_count: Number(data.followers) || 0,
           genres: data.genres || []
         }));
-        toast({
-          title: "Playlist data fetched",
-          description: `Successfully loaded "${data.name}" from Spotify`,
-        });
+        
+        // Only show toast if this is a new fetch (prevent repeated toasts)
+        if (createFormData.url !== lastFetchedUrl) {
+          setLastFetchedUrl(createFormData.url);
+          toast({
+            title: "Playlist data fetched",
+            description: `Successfully loaded "${data.name}" from Spotify`,
+          });
+        }
       }
     } catch (error: any) {
       console.error('Error fetching Spotify playlist:', error);
@@ -241,15 +269,47 @@ export default function VendorDashboard() {
         {/* My Campaigns */}
         <Card>
           <CardHeader>
-            <CardTitle>My Active Campaigns</CardTitle>
-            <CardDescription>
-              Manage your playlist participation in active campaigns
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>My Active Campaigns</CardTitle>
+                <CardDescription>
+                  Manage your playlist participation in active campaigns
+                </CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toggleSort('name')}
+                  className="text-xs"
+                >
+                  Name
+                  {sortBy === 'name' ? (
+                    sortOrder === 'asc' ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 ml-1" />
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toggleSort('start_date')}
+                  className="text-xs"
+                >
+                  Date
+                  {sortBy === 'start_date' ? (
+                    sortOrder === 'asc' ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 ml-1" />
+                  )}
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {campaigns.length > 0 ? (
               <div className="space-y-4">
-                {campaigns.map((campaign) => {
+                {sortedCampaigns.map((campaign) => {
                   const vendorStreamGoal = campaign.vendor_stream_goal || 0;
                   const currentStreams = campaign.vendor_playlists?.reduce((sum: number, p: any) => 
                     p.is_allocated ? (p.current_streams || 0) : 0, 0) || 0;
@@ -267,7 +327,12 @@ export default function VendorDashboard() {
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between mb-3">
                           <div className="space-y-1">
-                            <h3 className="font-semibold">{campaign.name}</h3>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold">{campaign.name}</h3>
+                              <Badge variant={campaign.payment_status === 'paid' ? 'default' : campaign.payment_status === 'pending' ? 'secondary' : 'outline'}>
+                                {campaign.payment_status === 'paid' ? 'Paid ✓' : campaign.payment_status === 'pending' ? 'Pending' : 'Unpaid'}
+                              </Badge>
+                            </div>
                             {campaign.brand_name && (
                               <p className="text-sm text-muted-foreground">{campaign.brand_name}</p>
                             )}

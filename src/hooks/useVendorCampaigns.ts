@@ -21,6 +21,7 @@ export interface VendorCampaign {
   status: string;
   selected_playlists: string[];
   vendor_allocations: Record<string, any>;
+  payment_status: 'paid' | 'unpaid' | 'pending';
   // Vendor-specific data
   vendor_playlists?: Array<{
     id: string;
@@ -66,10 +67,13 @@ export function useVendorCampaigns() {
       const playlistIds = playlists?.map(p => p.id) || [];
       if (playlistIds.length === 0) return [];
 
-      // Fetch campaigns; RLS ensures vendors see only campaigns where they have assigned playlists
+      // Fetch campaigns with payment status; RLS ensures vendors see only campaigns where they have assigned playlists
       const { data: campaigns, error: campaignError } = await supabase
         .from('campaigns')
-        .select('*');
+        .select(`
+          *,
+          campaign_invoices!inner(status)
+        `);
 
       if (campaignError) throw campaignError;
 
@@ -95,11 +99,23 @@ export function useVendorCampaigns() {
           }
         }
 
+        // Determine payment status from invoices
+        const invoices = (campaign as any).campaign_invoices || [];
+        let paymentStatus: 'paid' | 'unpaid' | 'pending' = 'unpaid';
+        
+        if (invoices.length > 0) {
+          const allPaid = invoices.every((inv: any) => inv.status === 'paid');
+          const hasPending = invoices.some((inv: any) => inv.status === 'pending' || inv.status === 'sent');
+          
+          paymentStatus = allPaid ? 'paid' : hasPending ? 'pending' : 'unpaid';
+        }
+
         return {
           ...campaign,
           vendor_playlists: vendorPlaylistsInCampaign,
           vendor_stream_goal: vendorStreamGoal,
-          vendor_allocation: vendorAllocations[vendorIds[0]] // For simplicity, use first vendor
+          vendor_allocation: vendorAllocations[vendorIds[0]], // For simplicity, use first vendor
+          payment_status: paymentStatus
         };
       }) || [];
 

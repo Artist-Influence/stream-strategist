@@ -39,6 +39,7 @@ export default function VendorPlaylistManager() {
   const [genreInput, setGenreInput] = useState('');
   const [isSpotifyFetching, setIsSpotifyFetching] = useState(false);
   const [spotifyError, setSpotifyError] = useState<string | null>(null);
+  const [lastFetchedUrl, setLastFetchedUrl] = useState<string>('');
 
   const resetForm = () => {
     setFormData({
@@ -86,7 +87,11 @@ export default function VendorPlaylistManager() {
         genres: data.genres && data.genres.length > 0 ? data.genres : prev.genres,
       }));
 
-      toast.success('Playlist data fetched successfully!');
+      // Only show toast if this is a new fetch (prevent repeated toasts)
+      if (formData.url !== lastFetchedUrl) {
+        setLastFetchedUrl(formData.url);
+        toast.success('Playlist data fetched successfully!');
+      }
     } catch (error) {
       console.error('Error fetching Spotify data:', error);
       setSpotifyError(error instanceof Error ? error.message : 'Failed to fetch playlist data');
