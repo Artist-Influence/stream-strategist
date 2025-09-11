@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Table,
@@ -244,6 +245,9 @@ export function ReadOnlyCampaignDetailsModal({ campaign, open, onClose }: ReadOn
               {campaignData?.status || 'draft'}
             </Badge>
           </DialogTitle>
+          <DialogDescription>
+            Read-only campaign details and playlists
+          </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-6">

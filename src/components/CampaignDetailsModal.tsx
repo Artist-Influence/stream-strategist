@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Table,
@@ -126,6 +127,39 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
             placed_date: playlist.placed_date || null
           }));
           setPlaylists(playlistsWithStatus);
+        }
+      } else if (((data?.algorithm_recommendations as any)?.allocations) && Array.isArray((data.algorithm_recommendations as any).allocations)) {
+        // Fallback to algorithm recommendations
+        try {
+          const allocations = (data.algorithm_recommendations as any).allocations;
+          const playlistIds = allocations.map((a: any) => a.playlistId).filter(Boolean);
+          if (playlistIds.length > 0) {
+            const { data: playlistDetails } = await supabase
+              .from('playlists')
+              .select(`*, vendor:vendors(name)`)
+              .in('id', playlistIds);
+            if (playlistDetails) {
+              const generated = allocations.map((allocation: any) => {
+                const playlist = playlistDetails.find(p => p.id === allocation.playlistId);
+                return {
+                  id: allocation.playlistId,
+                  name: playlist?.name || 'Unknown Playlist',
+                  url: playlist?.url || '',
+                  vendor_name: playlist?.vendor?.name || 'Unknown Vendor',
+                  status: 'Algorithm Generated',
+                  placed_date: null
+                } as PlaylistWithStatus;
+              }).filter(Boolean);
+              setPlaylists(generated);
+            } else {
+              setPlaylists([]);
+            }
+          } else {
+            setPlaylists([]);
+          }
+        } catch (e) {
+          console.error('Failed to fetch algorithm playlists:', e);
+          setPlaylists([]);
         }
       } else {
         setPlaylists([]);
@@ -307,6 +341,9 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
               {campaignData?.status || 'draft'}
             </Badge>
           </DialogTitle>
+          <DialogDescription>
+            Campaign details and playlist assignments
+          </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-6">
