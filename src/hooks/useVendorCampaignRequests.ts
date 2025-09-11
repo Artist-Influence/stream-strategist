@@ -123,6 +123,16 @@ export function useRespondToVendorRequest() {
 
   return useMutation({
     mutationFn: async ({ requestId, status, response_notes }: RespondToRequestData) => {
+      // First, get the request details to access playlist_ids and campaign_id
+      const { data: request, error: requestError } = await supabase
+        .from('campaign_vendor_requests')
+        .select('playlist_ids, campaign_id')
+        .eq('id', requestId)
+        .single();
+
+      if (requestError) throw requestError;
+
+      // Update the request status
       const { data, error } = await supabase
         .from('campaign_vendor_requests')
         .update({
@@ -136,11 +146,40 @@ export function useRespondToVendorRequest() {
         .single();
 
       if (error) throw error;
+
+      // If approved, add playlists to campaign's selected_playlists
+      if (status === 'approved' && request.playlist_ids && Array.isArray(request.playlist_ids)) {
+        const { data: campaign, error: campaignError } = await supabase
+          .from('campaigns')
+          .select('selected_playlists')
+          .eq('id', request.campaign_id)
+          .single();
+
+        if (campaignError) throw campaignError;
+
+        // Add new playlist IDs to existing selected_playlists (avoid duplicates)
+        const existingPlaylists = Array.isArray(campaign.selected_playlists) ? campaign.selected_playlists : [];
+        const newPlaylists = request.playlist_ids.filter(id => !existingPlaylists.includes(id));
+        const updatedPlaylists = [...existingPlaylists, ...newPlaylists];
+
+        // Update campaign with new playlists
+        const { error: updateError } = await supabase
+          .from('campaigns')
+          .update({
+            selected_playlists: updatedPlaylists,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', request.campaign_id);
+
+        if (updateError) throw updateError;
+      }
+
       return data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['vendor-campaign-requests'] });
       queryClient.invalidateQueries({ queryKey: ['campaign-vendor-responses'] });
+      queryClient.invalidateQueries({ queryKey: ['vendor-campaigns'] });
       
       toast({
         title: variables.status === 'approved' ? 'Request Approved' : 'Request Rejected',
