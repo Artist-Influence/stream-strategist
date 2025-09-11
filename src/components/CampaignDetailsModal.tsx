@@ -705,16 +705,20 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
                     vendorData={performanceData.map(vendor => ({
                       vendor_id: vendor.vendor_id,
                       vendor_name: vendor.vendor_name,
-                      total_daily_streams: vendor.playlists.reduce((sum, p) => sum + (p.daily_data.length > 0 ? p.daily_data[p.daily_data.length - 1].streams : 0), 0),
+                      total_daily_streams: vendor.playlists.reduce((sum, p) => {
+                        // Get most recent daily streams from weekly reports
+                        const mostRecentStream = p.daily_data.length > 0 ? p.daily_data[p.daily_data.length - 1].streams : 0;
+                        return sum + mostRecentStream;
+                      }, 0),
                       total_twelve_month_streams: vendor.playlists.reduce((sum, p) => sum + p.actual_streams, 0),
                       playlists: vendor.playlists.map(playlist => ({
                         id: playlist.id,
                         name: playlist.name,
-                        url: '#',
-                        allocated_streams: playlist.allocated_streams,
-                        actual_streams: playlist.actual_streams,
+                        url: '#', // Playlist URL not available in performance data
+                        allocated_streams: playlist.allocated_streams, // Vendor's specific allocated goal
+                        actual_streams: playlist.actual_streams, // Total streams driven by this vendor
                         twelve_month_streams: playlist.actual_streams,
-                        daily_data: playlist.daily_data,
+                        daily_data: playlist.daily_data, // Daily streams from weekly report updates
                         is_allocated: true
                       }))
                     }))}

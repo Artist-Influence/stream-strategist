@@ -93,10 +93,10 @@ export function VendorGroupedPlaylistView({
                           <ExternalLink className="h-3 w-3" />
                         </a>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>
-                          {playlist.actual_streams.toLocaleString()} / {playlist.allocated_streams.toLocaleString()} streams
-                        </span>
+                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                         <span>
+                           Total Streams Driven: {playlist.actual_streams.toLocaleString()} / {playlist.allocated_streams.toLocaleString()}
+                         </span>
                         {showHistoricalData && (
                           <span>
                             {playlist.twelve_month_streams.toLocaleString()} (12mo total)
