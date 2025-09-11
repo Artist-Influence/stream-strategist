@@ -22,6 +22,7 @@ import { ExternalLink, CheckCircle, XCircle, Clock, DollarSign, MessageSquare, S
 import { supabase } from '@/integrations/supabase/client';
 import { useCampaignVendorResponses } from '@/hooks/useCampaignVendorResponses';
 import { useToast } from '@/hooks/use-toast';
+import { useIsVendorManager } from '@/hooks/useIsVendorManager';
 
 interface PlaylistWithStatus {
   id: string;
@@ -50,6 +51,7 @@ export function ReadOnlyCampaignDetailsModal({ campaign, open, onClose }: ReadOn
   // Fetch vendor responses for this campaign
   const { data: vendorResponses = [], isLoading: vendorResponsesLoading } = useCampaignVendorResponses(campaign?.id);
   const { toast } = useToast();
+  const { data: isVendorManager = false } = useIsVendorManager();
 
   useEffect(() => {
     if (campaign?.id && open) {
@@ -420,7 +422,7 @@ export function ReadOnlyCampaignDetailsModal({ campaign, open, onClose }: ReadOn
                 <TableHeader>
                   <TableRow>
                     <TableHead>Playlist Name</TableHead>
-                    <TableHead>Vendor</TableHead>
+                    {isVendorManager && <TableHead>Vendor</TableHead>}
                     <TableHead>Followers</TableHead>
                     <TableHead>Avg Daily Streams</TableHead>
                     <TableHead>Status</TableHead>
@@ -445,11 +447,13 @@ export function ReadOnlyCampaignDetailsModal({ campaign, open, onClose }: ReadOn
                           <span>{playlist.name || 'Unnamed Playlist'}</span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {playlist.vendor_name || 'Unknown'}
-                        </Badge>
-                      </TableCell>
+                      {isVendorManager && (
+                        <TableCell>
+                          <Badge variant="secondary">
+                            {playlist.vendor_name || 'Unknown'}
+                          </Badge>
+                        </TableCell>
+                      )}
                       <TableCell>
                         {playlist.follower_count?.toLocaleString() || '0'}
                       </TableCell>

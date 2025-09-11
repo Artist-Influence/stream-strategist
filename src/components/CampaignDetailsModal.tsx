@@ -30,6 +30,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PlaylistSelector } from './PlaylistSelector';
 import { useCampaignVendorResponses } from '@/hooks/useCampaignVendorResponses';
+import { useIsVendorManager } from '@/hooks/useIsVendorManager';
 
 interface PlaylistWithStatus {
   id: string;
@@ -65,6 +66,7 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
   
   // Fetch vendor responses for this campaign
   const { data: vendorResponses = [], isLoading: vendorResponsesLoading } = useCampaignVendorResponses(campaign?.id);
+  const { data: isVendorManager = false } = useIsVendorManager();
 
   useEffect(() => {
     if (campaign?.id && open) {
@@ -465,14 +467,16 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Label className="text-lg font-semibold">Campaign Playlists ({playlists.length})</Label>
-              <Button
-                onClick={() => setShowPlaylistSelector(true)}
-                className="flex items-center gap-2"
-                size="sm"
-              >
-                <Plus className="h-4 w-4" />
-                Add Playlists
-              </Button>
+              {isVendorManager && (
+                <Button
+                  onClick={() => setShowPlaylistSelector(true)}
+                  className="flex items-center gap-2"
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Playlists
+                </Button>
+              )}
             </div>
             
             {playlists.length > 0 ? (
@@ -485,7 +489,7 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
                     <TableHead>Avg Daily Streams</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Placed Date</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
+                    {isVendorManager && <TableHead className="w-[100px]">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -518,30 +522,36 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
                         {playlist.avg_daily_streams?.toLocaleString() || '0'}
                       </TableCell>
                       <TableCell>
-                        <Select
-                          value={playlist.status || 'Pending'}
-                          onValueChange={(value) => {
-                            const updates: Partial<PlaylistWithStatus> = { status: value };
-                            if (value === 'Placed') {
-                              const date = prompt('Enter placement date (YYYY-MM-DD):');
-                              if (date) {
-                                updates.placed_date = date;
+                        {isVendorManager ? (
+                          <Select
+                            value={playlist.status || 'Pending'}
+                            onValueChange={(value) => {
+                              const updates: Partial<PlaylistWithStatus> = { status: value };
+                              if (value === 'Placed') {
+                                const date = prompt('Enter placement date (YYYY-MM-DD):');
+                                if (date) {
+                                  updates.placed_date = date;
+                                }
                               }
-                            }
-                            updatePlaylistStatus(idx, updates);
-                          }}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {PLAYLIST_STATUSES.map(status => (
-                              <SelectItem key={status} value={status}>
-                                {status}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                              updatePlaylistStatus(idx, updates);
+                            }}
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {PLAYLIST_STATUSES.map(status => (
+                                <SelectItem key={status} value={status}>
+                                  {status}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Badge variant={getStatusVariant(playlist.status || 'Pending')}>
+                            {playlist.status || 'Pending'}
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         {playlist.placed_date ? (
@@ -550,16 +560,18 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
                           <span className="text-sm text-muted-foreground">-</span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => removePlaylist(idx)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
+                      {isVendorManager && (
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removePlaylist(idx)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
