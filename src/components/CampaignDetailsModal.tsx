@@ -27,7 +27,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Trash2, Plus, ExternalLink, CheckCircle, XCircle, Clock, BarChart3 } from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { Trash2, Plus, ExternalLink, CheckCircle, XCircle, Clock, BarChart3, ChevronDown, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PlaylistSelector } from './PlaylistSelector';
@@ -70,6 +75,7 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
   const [playlists, setPlaylists] = useState<PlaylistWithStatus[]>([]);
   const [loading, setLoading] = useState(false);
   const [showPlaylistSelector, setShowPlaylistSelector] = useState(false);
+  const [expandedVendors, setExpandedVendors] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
   
   // Fetch vendor responses for this campaign
@@ -376,6 +382,45 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
     }
   };
 
+  // Group playlists by vendor with performance data
+  const groupedPlaylists = playlists.reduce((acc, playlist, idx) => {
+    const vendorName = playlist.vendor_name || 'Unknown Vendor';
+    if (!acc[vendorName]) {
+      acc[vendorName] = {
+        playlists: [],
+        totalAllocated: 0,
+        totalActual: 0,
+        vendorPerformance: null
+      };
+    }
+    
+    // Find performance data for this playlist
+    const vendorPerf = performanceData?.find(v => 
+      v.playlists.some(p => p.id === playlist.id)
+    );
+    const playlistPerf = vendorPerf?.playlists.find(p => p.id === playlist.id);
+    
+    acc[vendorName].playlists.push({
+      ...playlist,
+      idx,
+      allocated: playlistPerf?.allocated_streams || playlist.avg_daily_streams || 0,
+      actual: playlistPerf?.actual_streams || 0
+    });
+    
+    acc[vendorName].totalAllocated += playlistPerf?.allocated_streams || playlist.avg_daily_streams || 0;
+    acc[vendorName].totalActual += playlistPerf?.actual_streams || 0;
+    acc[vendorName].vendorPerformance = vendorPerf;
+    
+    return acc;
+  }, {} as Record<string, any>);
+
+  const toggleVendor = (vendorName: string) => {
+    setExpandedVendors(prev => ({
+      ...prev,
+      [vendorName]: !prev[vendorName]
+    }));
+  };
+
   if (loading) {
     return (
       <Dialog open={open} onOpenChange={onClose}>
@@ -487,65 +532,58 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
           {vendorResponses.length > 0 && (
             <div className="space-y-4">
               <Label className="text-lg font-semibold">Vendor Responses ({vendorResponses.length})</Label>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Vendor</TableHead>
-                    <TableHead>Status</TableHead> 
-                    <TableHead>Requested Playlists</TableHead>
-                    <TableHead>Response Notes</TableHead>
-                    <TableHead>Response Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {vendorResponses.map((response) => (
-                    <TableRow key={response.id}>
-                      <TableCell>
-                        <Badge variant="secondary">
+              <div className="grid gap-4">
+                {vendorResponses.map((response) => (
+                  <Card key={response.id} className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="font-medium">
                           {(response.vendor as any)?.name || 'Unknown Vendor'}
                         </Badge>
-                      </TableCell>
-                      <TableCell>
                         <Badge variant={getVendorResponseVariant(response.status)}>
                           {getVendorResponseIcon(response.status)}
                           {response.status.charAt(0).toUpperCase() + response.status.slice(1)}
                         </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {response.playlists && response.playlists.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {response.playlists.map((playlist) => (
-                              <Badge key={playlist.id} variant="outline" className="text-xs">
-                                {playlist.name}
-                              </Badge>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">No playlists</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {response.response_notes ? (
-                          <span className="text-sm">{response.response_notes}</span>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {response.responded_at ? (
-                          <span className="text-sm">{formatDate(response.responded_at)}</span>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      </div>
+                      {response.responded_at && (
+                        <span className="text-sm text-muted-foreground">
+                          {formatDate(response.responded_at)}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {response.playlists && response.playlists.length > 0 && (
+                      <div className="mb-3">
+                        <Label className="text-sm text-muted-foreground mb-1 block">
+                          Requested Playlists:
+                        </Label>
+                        <div className="flex flex-wrap gap-1">
+                          {response.playlists.map((playlist) => (
+                            <Badge key={playlist.id} variant="outline" className="text-xs">
+                              {playlist.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {response.response_notes && (
+                      <div>
+                        <Label className="text-sm text-muted-foreground mb-1 block">
+                          Vendor Notes:
+                        </Label>
+                        <p className="text-sm bg-muted/50 p-2 rounded border-l-2 border-primary/20">
+                          {response.response_notes}
+                        </p>
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
             </div>
           )}
           
-          {/* Campaign Playlists */}
+          {/* Campaign Playlists - Grouped by Vendor */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Label className="text-lg font-semibold">Campaign Playlists ({playlists.length})</Label>
@@ -562,143 +600,173 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
             </div>
             
             {playlists.length > 0 ? (
-                <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Playlist Name</TableHead>
-                    <TableHead>Vendor</TableHead>
-                    <TableHead>Followers</TableHead>
-                    <TableHead>Total Streams Driven</TableHead>
-                    <TableHead>Progress</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Placed Date</TableHead>
-                    {isVendorManager && <TableHead className="w-[100px]">Actions</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {playlists.map((playlist, idx) => (
-                    <TableRow key={`${playlist.id}-${idx}`}>
-                      <TableCell>
-                        {playlist.url ? (
-                          <a 
-                            href={playlist.url} 
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline flex items-center gap-1"
-                          >
-                            {playlist.name || 'Unnamed Playlist'}
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        ) : (
-                          <span>{playlist.name || 'Unnamed Playlist'}</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {playlist.vendor_name || 'Unknown'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {playlist.follower_count?.toLocaleString() || '0'}
-                      </TableCell>
-                      <TableCell>
-                        {/* Get performance data for this playlist */}
-                        {(() => {
-                          const vendorPerf = performanceData?.find(v => 
-                            v.playlists.some(p => p.id === playlist.id)
-                          );
-                          const playlistPerf = vendorPerf?.playlists.find(p => p.id === playlist.id);
-                          const actualStreams = playlistPerf?.actual_streams || 0;
-                          const allocatedStreams = playlistPerf?.allocated_streams || playlist.avg_daily_streams || 0;
-                          
-                          return (
-                            <div className="space-y-1">
-                              <div className="text-sm">
-                                {actualStreams.toLocaleString()} / {allocatedStreams.toLocaleString()}
+              <div className="space-y-4">
+                {Object.entries(groupedPlaylists).map(([vendorName, vendorData]) => {
+                  const isExpanded = expandedVendors[vendorName] ?? true;
+                  const progress = vendorData.totalAllocated > 0 
+                    ? (vendorData.totalActual / vendorData.totalAllocated) * 100 
+                    : 0;
+                  
+                  return (
+                    <Card key={vendorName} className="overflow-hidden">
+                      <Collapsible open={isExpanded} onOpenChange={() => toggleVendor(vendorName)}>
+                        <CollapsibleTrigger asChild>
+                          <div className="p-4 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                {isExpanded ? (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                )}
+                                <Badge variant="secondary" className="font-medium">
+                                  {vendorName}
+                                </Badge>
+                                <span className="text-sm text-muted-foreground">
+                                  {vendorData.playlists.length} playlist{vendorData.playlists.length !== 1 ? 's' : ''}
+                                </span>
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                Goal: {allocatedStreams.toLocaleString()}
+                              <div className="flex items-center gap-4">
+                                <div className="text-right text-sm">
+                                  <div className="font-medium">
+                                    {vendorData.totalActual.toLocaleString()} / {vendorData.totalAllocated.toLocaleString()}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    Total Stream Goal
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Progress value={progress} className="w-20 h-2" />
+                                  <span className="text-xs text-muted-foreground w-10">
+                                    {progress.toFixed(0)}%
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                          );
-                        })()}
-                      </TableCell>
-                      <TableCell>
-                        {/* Progress indicator */}
-                        {(() => {
-                          const vendorPerf = performanceData?.find(v => 
-                            v.playlists.some(p => p.id === playlist.id)
-                          );
-                          const playlistPerf = vendorPerf?.playlists.find(p => p.id === playlist.id);
-                          const actualStreams = playlistPerf?.actual_streams || 0;
-                          const allocatedStreams = playlistPerf?.allocated_streams || playlist.avg_daily_streams || 1;
-                          const progress = Math.min((actualStreams / allocatedStreams) * 100, 100);
-                          
-                          return (
-                            <div className="space-y-1">
-                              <Progress value={progress} className="w-16 h-2" />
-                              <div className="text-xs text-muted-foreground">
-                                {progress.toFixed(0)}%
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </TableCell>
-                      <TableCell>
-                        {isVendorManager ? (
-                          <Select
-                            value={playlist.status || 'Pending'}
-                            onValueChange={(value) => {
-                              const updates: Partial<PlaylistWithStatus> = { status: value };
-                              if (value === 'Placed') {
-                                const date = prompt('Enter placement date (YYYY-MM-DD):');
-                                if (date) {
-                                  updates.placed_date = date;
-                                }
-                              }
-                              updatePlaylistStatus(idx, updates);
-                            }}
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {PLAYLIST_STATUSES.map(status => (
-                                <SelectItem key={status} value={status}>
-                                  {status}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <Badge variant={getStatusVariant(playlist.status || 'Pending')}>
-                            {playlist.status || 'Pending'}
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {playlist.placed_date ? (
-                          <span className="text-sm">{formatDate(playlist.placed_date)}</span>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      {isVendorManager && (
-                        <TableCell>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => removePlaylist(idx)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                          </div>
+                        </CollapsibleTrigger>
+                        
+                        <CollapsibleContent>
+                          <div className="p-0">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Playlist Name</TableHead>
+                                  <TableHead>Followers</TableHead>
+                                  <TableHead>Streams Driven</TableHead>
+                                  <TableHead>Progress</TableHead>
+                                  <TableHead>Status</TableHead>
+                                  <TableHead>Placed Date</TableHead>
+                                  {isVendorManager && <TableHead className="w-[100px]">Actions</TableHead>}
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {vendorData.playlists.map((playlist) => {
+                                  const progress = playlist.allocated > 0 
+                                    ? Math.min((playlist.actual / playlist.allocated) * 100, 100)
+                                    : 0;
+                                  
+                                  return (
+                                    <TableRow key={`${playlist.id}-${playlist.idx}`}>
+                                      <TableCell>
+                                        {playlist.url ? (
+                                          <a 
+                                            href={playlist.url} 
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-primary hover:underline flex items-center gap-1"
+                                          >
+                                            {playlist.name || 'Unnamed Playlist'}
+                                            <ExternalLink className="h-3 w-3" />
+                                          </a>
+                                        ) : (
+                                          <span>{playlist.name || 'Unnamed Playlist'}</span>
+                                        )}
+                                      </TableCell>
+                                      <TableCell>
+                                        {playlist.follower_count?.toLocaleString() || '0'}
+                                      </TableCell>
+                                      <TableCell>
+                                        <div className="space-y-1">
+                                          <div className="text-sm">
+                                            {playlist.actual.toLocaleString()} / {playlist.allocated.toLocaleString()}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            Goal: {playlist.allocated.toLocaleString()}
+                                          </div>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>
+                                        <div className="space-y-1">
+                                          <Progress value={progress} className="w-16 h-2" />
+                                          <div className="text-xs text-muted-foreground">
+                                            {progress.toFixed(0)}%
+                                          </div>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>
+                                        {isVendorManager ? (
+                                          <Select
+                                            value={playlist.status || 'Pending'}
+                                            onValueChange={(value) => {
+                                              const updates: Partial<PlaylistWithStatus> = { status: value };
+                                              if (value === 'Placed') {
+                                                const date = prompt('Enter placement date (YYYY-MM-DD):');
+                                                if (date) {
+                                                  updates.placed_date = date;
+                                                }
+                                              }
+                                              updatePlaylistStatus(playlist.idx, updates);
+                                            }}
+                                          >
+                                            <SelectTrigger className="w-32">
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {PLAYLIST_STATUSES.map(status => (
+                                                <SelectItem key={status} value={status}>
+                                                  {status}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        ) : (
+                                          <Badge variant={getStatusVariant(playlist.status || 'Pending')}>
+                                            {playlist.status || 'Pending'}
+                                          </Badge>
+                                        )}
+                                      </TableCell>
+                                      <TableCell>
+                                        {playlist.placed_date ? (
+                                          <span className="text-sm">{formatDate(playlist.placed_date)}</span>
+                                        ) : (
+                                          <span className="text-sm text-muted-foreground">-</span>
+                                        )}
+                                      </TableCell>
+                                      {isVendorManager && (
+                                        <TableCell>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => removePlaylist(playlist.idx)}
+                                            className="text-destructive hover:text-destructive"
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        </TableCell>
+                                      )}
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </Card>
+                  );
+                })}
+              </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground border rounded-lg bg-card">
                 No playlists assigned to this campaign yet
