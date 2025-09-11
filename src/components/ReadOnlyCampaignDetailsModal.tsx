@@ -23,6 +23,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCampaignVendorResponses } from '@/hooks/useCampaignVendorResponses';
 import { useToast } from '@/hooks/use-toast';
 import { useIsVendorManager } from '@/hooks/useIsVendorManager';
+import { useAuth } from '@/hooks/useAuth';
+import { useSalespeople } from '@/hooks/useSalespeople';
 
 interface PlaylistWithStatus {
   id: string;
@@ -52,6 +54,8 @@ export function ReadOnlyCampaignDetailsModal({ campaign, open, onClose }: ReadOn
   const { data: vendorResponses = [], isLoading: vendorResponsesLoading } = useCampaignVendorResponses(campaign?.id);
   const { toast } = useToast();
   const { data: isVendorManager = false } = useIsVendorManager();
+  const { hasRole } = useAuth();
+  const { data: salespeople = [] } = useSalespeople();
 
   useEffect(() => {
     if (campaign?.id && open) {
@@ -203,6 +207,11 @@ export function ReadOnlyCampaignDetailsModal({ campaign, open, onClose }: ReadOn
   // Calculate commission (20% of budget)
   const commissionAmount = (campaignData?.budget || 0) * 0.2;
 
+  const getSalespersonName = (email: string) => {
+    const salesperson = salespeople.find(s => s.email === email);
+    return salesperson?.name || email || 'Not assigned';
+  };
+
   const saveNotes = async () => {
     if (!campaignData?.id) return;
     
@@ -284,6 +293,10 @@ export function ReadOnlyCampaignDetailsModal({ campaign, open, onClose }: ReadOn
             <div>
               <Label className="text-muted-foreground">Duration</Label>
               <p className="font-medium">{campaignData?.duration_days} days</p>
+            </div>
+            <div className="col-span-2">
+              <Label className="text-muted-foreground">Salesperson</Label>
+              <p className="font-medium">{getSalespersonName(campaignData?.salesperson)}</p>
             </div>
           </div>
           

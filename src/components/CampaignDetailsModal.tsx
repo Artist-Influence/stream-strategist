@@ -31,6 +31,8 @@ import { useToast } from '@/hooks/use-toast';
 import { PlaylistSelector } from './PlaylistSelector';
 import { useCampaignVendorResponses } from '@/hooks/useCampaignVendorResponses';
 import { useIsVendorManager } from '@/hooks/useIsVendorManager';
+import { useAuth } from '@/hooks/useAuth';
+import { useSalespeople } from '@/hooks/useSalespeople';
 
 interface PlaylistWithStatus {
   id: string;
@@ -67,6 +69,10 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
   // Fetch vendor responses for this campaign
   const { data: vendorResponses = [], isLoading: vendorResponsesLoading } = useCampaignVendorResponses(campaign?.id);
   const { data: isVendorManager = false } = useIsVendorManager();
+  const { hasRole } = useAuth();
+  const { data: salespeople = [] } = useSalespeople();
+  
+  const canEditCampaign = hasRole('admin') || hasRole('manager');
 
   useEffect(() => {
     if (campaign?.id && open) {
@@ -291,6 +297,39 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
     }
   };
 
+  const updateSalesperson = async (newSalesperson: string) => {
+    try {
+      const { error } = await supabase
+        .from('campaigns')
+        .update({ 
+          salesperson: newSalesperson,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', campaign!.id);
+
+      if (error) throw error;
+      
+      setCampaignData(prev => ({ ...prev, salesperson: newSalesperson }));
+      
+      toast({
+        title: "Success",
+        description: "Salesperson updated",
+      });
+    } catch (error) {
+      console.error('Failed to update salesperson:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update salesperson",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getSalespersonName = (email: string) => {
+    const salesperson = salespeople.find(s => s.email === email);
+    return salesperson?.name || email || 'Not assigned';
+  };
+
   const getStatusVariant = (status: string) => {
     switch (status) {
       case 'Placed': return 'default';
@@ -380,6 +419,28 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
             <div>
               <Label className="text-muted-foreground">Duration</Label>
               <p className="font-medium">{campaignData?.duration_days} days</p>
+            </div>
+            <div className="col-span-2">
+              <Label className="text-muted-foreground">Salesperson</Label>
+              {canEditCampaign ? (
+                <Select 
+                  value={campaignData?.salesperson || ''} 
+                  onValueChange={updateSalesperson}
+                >
+                  <SelectTrigger className="w-full mt-1">
+                    <SelectValue placeholder="Select salesperson" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {salespeople.map((salesperson) => (
+                      <SelectItem key={salesperson.id} value={salesperson.email || salesperson.name}>
+                        {salesperson.name} {salesperson.email && `(${salesperson.email})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="font-medium">{getSalespersonName(campaignData?.salesperson)}</p>
+              )}
             </div>
           </div>
           
