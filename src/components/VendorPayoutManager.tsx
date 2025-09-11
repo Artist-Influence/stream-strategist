@@ -36,13 +36,13 @@ export function VendorPayoutManager() {
   const bulkMarkPayoutsPaid = useBulkMarkPayoutsPaid();
   const { toast } = useToast();
 
-  // Flatten campaigns for table view and apply filters
+  // Flatten campaigns for table view and apply filters, sorted by vendor total owed
   const allPayouts = vendorPayouts?.flatMap(vendor => 
     vendor.campaigns.map(campaign => ({
       ...campaign,
       vendor_total_owed: vendor.total_owed
     }))
-  ) || [];
+  ).sort((a, b) => b.vendor_total_owed - a.vendor_total_owed) || [];
 
   const filteredPayouts = allPayouts.filter(payout => {
     const matchesSearch = payout.vendor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||

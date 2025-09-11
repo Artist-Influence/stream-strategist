@@ -148,20 +148,55 @@ export const useVendorPayouts = () => {
         });
       }
 
+      // Group allocations by vendor+campaign to aggregate duplicates
+      const campaignVendorMap = new Map<string, {
+        vendor_id: string;
+        campaign_id: string;
+        allocated_streams: number;
+        actual_streams: number;
+        cost_per_stream: number;
+      }>();
+
+      // Aggregate allocations per vendor per campaign
+      (allPayoutData || []).forEach((allocation: any) => {
+        const key = `${allocation.campaign_id}-${allocation.vendor_id}`;
+        const vendor = vendorMap.get(allocation.vendor_id);
+        if (!vendor) return;
+
+        const costPerStream = (allocation.actual_cost_per_stream ?? allocation.cost_per_stream ?? ((vendor.cost_per_1k_streams || 0) / 1000)) as number;
+        const actualStreams = typeof allocation.actual_streams === 'number' ? allocation.actual_streams : (allocation.allocated_streams || 0);
+
+        if (campaignVendorMap.has(key)) {
+          // Aggregate with existing entry
+          const existing = campaignVendorMap.get(key)!;
+          existing.allocated_streams += allocation.allocated_streams || 0;
+          existing.actual_streams += actualStreams || 0;
+          // Use the higher cost per stream (or keep existing if same)
+          existing.cost_per_stream = Math.max(existing.cost_per_stream, costPerStream);
+        } else {
+          // Create new aggregated entry
+          campaignVendorMap.set(key, {
+            vendor_id: allocation.vendor_id,
+            campaign_id: allocation.campaign_id,
+            allocated_streams: allocation.allocated_streams || 0,
+            actual_streams: actualStreams || 0,
+            cost_per_stream: costPerStream,
+          });
+        }
+      });
+
       // Group by vendor and calculate totals
       const vendorPayouts = new Map<string, VendorPayoutSummary>();
 
-      (allPayoutData || []).forEach((allocation: any) => {
-        const vendor = vendorMap.get(allocation.vendor_id);
-        const campaign = campaignsMap.get(allocation.campaign_id);
+      campaignVendorMap.forEach((aggregatedAllocation, key) => {
+        const vendor = vendorMap.get(aggregatedAllocation.vendor_id);
+        const campaign = campaignsMap.get(aggregatedAllocation.campaign_id);
         if (!vendor || !campaign) return;
 
         const invoiceArr = (invoicesByCampaign.get(campaign.id) || []) as any[];
         const invoice = invoiceArr[0];
 
-        const costPerStream = (allocation.actual_cost_per_stream ?? allocation.cost_per_stream ?? ((vendor.cost_per_1k_streams || 0) / 1000)) as number;
-        const actualStreams = typeof allocation.actual_streams === 'number' ? allocation.actual_streams : (allocation.allocated_streams || 0);
-        const amountOwed = (actualStreams || 0) * (costPerStream || 0);
+        const amountOwed = (aggregatedAllocation.actual_streams || 0) * (aggregatedAllocation.cost_per_stream || 0);
         const paymentStatus: 'paid' | 'unpaid' = invoice?.status === 'paid' ? 'paid' : 'unpaid';
 
         const startDate = new Date(campaign.start_date);
@@ -178,9 +213,9 @@ export const useVendorPayouts = () => {
           campaign_completion_date: isNaN(completionDate.getTime()) ? undefined : completionDate.toISOString().split('T')[0],
           invoice_id: invoice?.id,
           payment_date: invoice?.paid_date,
-          allocated_streams: allocation.allocated_streams || 0,
-          actual_streams: actualStreams || 0,
-          cost_per_stream: costPerStream || 0,
+          allocated_streams: aggregatedAllocation.allocated_streams,
+          actual_streams: aggregatedAllocation.actual_streams,
+          cost_per_stream: aggregatedAllocation.cost_per_stream,
         };
 
         if (!vendorPayouts.has(vendor.id)) {
