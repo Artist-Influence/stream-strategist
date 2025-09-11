@@ -108,7 +108,7 @@ export default function VendorPlaylistManager() {
     if (playlistId && formData.url && !isSpotifyFetching) {
       const timeoutId = setTimeout(() => {
         fetchSpotifyPlaylistData(playlistId);
-      }, 1500); // Increased delay to avoid excessive API calls
+      }, 1000);
       
       return () => clearTimeout(timeoutId);
     } else if (!playlistId && formData.url) {
@@ -257,6 +257,10 @@ export default function VendorPlaylistManager() {
                         id="url"
                         value={formData.url}
                         onChange={(e) => handleUrlChange(e.target.value)}
+                        onBlur={(e) => {
+                          const id = extractPlaylistId(e.target.value);
+                          if (id) fetchSpotifyPlaylistData(id);
+                        }}
                         className={`${isSpotifyFetching ? 'pr-10' : ''}`}
                         placeholder="https://open.spotify.com/playlist/..."
                         required
@@ -478,6 +482,10 @@ export default function VendorPlaylistManager() {
                       id="edit-url"
                       value={formData.url}
                       onChange={(e) => handleUrlChange(e.target.value)}
+                      onBlur={(e) => {
+                        const id = extractPlaylistId(e.target.value);
+                        if (id) fetchSpotifyPlaylistData(id);
+                      }}
                       className={`${isSpotifyFetching ? 'pr-10' : ''}`}
                       required
                     />
