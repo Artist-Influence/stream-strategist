@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface Vendor {
   id: string;
@@ -39,8 +40,10 @@ export function useVendors() {
 
 // Fetch vendor for current user (vendor role only)
 export function useMyVendor() {
+  const { user, loading } = useAuth();
   return useQuery({
-    queryKey: ['my-vendor'],
+    queryKey: ['my-vendor', user?.id ?? 'anon'],
+    enabled: !!user && !loading,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('vendor_users')
@@ -56,7 +59,8 @@ export function useMyVendor() {
             created_at,
             updated_at
           )
-        `);
+        `)
+        .eq('user_id', user!.id);
 
       if (error) throw error;
       const rows = (data as any[]) || [];

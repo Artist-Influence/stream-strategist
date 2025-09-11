@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface VendorCampaignRequest {
   id: string;
@@ -49,14 +50,18 @@ export interface RespondToRequestData {
 
 // Hook to fetch vendor campaign requests for current vendor
 export function useVendorCampaignRequests() {
+  const { user, loading } = useAuth();
   return useQuery({
-    queryKey: ['vendor-campaign-requests'],
+    queryKey: ['vendor-campaign-requests', user?.id ?? 'anon'],
+    enabled: !!user && !loading,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       // First get current user's vendor IDs
       const { data: vendorUsers, error: vendorError } = await supabase
         .from('vendor_users')
         .select('vendor_id')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+        .eq('user_id', user!.id);
 
       if (vendorError) throw vendorError;
       
@@ -66,21 +71,25 @@ export function useVendorCampaignRequests() {
       // Fetch campaign vendor requests for current user's vendors (pending only)
       const { data: requests, error } = await supabase
         .from('campaign_vendor_requests')
-        .select(`
-          *,
-          campaigns!inner(
-            id, name, brand_name, track_name, track_url, budget, start_date, 
-            duration_days, music_genres, content_types, territory_preferences, 
-            post_types, sub_genres, stream_goal, creator_count
-          )
-        `)
+        .select('*')
         .in('vendor_id', vendorIds)
         .eq('status', 'pending')
         .order('requested_at', { ascending: false });
 
       if (error) throw error;
 
-      // No need for separate campaign fetch since we joined the data above
+      // Collect unique campaign IDs and fetch campaigns separately (no FK join available)
+      const campaignIds = Array.from(new Set((requests || []).map((r: any) => r.campaign_id)));
+      let campaignsMap: Record<string, any> = {};
+
+      if (campaignIds.length > 0) {
+        const { data: campaigns, error: campaignsError } = await supabase
+          .from('campaigns')
+          .select('id, name, brand_name, track_name, track_url, budget, start_date, duration_days, music_genres, content_types, territory_preferences, post_types, sub_genres, stream_goal, creator_count')
+          .in('id', campaignIds);
+        if (campaignsError) throw campaignsError;
+        campaignsMap = (campaigns || []).reduce((acc: any, c: any) => { acc[c.id] = c; return acc; }, {});
+      }
 
       // Fetch playlist details for each request and attach campaign data
       const requestsWithPlaylists = await Promise.all(
@@ -103,7 +112,7 @@ export function useVendorCampaignRequests() {
 
           return { 
             ...request, 
-            campaign: request.campaigns,
+            campaign: campaignsMap[request.campaign_id],
             playlists: playlistsForRequest 
           };
         })

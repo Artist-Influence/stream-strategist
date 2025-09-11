@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface VendorCampaign {
   id: string;
@@ -36,8 +37,12 @@ export interface VendorCampaign {
 
 // Hook to fetch campaigns where vendor has playlists allocated
 export function useVendorCampaigns() {
+  const { user, loading } = useAuth();
   return useQuery({
-    queryKey: ['vendor-campaigns'],
+    queryKey: ['vendor-campaigns', user?.id ?? 'anon'],
+    enabled: !!user && !loading,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       // First get current user's vendor data
       const { data: vendorUsers, error: vendorError } = await supabase
@@ -49,7 +54,7 @@ export function useVendorCampaigns() {
             name
           )
         `)
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+        .eq('user_id', user!.id);
 
       if (vendorError) throw vendorError;
       
@@ -65,15 +70,12 @@ export function useVendorCampaigns() {
       if (playlistError) throw playlistError;
       
       const playlistIds = playlists?.map(p => p.id) || [];
-      if (playlistIds.length === 0) return [];
+      // Note: even if vendor has no playlists, campaigns may be visible via allocations/requests
 
       // Fetch campaigns with payment status; RLS ensures vendors see only campaigns where they have assigned playlists
       const { data: campaigns, error: campaignError } = await supabase
         .from('campaigns')
-        .select(`
-          *,
-          campaign_invoices(status)
-        `);
+        .select('*');
 
       if (campaignError) throw campaignError;
 
@@ -110,16 +112,8 @@ export function useVendorCampaigns() {
           }
         }
 
-        // Determine payment status from invoices
-        const invoices = (campaign as any).campaign_invoices || [];
-        let paymentStatus: 'paid' | 'unpaid' | 'pending' = 'unpaid';
-        
-        if (invoices.length > 0) {
-          const allPaid = invoices.every((inv: any) => inv.status === 'paid');
-          const hasPending = invoices.some((inv: any) => inv.status === 'pending' || inv.status === 'sent');
-          
-          paymentStatus = allPaid ? 'paid' : hasPending ? 'pending' : 'unpaid';
-        }
+        // Determine payment status (no join; default to 'pending')
+        const paymentStatus: 'paid' | 'unpaid' | 'pending' = 'pending';
 
         return {
           ...campaign,
