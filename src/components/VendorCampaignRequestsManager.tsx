@@ -2,44 +2,25 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { CheckCircle, XCircle, Clock, Music, DollarSign, Calendar, Target } from 'lucide-react';
-import { useVendorCampaignRequests, useRespondToVendorRequest } from '@/hooks/useVendorCampaignRequests';
+import { CheckCircle, XCircle, Clock, Music, DollarSign, Target } from 'lucide-react';
+import { useVendorCampaignRequests } from '@/hooks/useVendorCampaignRequests';
+import { VendorCampaignRequestModal } from '@/components/VendorCampaignRequestModal';
 import { formatDistanceToNow } from 'date-fns';
 
 export function VendorCampaignRequestsManager() {
-  const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
-  const [responseType, setResponseType] = useState<'approved' | 'rejected'>('approved');
-  const [responseNotes, setResponseNotes] = useState('');
-  const [showResponseDialog, setShowResponseDialog] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
+  const [showRequestModal, setShowRequestModal] = useState(false);
 
   const { data: requests = [], isLoading } = useVendorCampaignRequests();
-  const respondToRequest = useRespondToVendorRequest();
 
-  const handleRespond = (requestId: string, status: 'approved' | 'rejected') => {
-    setSelectedRequest(requestId);
-    setResponseType(status);
-    setShowResponseDialog(true);
+  const handleReviewRequest = (request: any) => {
+    setSelectedRequest(request);
+    setShowRequestModal(true);
   };
 
-  const submitResponse = async () => {
-    if (!selectedRequest) return;
-    
-    try {
-      await respondToRequest.mutateAsync({
-        requestId: selectedRequest,
-        status: responseType,
-        response_notes: responseNotes
-      });
-      
-      setShowResponseDialog(false);
-      setResponseNotes('');
-      setSelectedRequest(null);
-    } catch (error) {
-      console.error('Error submitting response:', error);
-    }
+  const handleCloseModal = () => {
+    setShowRequestModal(false);
+    setSelectedRequest(null);
   };
 
   const getStatusColor = (status: string) => {
@@ -239,20 +220,12 @@ export function VendorCampaignRequestsManager() {
               {request.status === 'pending' && (
                 <div className="flex gap-2 pt-2">
                   <Button
-                    onClick={() => handleRespond(request.id, 'approved')}
+                    onClick={() => handleReviewRequest(request)}
                     size="sm"
-                    className="bg-green-600 hover:bg-green-700"
+                    className="bg-primary hover:bg-primary/90"
                   >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Approve
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleRespond(request.id, 'rejected')}
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Reject
+                    <Music className="h-4 w-4 mr-2" />
+                    Review & Modify Request
                   </Button>
                 </div>
               )}
@@ -273,56 +246,12 @@ export function VendorCampaignRequestsManager() {
         )}
       </div>
 
-      {/* Response Dialog */}
-      <Dialog open={showResponseDialog} onOpenChange={setShowResponseDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {responseType === 'approved' ? 'Approve' : 'Reject'} Campaign Request
-            </DialogTitle>
-            <DialogDescription>
-              {responseType === 'approved' 
-                ? 'Confirm your participation in this campaign. You can add notes about playlist selection or other details.'
-                : 'Please provide a reason for rejecting this campaign request.'
-              }
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label>
-              {responseType === 'approved' ? 'Response Notes (Optional)' : 'Rejection Reason'}
-            </Label>
-            <Textarea
-              value={responseNotes}
-              onChange={(e) => setResponseNotes(e.target.value)}
-              placeholder={
-                responseType === 'approved' 
-                  ? 'Add any notes about playlist selection, timing, or other details...'
-                  : 'Please explain why you are rejecting this request...'
-              }
-              rows={3}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowResponseDialog(false);
-                setResponseNotes('');
-                setSelectedRequest(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant={responseType === 'approved' ? 'default' : 'destructive'}
-              onClick={submitResponse}
-              disabled={respondToRequest.isPending || (responseType === 'rejected' && !responseNotes.trim())}
-            >
-              {respondToRequest.isPending ? 'Submitting...' : (responseType === 'approved' ? 'Approve Request' : 'Reject Request')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Enhanced Request Review Modal */}
+      <VendorCampaignRequestModal
+        request={selectedRequest}
+        isOpen={showRequestModal}
+        onClose={handleCloseModal}
+      />
     </div>
   );
 }
