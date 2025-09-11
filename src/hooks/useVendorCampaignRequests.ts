@@ -51,11 +51,23 @@ export function useVendorCampaignRequests() {
   return useQuery({
     queryKey: ['vendor-campaign-requests'],
     queryFn: async () => {
+      // First get current user's vendor IDs
+      const { data: vendorUsers, error: vendorError } = await supabase
+        .from('vendor_users')
+        .select('vendor_id')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+
+      if (vendorError) throw vendorError;
+      
+      const vendorIds = vendorUsers?.map(vu => vu.vendor_id) || [];
+      if (vendorIds.length === 0) return [];
+
+      // Fetch campaign vendor requests for current user's vendors
       const { data, error } = await supabase
         .from('campaign_vendor_requests')
         .select(`
           *,
-          campaigns:campaign_id (
+          campaigns (
             id,
             name,
             brand_name,
@@ -73,6 +85,7 @@ export function useVendorCampaignRequests() {
             creator_count
           )
         `)
+        .in('vendor_id', vendorIds)
         .order('requested_at', { ascending: false });
 
       if (error) throw error;

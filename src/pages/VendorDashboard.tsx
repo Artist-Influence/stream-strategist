@@ -2,17 +2,20 @@ import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, List, CheckCircle, XCircle, Music, TrendingUp, Users } from "lucide-react";
+import { Plus, List, CheckCircle, XCircle, Music, TrendingUp, Users, ExternalLink, RotateCcw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyVendor } from "@/hooks/useVendors";
 import { useMyPlaylists } from "@/hooks/useVendorPlaylists";
 import { useVendorCampaignRequests } from "@/hooks/useVendorCampaignRequests";
+import { useVendorCampaigns, useUpdatePlaylistAllocation } from "@/hooks/useVendorCampaigns";
 
 export default function VendorDashboard() {
   const { user } = useAuth();
   const { data: vendor, isLoading: vendorLoading, error: vendorError } = useMyVendor();
   const { data: playlists, isLoading: playlistsLoading, error: playlistsError } = useMyPlaylists();
   const { data: requests = [] } = useVendorCampaignRequests();
+  const { data: campaigns = [] } = useVendorCampaigns();
+  const updatePlaylistAllocation = useUpdatePlaylistAllocation();
 
   const totalStreams = playlists?.reduce((sum, playlist) => sum + playlist.avg_daily_streams, 0) || 0;
   const pendingRequests = requests.filter(r => r.status === 'pending').length;
@@ -100,6 +103,96 @@ export default function VendorDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* My Campaigns */}
+        <Card>
+          <CardHeader>
+            <CardTitle>My Active Campaigns</CardTitle>
+            <CardDescription>
+              Manage your playlist participation in active campaigns
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {campaigns.length > 0 ? (
+              <div className="space-y-4">
+                {campaigns.map((campaign) => (
+                  <div key={campaign.id} className="border rounded-lg p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="space-y-1">
+                        <h3 className="font-semibold">{campaign.name}</h3>
+                        {campaign.brand_name && (
+                          <p className="text-sm text-muted-foreground">{campaign.brand_name}</p>
+                        )}
+                      </div>
+                      <div className="text-right text-sm">
+                        <div className="font-medium">{campaign.vendor_stream_goal?.toLocaleString() || 0} streams</div>
+                        <div className="text-muted-foreground">Your goal</div>
+                      </div>
+                    </div>
+                    
+                    {campaign.track_url && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => window.open(campaign.track_url, '_blank')}
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          Listen to Track
+                        </Button>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground">Your Playlists:</div>
+                      <div className="grid grid-cols-1 gap-2">
+                        {campaign.vendor_playlists?.map((playlist) => (
+                          <div key={playlist.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                            <div className="flex items-center gap-2">
+                              <Music className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-sm">{playlist.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                ({playlist.avg_daily_streams.toLocaleString()} streams)
+                              </span>
+                            </div>
+                            <Button
+                              variant={playlist.is_allocated ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => 
+                                updatePlaylistAllocation.mutate({
+                                  campaignId: campaign.id,
+                                  playlistId: playlist.id,
+                                  action: playlist.is_allocated ? 'remove' : 'add'
+                                })
+                              }
+                              disabled={updatePlaylistAllocation.isPending}
+                            >
+                              {updatePlaylistAllocation.isPending ? (
+                                <RotateCcw className="h-3 w-3 animate-spin" />
+                              ) : playlist.is_allocated ? (
+                                'Active'
+                              ) : (
+                                'Activate'
+                              )}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Music className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No active campaigns</h3>
+                <p className="text-muted-foreground">
+                  You're not currently participating in any campaigns. Check back later for opportunities.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Playlist Management */}
         <Card>
