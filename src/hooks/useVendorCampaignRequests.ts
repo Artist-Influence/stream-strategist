@@ -44,6 +44,7 @@ export interface RespondToRequestData {
   requestId: string;
   status: 'approved' | 'rejected';
   response_notes?: string;
+  playlist_ids?: string[];
 }
 
 // Hook to fetch vendor campaign requests for current vendor
@@ -121,7 +122,7 @@ export function useRespondToVendorRequest() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ requestId, status, response_notes }: RespondToRequestData) => {
+    mutationFn: async ({ requestId, status, response_notes, playlist_ids }: RespondToRequestData) => {
       // First, get the request details to access playlist_ids and campaign_id
       const { data: request, error: requestError } = await supabase
         .from('campaign_vendor_requests')
@@ -131,12 +132,16 @@ export function useRespondToVendorRequest() {
 
       if (requestError) throw requestError;
 
-      // Update the request status
+      // Determine which playlist IDs to use (provided ones or original ones)
+      const playlistsToUse = playlist_ids || request.playlist_ids;
+
+      // Update the request status and playlist selection
       const { data, error } = await supabase
         .from('campaign_vendor_requests')
         .update({
           status,
           response_notes,
+          playlist_ids: playlistsToUse,
           responded_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
@@ -147,7 +152,7 @@ export function useRespondToVendorRequest() {
       if (error) throw error;
 
       // If approved, add playlists to campaign's selected_playlists
-      if (status === 'approved' && request.playlist_ids && Array.isArray(request.playlist_ids)) {
+      if (status === 'approved' && playlistsToUse && Array.isArray(playlistsToUse)) {
         const { data: campaign, error: campaignError } = await supabase
           .from('campaigns')
           .select('selected_playlists')
@@ -158,7 +163,7 @@ export function useRespondToVendorRequest() {
 
         // Add new playlist IDs to existing selected_playlists (avoid duplicates)
         const existingPlaylists = Array.isArray(campaign.selected_playlists) ? campaign.selected_playlists : [];
-        const newPlaylists = request.playlist_ids.filter(id => !existingPlaylists.includes(id));
+        const newPlaylists = playlistsToUse.filter(id => !existingPlaylists.includes(id));
         const updatedPlaylists = [...existingPlaylists, ...newPlaylists];
 
         // Update campaign with new playlists

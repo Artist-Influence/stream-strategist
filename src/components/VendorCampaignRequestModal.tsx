@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { CheckCircle, XCircle, Clock, Music, DollarSign, Calendar, Target, ExternalLink } from 'lucide-react';
 import { useRespondToVendorRequest } from '@/hooks/useVendorCampaignRequests';
+import { useMyPlaylists } from '@/hooks/useVendorPlaylists';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { formatDistanceToNow } from 'date-fns';
 
 interface VendorCampaignRequestModalProps {
@@ -18,8 +20,17 @@ export function VendorCampaignRequestModal({ request, isOpen, onClose }: VendorC
   const [responseType, setResponseType] = useState<'approved' | 'rejected'>('approved');
   const [responseNotes, setResponseNotes] = useState('');
   const [isResponding, setIsResponding] = useState(false);
+  const [selectedPlaylistIds, setSelectedPlaylistIds] = useState<string[]>([]);
   
   const respondToRequest = useRespondToVendorRequest();
+  const { data: myPlaylists } = useMyPlaylists();
+
+  // Initialize selected playlists when request changes
+  useEffect(() => {
+    if (request?.playlists) {
+      setSelectedPlaylistIds(request.playlists.map((p: any) => p.id));
+    }
+  }, [request]);
 
   const handleRespond = (status: 'approved' | 'rejected') => {
     setResponseType(status);
@@ -33,7 +44,8 @@ export function VendorCampaignRequestModal({ request, isOpen, onClose }: VendorC
       await respondToRequest.mutateAsync({
         requestId: request.id,
         status: responseType,
-        response_notes: responseNotes
+        response_notes: responseNotes,
+        playlist_ids: selectedPlaylistIds
       });
       
       setIsResponding(false);
@@ -145,15 +157,58 @@ export function VendorCampaignRequestModal({ request, isOpen, onClose }: VendorC
             </div>
           )}
 
-          {/* Requested Playlists */}
-          {request.playlists && request.playlists.length > 0 && (
-            <div className="border rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Music className="h-4 w-4" />
-                <span className="font-medium">Requested Playlists ({request.playlists.length})</span>
+          {/* Playlist Selection */}
+          <div className="border rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Music className="h-4 w-4" />
+              <span className="font-medium">Playlist Selection</span>
+              {isResponding && (
+                <Badge variant="outline" className="text-xs">
+                  {selectedPlaylistIds.length !== (request.playlists?.length || 0) ? 'Modified' : 'Original'}
+                </Badge>
+              )}
+            </div>
+            
+            {isResponding ? (
+              <div className="space-y-3">
+                <div className="text-sm text-muted-foreground">
+                  Select which playlists to include in your response:
+                </div>
+                <MultiSelect
+                  options={myPlaylists?.map(p => p.name) || []}
+                  selected={selectedPlaylistIds.map(id => {
+                    const playlist = myPlaylists?.find(p => p.id === id);
+                    return playlist?.name || id;
+                  }).filter(Boolean)}
+                  onChange={(selectedNames) => {
+                    const ids = selectedNames.map(name => {
+                      const playlist = myPlaylists?.find(p => p.name === name);
+                      return playlist?.id;
+                    }).filter(Boolean) as string[];
+                    setSelectedPlaylistIds(ids);
+                  }}
+                  placeholder="Select playlists for this campaign..."
+                />
+                {selectedPlaylistIds.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Selected Playlists:</div>
+                    {selectedPlaylistIds.map(id => {
+                      const playlist = myPlaylists?.find(p => p.id === id);
+                      return playlist ? (
+                        <div key={id} className="flex justify-between items-center py-2 px-3 bg-muted/10 rounded-md text-sm">
+                          <span className="font-medium">{playlist.name}</span>
+                          <span className="text-muted-foreground">
+                            {playlist.avg_daily_streams.toLocaleString()} daily streams
+                          </span>
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
+                )}
               </div>
+            ) : (
               <div className="space-y-2">
-                {request.playlists.map((playlist: any) => (
+                {request.playlists?.map((playlist: any) => (
                   <div key={playlist.id} className="flex justify-between items-center py-2 px-3 bg-muted/20 rounded-md">
                     <span className="font-medium">{playlist.name}</span>
                     <span className="text-sm text-muted-foreground">
@@ -161,9 +216,14 @@ export function VendorCampaignRequestModal({ request, isOpen, onClose }: VendorC
                     </span>
                   </div>
                 ))}
+                {(!request.playlists || request.playlists.length === 0) && (
+                  <div className="text-center py-4 text-muted-foreground">
+                    No specific playlists requested
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Music Genres */}
           {request.campaign?.music_genres && request.campaign.music_genres.length > 0 && (

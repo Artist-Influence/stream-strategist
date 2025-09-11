@@ -3,8 +3,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Music, TrendingUp, Target, ExternalLink, RotateCcw, Plus, Minus } from 'lucide-react';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Music, TrendingUp, Target, ExternalLink, RotateCcw, Plus, Minus, Search, X } from 'lucide-react';
 import { useUpdatePlaylistAllocation } from '@/hooks/useVendorCampaigns';
+import { useMyPlaylists } from '@/hooks/useVendorPlaylists';
 
 interface VendorCampaignPerformanceModalProps {
   campaign: any;
@@ -13,7 +16,10 @@ interface VendorCampaignPerformanceModalProps {
 }
 
 export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: VendorCampaignPerformanceModalProps) {
+  const [isAddingPlaylist, setIsAddingPlaylist] = useState(false);
+  
   const updatePlaylistAllocation = useUpdatePlaylistAllocation();
+  const { data: myPlaylists } = useMyPlaylists();
 
   if (!campaign) return null;
 
@@ -110,65 +116,128 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
 
           {/* Playlist Management */}
           <div className="border rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-4">
-              <Music className="h-4 w-4" />
-              <span className="font-medium">Your Playlists in Campaign</span>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Music className="h-4 w-4" />
+                <span className="font-medium">Playlist Management</span>
+              </div>
+              <Popover open={isAddingPlaylist} onOpenChange={setIsAddingPlaylist}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="flex items-center gap-2">
+                    <Plus className="h-3 w-3" />
+                    Add Playlist
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0">
+                  <Command>
+                    <CommandInput placeholder="Search playlists..." />
+                    <CommandList>
+                      <CommandEmpty>No playlists found.</CommandEmpty>
+                      <CommandGroup>
+                        {myPlaylists?.filter(playlist => 
+                          !campaign.vendor_playlists?.some((vp: any) => vp.id === playlist.id && vp.is_allocated)
+                        ).map((playlist) => (
+                          <CommandItem
+                            key={playlist.id}
+                            value={playlist.name}
+                            onSelect={() => {
+                              handlePlaylistToggle(playlist.id, false);
+                              setIsAddingPlaylist(false);
+                            }}
+                            className="flex items-center justify-between"
+                          >
+                            <div>
+                              <div className="font-medium">{playlist.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {playlist.avg_daily_streams.toLocaleString()} daily streams
+                              </div>
+                            </div>
+                            <Plus className="h-3 w-3" />
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             
-            {campaign.vendor_playlists && campaign.vendor_playlists.length > 0 ? (
-              <div className="space-y-3">
-                {campaign.vendor_playlists.map((playlist: any) => (
-                  <div key={playlist.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Music className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <div className="font-medium">{playlist.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {playlist.avg_daily_streams.toLocaleString()} daily streams
+            {/* Active Playlists */}
+            <div className="space-y-3">
+              <div className="text-sm font-medium">Active Playlists:</div>
+              {campaign.vendor_playlists?.filter((p: any) => p.is_allocated).length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {campaign.vendor_playlists
+                    .filter((playlist: any) => playlist.is_allocated)
+                    .map((playlist: any) => (
+                    <div key={playlist.id} className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">{playlist.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {playlist.avg_daily_streams.toLocaleString()} streams/day
                           {playlist.current_streams && (
-                            <span className="ml-2">• {playlist.current_streams.toLocaleString()} campaign streams</span>
+                            <span className="ml-1">• {playlist.current_streams.toLocaleString()} campaign</span>
                           )}
                         </div>
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      {playlist.is_allocated && (
-                        <Badge variant="default" className="bg-green-600">
-                          Active
-                        </Badge>
-                      )}
                       <Button
-                        variant={playlist.is_allocated ? "outline" : "default"}
+                        variant="ghost"
                         size="sm"
-                        onClick={() => handlePlaylistToggle(playlist.id, playlist.is_allocated)}
+                        onClick={() => handlePlaylistToggle(playlist.id, true)}
                         disabled={updatePlaylistAllocation.isPending}
+                        className="h-6 w-6 p-0 hover:bg-red-100"
                       >
                         {updatePlaylistAllocation.isPending ? (
                           <RotateCcw className="h-3 w-3 animate-spin" />
-                        ) : playlist.is_allocated ? (
-                          <>
-                            <Minus className="h-3 w-3 mr-1" />
-                            Remove
-                          </>
                         ) : (
-                          <>
-                            <Plus className="h-3 w-3 mr-1" />
-                            Add
-                          </>
+                          <X className="h-3 w-3" />
                         )}
                       </Button>
                     </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-muted-foreground border-2 border-dashed rounded-lg">
+                  <Music className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No playlists active in this campaign</p>
+                  <p className="text-xs">Use "Add Playlist" to get started</p>
+                </div>
+              )}
+              
+              {/* Available Playlists */}
+              {campaign.vendor_playlists?.filter((p: any) => !p.is_allocated).length > 0 && (
+                <div className="pt-3 border-t">
+                  <div className="text-sm font-medium mb-2">Available Playlists:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {campaign.vendor_playlists
+                      .filter((playlist: any) => !playlist.is_allocated)
+                      .map((playlist: any) => (
+                      <div key={playlist.id} className="flex items-center gap-2 p-2 bg-muted/20 border rounded-lg">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm truncate">{playlist.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {playlist.avg_daily_streams.toLocaleString()} streams/day
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handlePlaylistToggle(playlist.id, false)}
+                          disabled={updatePlaylistAllocation.isPending}
+                          className="h-6 w-6 p-0"
+                        >
+                          {updatePlaylistAllocation.isPending ? (
+                            <RotateCcw className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Plus className="h-3 w-3" />
+                          )}
+                        </Button>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Music className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No playlists assigned to this campaign yet.</p>
-                <p className="text-sm">Contact your campaign manager to get playlists assigned.</p>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Campaign Details */}
