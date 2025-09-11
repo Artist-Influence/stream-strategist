@@ -231,8 +231,25 @@ export function useApproveCampaignSubmission() {
           sub_genre: (submission.music_genres || []).join(', '),
           music_genres: submission.music_genres || [],
           territory_preferences: submission.territory_preferences || [],
-          selected_playlists: [],
-          vendor_allocations: {},
+          selected_playlists: algorithmRecommendations?.allocations ? 
+            algorithmRecommendations.allocations.map((allocation: any) => {
+              const playlist = playlists?.find(p => p.id === allocation.playlistId);
+              return {
+                id: allocation.playlistId,
+                name: playlist?.name || 'Unknown Playlist',
+                url: playlist?.url || '',
+                vendor_name: playlist?.vendor?.name || 'Unknown Vendor',
+                genres: playlist?.genres || [],
+                status: 'Pending',
+                streams_allocated: allocation.streams,
+                cost_per_stream: allocation.costPerStream
+              };
+            }).filter(Boolean) : [],
+          vendor_allocations: algorithmRecommendations?.allocations ? 
+            algorithmRecommendations.allocations.reduce((acc: any, allocation: any) => {
+              acc[allocation.vendorId] = allocation.streams;
+              return acc;
+            }, {}) : {},
           algorithm_recommendations: algorithmRecommendations,
           pending_operator_review: false, // No review needed
           totals: {},
@@ -240,6 +257,7 @@ export function useApproveCampaignSubmission() {
           source: APP_CAMPAIGN_SOURCE_INTAKE,
           campaign_type: APP_CAMPAIGN_TYPE,
           salesperson: submission.salesperson,
+          notes: submission.notes || '',
           submission_id: submissionId
         });
 

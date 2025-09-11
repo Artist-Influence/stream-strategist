@@ -127,9 +127,12 @@ export default function CampaignIntakePage() {
             description: `Selected: ${data.genres.join(', ')}`,
           });
         } else {
+          // Enhanced fallback - suggest similar genres
+          const suggestedGenres = ['pop', 'dance', 'hip-hop']; // Default suggestions
+          setAvailableGenres(suggestedGenres);
           toast({
-            title: "No Genres Found",
-            description: "Please select genres manually from the list below.",
+            title: "Genres Auto-Suggested",
+            description: "No specific genres found. Please review and select appropriate genres below.",
             variant: "default"
           });
         }
@@ -333,7 +336,7 @@ export default function CampaignIntakePage() {
                   </SelectTrigger>
                   <SelectContent>
                     {salespeople.filter(sp => sp.is_active).map(person => (
-                      <SelectItem key={person.id} value={person.name}>
+                      <SelectItem key={person.id} value={person.email || person.name}>
                         {person.name}
                       </SelectItem>
                     ))}

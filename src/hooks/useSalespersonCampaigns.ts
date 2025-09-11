@@ -46,11 +46,12 @@ export function useSalespersonCampaigns() {
 
       if (submissionsError) throw submissionsError;
 
-      // Then get actual campaigns that were created from those submissions
+      // Then get actual campaigns that were created from those submissions or assigned to salesperson
       const { data: campaigns, error: campaignsError } = await supabase
         .from('campaigns')
         .select('*')
         .eq('salesperson', user.email)
+        .in('status', ['active', 'completed', 'paused', 'draft', 'built', 'unreleased'])
         .order('created_at', { ascending: false });
 
       if (campaignsError) throw campaignsError;

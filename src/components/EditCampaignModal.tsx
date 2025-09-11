@@ -23,6 +23,8 @@ import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useSalespeople } from '@/hooks/useSalespeople';
+import { useClients } from '@/hooks/useClients';
+import { ClientSelector } from '@/components/ClientSelector';
 import { UNIFIED_GENRES, APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE } from '@/lib/constants';
 
 interface Campaign {
@@ -30,6 +32,7 @@ interface Campaign {
   name: string;
   client: string;
   client_name?: string;
+  client_id?: string;
   track_url?: string;
   status: string;
   stream_goal: number;
@@ -54,6 +57,7 @@ interface EditCampaignModalProps {
 export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCampaignModalProps) {
   const [formData, setFormData] = useState({
     name: campaign.name,
+    client_id: campaign.client_id || '',
     client_name: campaign.client_name || campaign.client,
     track_url: campaign.track_url || '',
     status: campaign.status,
@@ -76,6 +80,7 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
   const [startDate, setStartDate] = useState<Date | undefined>(formData.start_date ? new Date(`${formData.start_date}T12:00:00`) : undefined);
   const { toast } = useToast();
   const { data: salespeople = [] } = useSalespeople();
+  const { data: clients = [] } = useClients();
 
   useEffect(() => {
     if (open) {
@@ -107,6 +112,7 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
         .from('campaigns')
         .update({
           name: formData.name,
+          client_id: formData.client_id || null,
           client_name: formData.client_name,
           track_url: formData.track_url,
           status: formData.status,
@@ -170,9 +176,18 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
             </div>
             <div>
               <Label>Client</Label>
-              <Input
-                value={formData.client_name}
-                onChange={(e) => setFormData({...formData, client_name: e.target.value})}
+              <ClientSelector
+                value={formData.client_id}
+                onChange={(clientId) => {
+                  const client = clients?.find(c => c.id === clientId);
+                  setFormData({
+                    ...formData, 
+                    client_id: clientId,
+                    client_name: client?.name || formData.client_name
+                  });
+                }}
+                placeholder="Select client..."
+                allowCreate={true}
               />
             </div>
             <div>

@@ -330,11 +330,50 @@ function mapToMainGenres(spotifyGenres: string[]): string[] {
   const result = Array.from(mappedGenres).slice(0, 3);
   console.log('Final mapped genres:', result);
   
-  // Fallback: if no mappings found, try to use original genres if they match VALID_GENRES
+  // Enhanced fallback system
   if (result.length === 0) {
-    const fallbackGenres = lowerSpotifyGenres.filter(genre => VALID_GENRES.includes(genre)).slice(0, 2);
-    console.log('Using fallback genres:', fallbackGenres);
-    return fallbackGenres;
+    console.log('🔄 No genres mapped, trying enhanced fallbacks...');
+    
+    // Try to use original genres if they match VALID_GENRES
+    const directMatches = lowerSpotifyGenres.filter(genre => VALID_GENRES.includes(genre)).slice(0, 2);
+    if (directMatches.length > 0) {
+      console.log('✓ Using direct fallback genres:', directMatches);
+      return directMatches;
+    }
+    
+    // Intelligent guessing based on common patterns
+    const intelligentGuess = [];
+    for (const spotifyGenre of lowerSpotifyGenres) {
+      if (spotifyGenre.includes('electronic') || spotifyGenre.includes('edm')) {
+        intelligentGuess.push('dance');
+        break;
+      }
+      if (spotifyGenre.includes('hip') || spotifyGenre.includes('rap')) {
+        intelligentGuess.push('hip-hop');
+        break;
+      }
+      if (spotifyGenre.includes('rock')) {
+        intelligentGuess.push('rock');
+        break;
+      }
+      if (spotifyGenre.includes('pop')) {
+        intelligentGuess.push('pop');
+        break;
+      }
+      if (spotifyGenre.includes('house')) {
+        intelligentGuess.push('house');
+        break;
+      }
+    }
+    
+    if (intelligentGuess.length > 0) {
+      console.log('🎯 Using intelligent guess:', intelligentGuess);
+      return intelligentGuess;
+    }
+    
+    // Last resort: return a default genre
+    console.log('🎲 No genres found, defaulting to "pop"');
+    return ['pop'];
   }
   
   return result;

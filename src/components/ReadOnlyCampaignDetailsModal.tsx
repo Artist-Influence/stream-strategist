@@ -70,17 +70,53 @@ export function ReadOnlyCampaignDetailsModal({ campaign, open, onClose }: ReadOn
       setCampaignData(data as any);
       setNotes(data?.notes || '');
       
-      // Parse selected_playlists
-      if (data?.selected_playlists) {
-        const playlistsWithStatus = (data.selected_playlists as any[]).map(playlist => ({
+      // Parse selected_playlists and algorithm recommendations
+      let playlistsToDisplay = [];
+      
+      if (data?.selected_playlists && Array.isArray(data.selected_playlists) && data.selected_playlists.length > 0) {
+        playlistsToDisplay = data.selected_playlists.map((playlist: any) => ({
           ...playlist,
           status: playlist.status || 'Pending',
           placed_date: playlist.placed_date || null
         }));
-        setPlaylists(playlistsWithStatus);
-      } else {
-        setPlaylists([]);
+      } else if (data?.algorithm_recommendations) {
+        // Fall back to algorithm recommendations if no selected_playlists
+        console.log('Using algorithm recommendations for playlist display');
+        const recommendations = data.algorithm_recommendations as any;
+        const allocations = recommendations?.allocations;
+        
+        if (allocations && Array.isArray(allocations)) {
+          // Fetch playlist details for algorithm recommendations
+          try {
+            const playlistIds = allocations.map((a: any) => a.playlistId).filter(Boolean);
+            if (playlistIds.length > 0) {
+              const { data: playlistDetails } = await supabase
+                .from('playlists')
+                .select(`*, vendor:vendors(name)`)
+                .in('id', playlistIds);
+              
+              if (playlistDetails) {
+                playlistsToDisplay = allocations.map((allocation: any) => {
+                  const playlist = playlistDetails.find(p => p.id === allocation.playlistId);
+                  return {
+                    id: allocation.playlistId,
+                    name: playlist?.name || 'Unknown Playlist',
+                    url: playlist?.url || '',
+                    vendor_name: playlist?.vendor?.name || 'Unknown Vendor',
+                    status: 'Algorithm Generated',
+                    streams_allocated: allocation.streams,
+                    cost_per_stream: allocation.costPerStream
+                  };
+                }).filter(Boolean);
+              }
+            }
+          } catch (error) {
+            console.error('Failed to fetch playlist details:', error);
+          }
+        }
       }
+      
+      setPlaylists(playlistsToDisplay);
     } catch (error) {
       console.error('Failed to fetch campaign details:', error);
     } finally {
