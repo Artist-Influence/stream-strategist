@@ -79,9 +79,20 @@ export function useVendorCampaigns() {
 
       // Process campaigns to include vendor-specific data
       const vendorCampaigns = campaigns?.map(campaign => {
-        const selectedPlaylistIds = Array.isArray(campaign.selected_playlists) 
-          ? campaign.selected_playlists as string[] 
-          : [];
+        // Normalize selected_playlists to handle both string and object formats
+        const normalizePlaylistIds = (selectedPlaylists: any): string[] => {
+          if (!Array.isArray(selectedPlaylists)) return [];
+          
+          return selectedPlaylists.map(item => {
+            if (typeof item === 'string') return item;
+            if (typeof item === 'object' && item !== null) {
+              return item.id || item.playlist_id || '';
+            }
+            return '';
+          }).filter(id => id !== '');
+        };
+
+        const selectedPlaylistIds = normalizePlaylistIds(campaign.selected_playlists);
         
         // Get vendor's playlists that are in this campaign
         const vendorPlaylistsInCampaign = playlists?.map(playlist => ({
@@ -119,10 +130,9 @@ export function useVendorCampaigns() {
         };
       }) || [];
 
-      // Filter to only campaigns where vendor has playlists allocated
-      return vendorCampaigns.filter(campaign => 
-        campaign.vendor_playlists?.some(p => p.is_allocated)
-      ) as VendorCampaign[];
+      // Return all campaigns visible to this vendor (RLS handles the filtering)
+      // Don't filter out campaigns without allocated playlists since vendors might have requests
+      return vendorCampaigns as VendorCampaign[];
     },
   });
 }

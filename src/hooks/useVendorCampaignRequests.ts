@@ -66,24 +66,21 @@ export function useVendorCampaignRequests() {
       // Fetch campaign vendor requests for current user's vendors (pending only)
       const { data: requests, error } = await supabase
         .from('campaign_vendor_requests')
-        .select('*')
+        .select(`
+          *,
+          campaigns!inner(
+            id, name, brand_name, track_name, track_url, budget, start_date, 
+            duration_days, music_genres, content_types, territory_preferences, 
+            post_types, sub_genres, stream_goal, creator_count
+          )
+        `)
         .in('vendor_id', vendorIds)
         .eq('status', 'pending')
         .order('requested_at', { ascending: false });
 
       if (error) throw error;
 
-      // Fetch related campaign details separately and map by id
-      const campaignIds = Array.from(new Set((requests || []).map((r: any) => r.campaign_id)));
-      let campaignsById: Record<string, any> = {};
-      if (campaignIds.length > 0) {
-        const { data: campaigns, error: campaignsError } = await supabase
-          .from('campaigns')
-          .select('id, name, brand_name, track_name, track_url, budget, start_date, duration_days, music_genres, content_types, territory_preferences, post_types, sub_genres, stream_goal, creator_count')
-          .in('id', campaignIds);
-        if (campaignsError) throw campaignsError;
-        campaignsById = Object.fromEntries((campaigns || []).map((c: any) => [c.id, c]));
-      }
+      // No need for separate campaign fetch since we joined the data above
 
       // Fetch playlist details for each request and attach campaign data
       const requestsWithPlaylists = await Promise.all(
@@ -106,7 +103,7 @@ export function useVendorCampaignRequests() {
 
           return { 
             ...request, 
-            campaign: campaignsById[request.campaign_id],
+            campaign: request.campaigns,
             playlists: playlistsForRequest 
           };
         })
