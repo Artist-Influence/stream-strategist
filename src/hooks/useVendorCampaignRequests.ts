@@ -63,11 +63,12 @@ export function useVendorCampaignRequests() {
       const vendorIds = vendorUsers?.map(vu => vu.vendor_id) || [];
       if (vendorIds.length === 0) return [];
 
-      // Fetch campaign vendor requests for current user's vendors (without broken joins)
+      // Fetch campaign vendor requests for current user's vendors (pending only)
       const { data: requests, error } = await supabase
         .from('campaign_vendor_requests')
         .select('*')
         .in('vendor_id', vendorIds)
+        .eq('status', 'pending')
         .order('requested_at', { ascending: false });
 
       if (error) throw error;
