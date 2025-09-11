@@ -1,15 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit2, Trash2, ExternalLink, Music, TrendingUp, Calendar, AlertCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, ExternalLink, Music, TrendingUp, Calendar, AlertCircle, Loader2 } from 'lucide-react';
 import { useMyPlaylists, useCreatePlaylist, useUpdatePlaylist, useDeletePlaylist } from '@/hooks/useVendorPlaylists';
 import { usePlaylistHistoricalPerformance, useCampaignPaceAnalysis } from '@/hooks/usePlaylistHistoricalPerformance';
 import { useVendorCampaigns } from '@/hooks/useVendorCampaigns';
 import { CampaignPaceIndicator } from '@/components/CampaignPaceIndicator';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export default function VendorPlaylistManager() {
@@ -36,6 +37,8 @@ export default function VendorPlaylistManager() {
     follower_count: 0
   });
   const [genreInput, setGenreInput] = useState('');
+  const [isSpotifyFetching, setIsSpotifyFetching] = useState(false);
+  const [spotifyError, setSpotifyError] = useState<string | null>(null);
 
   const resetForm = () => {
     setFormData({
@@ -46,7 +49,73 @@ export default function VendorPlaylistManager() {
       follower_count: 0
     });
     setGenreInput('');
+    setIsSpotifyFetching(false);
+    setSpotifyError(null);
   };
+
+  // Extract Spotify playlist ID from URL
+  const extractPlaylistId = (url: string): string | null => {
+    const spotifyPlaylistRegex = /(?:https?:\/\/)?(?:open\.)?spotify\.com\/playlist\/([a-zA-Z0-9]+)/;
+    const match = url.match(spotifyPlaylistRegex);
+    return match ? match[1] : null;
+  };
+
+  // Fetch playlist data from Spotify API
+  const fetchSpotifyPlaylistData = async (playlistId: string) => {
+    try {
+      setIsSpotifyFetching(true);
+      setSpotifyError(null);
+
+      const { data, error } = await supabase.functions.invoke('spotify-playlist-fetch', {
+        body: { playlistId },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to fetch playlist data');
+      }
+
+      if (!data) {
+        throw new Error('No data received from Spotify API');
+      }
+      
+      // Update form data with fetched information
+      setFormData(prev => ({
+        ...prev,
+        name: data.name || prev.name,
+        follower_count: data.followers || prev.follower_count,
+        genres: data.genres && data.genres.length > 0 ? data.genres : prev.genres,
+      }));
+
+      toast.success('Playlist data fetched successfully!');
+    } catch (error) {
+      console.error('Error fetching Spotify data:', error);
+      setSpotifyError(error instanceof Error ? error.message : 'Failed to fetch playlist data');
+      toast.error('Failed to fetch playlist data from Spotify');
+    } finally {
+      setIsSpotifyFetching(false);
+    }
+  };
+
+  // Handle URL change and auto-fetch if it's a Spotify URL
+  const handleUrlChange = (url: string) => {
+    setFormData(prev => ({ ...prev, url }));
+    setSpotifyError(null); // Clear any previous errors
+  };
+
+  // Use effect to handle URL changes with debouncing
+  useEffect(() => {
+    const playlistId = extractPlaylistId(formData.url);
+    if (playlistId && formData.url && !isSpotifyFetching) {
+      const timeoutId = setTimeout(() => {
+        fetchSpotifyPlaylistData(playlistId);
+      }, 1500); // Increased delay to avoid excessive API calls
+      
+      return () => clearTimeout(timeoutId);
+    } else if (!playlistId && formData.url) {
+      // Clear error if URL is not a Spotify URL
+      setSpotifyError(null);
+    }
+  }, [formData.url]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,14 +251,34 @@ export default function VendorPlaylistManager() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="url" className="text-right">Spotify URL</Label>
-                  <Input
-                    id="url"
-                    value={formData.url}
-                    onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))}
-                    className="col-span-3"
-                    placeholder="https://open.spotify.com/playlist/..."
-                    required
-                  />
+                  <div className="col-span-3 space-y-2">
+                    <div className="relative">
+                      <Input
+                        id="url"
+                        value={formData.url}
+                        onChange={(e) => handleUrlChange(e.target.value)}
+                        className={`${isSpotifyFetching ? 'pr-10' : ''}`}
+                        placeholder="https://open.spotify.com/playlist/..."
+                        required
+                      />
+                      {isSpotifyFetching && (
+                        <div className="absolute right-2 top-2.5">
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    {spotifyError && (
+                      <div className="flex items-center gap-2 text-xs text-destructive">
+                        <AlertCircle className="h-3 w-3" />
+                        {spotifyError}
+                      </div>
+                    )}
+                    {!spotifyError && formData.url && extractPlaylistId(formData.url) && (
+                      <div className="text-xs text-muted-foreground">
+                        ✓ Valid Spotify playlist URL detected - auto-fetching data...
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="streams" className="text-right">Daily Streams</Label>
@@ -383,13 +472,33 @@ export default function VendorPlaylistManager() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-url" className="text-right">Spotify URL</Label>
-                <Input
-                  id="edit-url"
-                  value={formData.url}
-                  onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))}
-                  className="col-span-3"
-                  required
-                />
+                <div className="col-span-3 space-y-2">
+                  <div className="relative">
+                    <Input
+                      id="edit-url"
+                      value={formData.url}
+                      onChange={(e) => handleUrlChange(e.target.value)}
+                      className={`${isSpotifyFetching ? 'pr-10' : ''}`}
+                      required
+                    />
+                    {isSpotifyFetching && (
+                      <div className="absolute right-2 top-2.5">
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  {spotifyError && (
+                    <div className="flex items-center gap-2 text-xs text-destructive">
+                      <AlertCircle className="h-3 w-3" />
+                      {spotifyError}
+                    </div>
+                  )}
+                  {!spotifyError && formData.url && extractPlaylistId(formData.url) && (
+                    <div className="text-xs text-muted-foreground">
+                      ✓ Valid Spotify playlist URL detected - auto-fetching data...
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-streams" className="text-right">Daily Streams</Label>
