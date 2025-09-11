@@ -85,13 +85,48 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
       setCampaignData(data as any);
       
       // Parse selected_playlists with proper status handling
-      if (data?.selected_playlists) {
-        const playlistsWithStatus = (data.selected_playlists as any[]).map(playlist => ({
-          ...playlist,
-          status: playlist.status || 'Pending',
-          placed_date: playlist.placed_date || null
-        }));
-        setPlaylists(playlistsWithStatus);
+      if (data?.selected_playlists && Array.isArray(data.selected_playlists) && data.selected_playlists.length > 0) {
+        // Check if selected_playlists contains string IDs or full objects
+        const isStringArray = typeof data.selected_playlists[0] === 'string';
+        
+        if (isStringArray) {
+          // Fetch full playlist details from database
+          try {
+            const playlistIds = data.selected_playlists.filter((id): id is string => typeof id === 'string');
+            const { data: playlistDetails } = await supabase
+              .from('playlists')
+              .select(`*, vendor:vendors(name)`)
+              .in('id', playlistIds);
+              
+            if (playlistDetails) {
+              const playlistsWithStatus = playlistIds.map((id: string) => {
+                const playlist = playlistDetails.find(p => p.id === id);
+                return {
+                  id,
+                  name: playlist?.name || 'Unknown Playlist',
+                  url: playlist?.url || '',
+                  vendor_name: playlist?.vendor?.name || 'Unknown Vendor',
+                  status: 'Selected',
+                  placed_date: null
+                };
+              }).filter(Boolean);
+              setPlaylists(playlistsWithStatus);
+            } else {
+              setPlaylists([]);
+            }
+          } catch (error) {
+            console.error('Failed to fetch playlist details:', error);
+            setPlaylists([]);
+          }
+        } else {
+          // Already full objects, just normalize
+          const playlistsWithStatus = (data.selected_playlists as any[]).map(playlist => ({
+            ...playlist,
+            status: playlist.status || 'Pending',
+            placed_date: playlist.placed_date || null
+          }));
+          setPlaylists(playlistsWithStatus);
+        }
       } else {
         setPlaylists([]);
       }

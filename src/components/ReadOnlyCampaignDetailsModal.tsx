@@ -74,11 +74,42 @@ export function ReadOnlyCampaignDetailsModal({ campaign, open, onClose }: ReadOn
       let playlistsToDisplay = [];
       
       if (data?.selected_playlists && Array.isArray(data.selected_playlists) && data.selected_playlists.length > 0) {
-        playlistsToDisplay = data.selected_playlists.map((playlist: any) => ({
-          ...playlist,
-          status: playlist.status || 'Pending',
-          placed_date: playlist.placed_date || null
-        }));
+        // Check if selected_playlists contains string IDs or full objects
+        const isStringArray = typeof data.selected_playlists[0] === 'string';
+        
+        if (isStringArray) {
+          // Fetch full playlist details from database
+          try {
+            const playlistIds = data.selected_playlists.filter((id): id is string => typeof id === 'string');
+            const { data: playlistDetails } = await supabase
+              .from('playlists')
+              .select(`*, vendor:vendors(name)`)
+              .in('id', playlistIds);
+              
+            if (playlistDetails) {
+              playlistsToDisplay = playlistIds.map((id: string) => {
+                const playlist = playlistDetails.find(p => p.id === id);
+                return {
+                  id,
+                  name: playlist?.name || 'Unknown Playlist',
+                  url: playlist?.url || '',
+                  vendor_name: playlist?.vendor?.name || 'Unknown Vendor',
+                  status: 'Selected',
+                  placed_date: null
+                };
+              }).filter(Boolean);
+            }
+          } catch (error) {
+            console.error('Failed to fetch playlist details:', error);
+          }
+        } else {
+          // Already full objects, just normalize
+          playlistsToDisplay = data.selected_playlists.map((playlist: any) => ({
+            ...playlist,
+            status: playlist.status || 'Pending',
+            placed_date: playlist.placed_date || null
+          }));
+        }
       } else if (data?.algorithm_recommendations) {
         // Fall back to algorithm recommendations if no selected_playlists
         console.log('Using algorithm recommendations for playlist display');
