@@ -155,7 +155,7 @@ export function useCampaignBuilder() {
         start_date: data.start_date,
         duration_days: data.duration_days,
         status,
-        selected_playlists: allocationsData.selectedPlaylists || [],
+        selected_playlists: allocationsData?.selectedPlaylists || allocationsData?.allocations?.map((a: any) => a.playlistId) || [],
         vendor_allocations: allocationsData.allocations || {},
         totals: {
           projected_streams: allocationsData.totalProjectedStreams || 0
@@ -233,7 +233,7 @@ export function useCampaignBuilder() {
         start_date: data.start_date,
         duration_days: data.duration_days,
         status: 'active',
-        selected_playlists: allocationsData.selectedPlaylists || [],
+        selected_playlists: allocationsData?.selectedPlaylists || allocationsData?.allocations?.map((a: any) => a.playlistId) || [],
         vendor_allocations: allocationsData.allocations || {},
         totals: {
           projected_streams: allocationsData.totalProjectedStreams || 0
@@ -253,12 +253,13 @@ export function useCampaignBuilder() {
       if (result.error) throw result.error;
 
       // Create vendor requests for selected playlists
-      if (allocationsData.selectedPlaylists && allocationsData.selectedPlaylists.length > 0) {
+      const selectedPlaylists = allocationsData?.selectedPlaylists || allocationsData?.allocations?.map((a: any) => a.playlistId) || [];
+      if (selectedPlaylists && selectedPlaylists.length > 0) {
         // Group playlists by vendor
         const { data: playlists } = await supabase
           .from('playlists')
           .select('*, vendor:vendors(*)')
-          .in('id', allocationsData.selectedPlaylists);
+          .in('id', selectedPlaylists);
 
         if (playlists) {
           const vendorGroups = playlists.reduce((groups, playlist) => {

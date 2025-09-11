@@ -82,6 +82,10 @@ export default function CampaignIntakePage() {
       try {
         setIsLoadingSpotify(true);
         
+        // Clear previous genres when switching tracks
+        setFormData(prev => ({ ...prev, music_genres: [] }));
+        setAvailableGenres([]);
+        
         // Call Supabase Edge Function to fetch track data
         const { data, error } = await supabase.functions.invoke('spotify-fetch', {
           body: { trackUrl: url }
@@ -130,6 +134,7 @@ export default function CampaignIntakePage() {
           // Enhanced fallback - suggest similar genres
           const suggestedGenres = ['pop', 'dance', 'hip-hop']; // Default suggestions
           setAvailableGenres(suggestedGenres);
+          // Keep music_genres empty for fallback - user must manually select
           toast({
             title: "Genres Auto-Suggested",
             description: "No specific genres found. Please review and select appropriate genres below.",
