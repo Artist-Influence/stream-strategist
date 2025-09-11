@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, List, CheckCircle, XCircle, Music, TrendingUp, Users, ExternalLink, RotateCcw, Edit2 } from "lucide-react";
+import { Plus, List, CheckCircle, XCircle, Music, TrendingUp, Users, ExternalLink, RotateCcw, Edit2, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyVendor } from "@/hooks/useVendors";
 import { useMyPlaylists, useCreatePlaylist } from "@/hooks/useVendorPlaylists";
@@ -38,6 +40,8 @@ export default function VendorDashboard() {
     follower_count: 0
   });
   const [genreInput, setGenreInput] = useState('');
+  const [isSpotifyFetchingCreate, setIsSpotifyFetchingCreate] = useState(false);
+  const [spotifyCreateError, setSpotifyCreateError] = useState<string | null>(null);
 
   const totalStreams = playlists?.reduce((sum, playlist) => sum + playlist.avg_daily_streams, 0) || 0;
   const pendingRequests = requests.filter(r => r.status === 'pending').length;
@@ -81,6 +85,74 @@ export default function VendorDashboard() {
       genres: prev.genres.filter(g => g !== genre)
     }));
   };
+
+  const extractPlaylistId = (url: string): string | null => {
+    if (!url) return null;
+    
+    const patterns = [
+      /https?:\/\/open\.spotify\.com\/playlist\/([a-zA-Z0-9]+)/,
+      /spotify:playlist:([a-zA-Z0-9]+)/
+    ];
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) return match[1];
+    }
+    return null;
+  };
+
+  const fetchSpotifyPlaylistDataCreate = async (playlistId: string) => {
+    if (isSpotifyFetchingCreate) return;
+    
+    setIsSpotifyFetchingCreate(true);
+    setSpotifyCreateError(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('spotify-playlist-fetch', {
+        body: { playlistId }
+      });
+      
+      if (error) throw error;
+      
+      if (data && data.name) {
+        setCreateFormData(prev => ({
+          ...prev,
+          name: data.name,
+          follower_count: Number(data.followers) || 0,
+          genres: data.genres || []
+        }));
+        toast({
+          title: "Playlist data fetched",
+          description: `Successfully loaded "${data.name}" from Spotify`,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error fetching Spotify playlist:', error);
+      const errorMessage = error.message || 'Failed to fetch playlist data';
+      setSpotifyCreateError(errorMessage);
+      toast({
+        title: "Error fetching playlist",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSpotifyFetchingCreate(false);
+    }
+  };
+
+  // Debounced effect for URL changes
+  useEffect(() => {
+    const playlistId = extractPlaylistId(createFormData.url);
+    if (playlistId && createFormData.url && !isSpotifyFetchingCreate) {
+      const timeoutId = setTimeout(() => {
+        fetchSpotifyPlaylistDataCreate(playlistId);
+      }, 1000);
+      
+      return () => clearTimeout(timeoutId);
+    } else if (!playlistId && createFormData.url) {
+      setSpotifyCreateError(null);
+    }
+  }, [createFormData.url, isSpotifyFetchingCreate]);
 
   if (vendorLoading) {
     return (
@@ -389,14 +461,34 @@ export default function VendorDashboard() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="url" className="text-right">Spotify URL</Label>
-                  <Input
-                    id="url"
-                    value={createFormData.url}
-                    onChange={(e) => setCreateFormData(prev => ({ ...prev, url: e.target.value }))}
-                    className="col-span-3"
-                    placeholder="https://open.spotify.com/playlist/..."
-                    required
-                  />
+                  <div className="col-span-3 relative">
+                    <Input
+                      id="url"
+                      value={createFormData.url}
+                      onChange={(e) => {
+                        setCreateFormData(prev => ({ ...prev, url: e.target.value }));
+                        setSpotifyCreateError(null);
+                      }}
+                      onBlur={(e) => {
+                        const id = extractPlaylistId(e.target.value);
+                        if (id) fetchSpotifyPlaylistDataCreate(id);
+                      }}
+                      className={`${isSpotifyFetchingCreate ? 'pr-10' : ''}`}
+                      placeholder="https://open.spotify.com/playlist/..."
+                      required
+                    />
+                    {isSpotifyFetchingCreate && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      </div>
+                    )}
+                    {spotifyCreateError && (
+                      <p className="text-sm text-destructive mt-1">{spotifyCreateError}</p>
+                    )}
+                    {isSpotifyFetchingCreate && (
+                      <p className="text-sm text-muted-foreground mt-1">Fetching playlist data...</p>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="streams" className="text-right">Daily Streams</Label>
