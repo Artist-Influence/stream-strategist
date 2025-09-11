@@ -33,28 +33,9 @@ export const useVendorPayouts = () => {
       // Fetch campaign allocations with vendor and campaign data
       const { data: allocations, error: allocationsError } = await supabase
         .from('campaign_allocations_performance')
-        .select(`
-          *,
-          campaigns:campaign_id (
-            id,
-            name,
-            status,
-            start_date,
-            duration_days
-          ),
-          vendors:vendor_id (
-            id,
-            name
-          ),
-          campaign_invoices!left (
-            id,
-            status,
-            paid_date,
-            amount
-          )
-        `)
-        .not('vendors', 'is', null)
-        .not('campaigns', 'is', null);
+        .select(
+          `id, campaign_id, vendor_id, allocated_streams, predicted_streams, actual_streams, cost_per_stream, actual_cost_per_stream, performance_score, completed_at`
+        );
 
       // Also fetch active/completed campaigns with vendor allocations that may not be in allocations table yet
       const { data: campaigns, error: campaignsError } = await supabase
@@ -65,13 +46,7 @@ export const useVendorPayouts = () => {
           status,
           start_date,
           duration_days,
-          vendor_allocations,
-          campaign_invoices!left (
-            id,
-            status,
-            paid_date,
-            amount
-          )
+          vendor_allocations
         `)
         .in('status', ['active', 'completed'])
         .not('vendor_allocations', 'is', null);
@@ -85,128 +60,145 @@ export const useVendorPayouts = () => {
         throw allocationsError || campaignsError || vendorsError;
       }
 
-      const vendorMap = new Map(vendors?.map(v => [v.id, v]) || []);
-      const allPayoutData = [];
+      const vendorMap = new Map((vendors || []).map((v: any) => [v.id, v]));
+      const campaignsMap = new Map((campaigns || []).map((c: any) => [c.id, c]));
 
-      // Process campaign_allocations_performance data
+      type RawAllocation = {
+        campaign_id: string;
+        vendor_id: string;
+        allocated_streams: number;
+        predicted_streams?: number;
+        actual_streams: number;
+        cost_per_stream?: number;
+        actual_cost_per_stream?: number;
+        performance_score?: number;
+        completed_at?: string | null;
+      };
+
+      const allPayoutData: RawAllocation[] = [];
+
+      // Existing allocations from performance table
       if (allocations) {
-        allPayoutData.push(...allocations);
+        allPayoutData.push(...(allocations as RawAllocation[]));
       }
 
-      // Process campaigns with vendor_allocations data (for approved campaigns not yet in allocations table)
+      // Also derive allocations from campaigns.vendor_allocations
       if (campaigns) {
         for (const campaign of campaigns) {
-          const vendorAllocations = campaign.vendor_allocations || [];
-          
-          // Handle both array and object formats for backward compatibility
-          const allocationsArray = Array.isArray(vendorAllocations) 
-            ? vendorAllocations 
+          const vendorAllocations = (campaign as any).vendor_allocations || [];
+
+          // Backward compatibility: allow object map or array
+          const allocationsArray = Array.isArray(vendorAllocations)
+            ? vendorAllocations
             : Object.entries(vendorAllocations).map(([vendorId, allocation]) => ({
                 vendor_id: vendorId,
-                ...(allocation as any)
+                ...(allocation as any),
               }));
-          
+
           for (const allocation of allocationsArray) {
             if (!allocation || typeof allocation !== 'object') continue;
-            
-            const vendorId = allocation.vendor_id;
+            const vendorId = (allocation as any).vendor_id;
             if (!vendorId) continue;
-            
-            // Check if this allocation already exists in allocations table
-            const existingAllocation = allocations?.find(a => 
-              a.campaign_id === campaign.id && a.vendor_id === vendorId
+
+            const exists = allocations?.some(
+              (a: any) => a.campaign_id === campaign.id && a.vendor_id === vendorId
             );
-            
-            if (!existingAllocation) {
-              const vendor = vendorMap.get(vendorId);
-              if (vendor) {
-                const allocatedStreams = allocation.allocation || allocation.allocatedStreams || 0;
-                const costPer1k = vendor.cost_per_1k_streams || 0;
-                const costPerStream = costPer1k / 1000;
-                
-                allPayoutData.push({
-                  id: `campaign-${campaign.id}-${vendorId}`,
-                  campaign_id: campaign.id,
-                  vendor_id: vendorId,
-                  allocated_streams: allocatedStreams,
-                  predicted_streams: allocatedStreams,
-                  actual_streams: allocatedStreams, // Use allocated as actual for campaigns not in performance table
-                  cost_per_stream: costPerStream,
-                  actual_cost_per_stream: costPerStream,
-                  performance_score: 0,
-                  campaigns: {
-                    id: campaign.id,
-                    name: campaign.name,
-                    status: campaign.status,
-                    start_date: campaign.start_date,
-                    duration_days: campaign.duration_days
-                  },
-                  vendors: {
-                    id: vendor.id,
-                    name: vendor.name
-                  },
-                  campaign_invoices: campaign.campaign_invoices || []
-                });
-              }
-            }
+            if (exists) continue;
+
+            const vendor = vendorMap.get(vendorId);
+            const allocatedStreams = (allocation as any).allocation || (allocation as any).allocatedStreams || 0;
+            const costPer1k = vendor?.cost_per_1k_streams || 0;
+            const costPerStream = costPer1k / 1000;
+
+            allPayoutData.push({
+              campaign_id: campaign.id,
+              vendor_id: vendorId,
+              allocated_streams: allocatedStreams,
+              predicted_streams: allocatedStreams,
+              actual_streams: allocatedStreams, // Until performance data arrives
+              cost_per_stream: costPerStream,
+              actual_cost_per_stream: costPerStream,
+              performance_score: 0,
+              completed_at: null,
+            });
           }
         }
+      }
+
+      // Fetch campaign invoices separately and map by campaign_id
+      const campaignIds = Array.from(
+        new Set([
+          ...((allocations || []).map((a: any) => a.campaign_id)),
+          ...((campaigns || []).map((c: any) => c.id)),
+        ])
+      );
+
+      let invoicesByCampaign = new Map<string, any[]>();
+      if (campaignIds.length > 0) {
+        const { data: invoices } = await supabase
+          .from('campaign_invoices')
+          .select('id,campaign_id,status,paid_date,amount')
+          .in('campaign_id', campaignIds);
+
+        invoicesByCampaign = new Map();
+        (invoices || []).forEach((inv: any) => {
+          const arr = invoicesByCampaign.get(inv.campaign_id) || [];
+          arr.push(inv);
+          invoicesByCampaign.set(inv.campaign_id, arr);
+        });
       }
 
       // Group by vendor and calculate totals
       const vendorPayouts = new Map<string, VendorPayoutSummary>();
 
-      allPayoutData?.forEach((allocation: any) => {
-        const vendor = allocation.vendors;
-        const campaign = allocation.campaigns;
-        const invoice = allocation.campaign_invoices?.[0];
-        
+      (allPayoutData || []).forEach((allocation: any) => {
+        const vendor = vendorMap.get(allocation.vendor_id);
+        const campaign = campaignsMap.get(allocation.campaign_id);
         if (!vendor || !campaign) return;
 
-        const vendorId = vendor.id;
-        const amountOwed = allocation.actual_streams * (allocation.actual_cost_per_stream || allocation.cost_per_stream || 0);
-        const paymentStatus = invoice?.status === 'paid' ? 'paid' : 'unpaid';
-        
-        // Calculate campaign completion date
+        const invoiceArr = (invoicesByCampaign.get(campaign.id) || []) as any[];
+        const invoice = invoiceArr[0];
+
+        const costPerStream = (allocation.actual_cost_per_stream ?? allocation.cost_per_stream ?? ((vendor.cost_per_1k_streams || 0) / 1000)) as number;
+        const actualStreams = typeof allocation.actual_streams === 'number' ? allocation.actual_streams : (allocation.allocated_streams || 0);
+        const amountOwed = (actualStreams || 0) * (costPerStream || 0);
+        const paymentStatus: 'paid' | 'unpaid' = invoice?.status === 'paid' ? 'paid' : 'unpaid';
+
         const startDate = new Date(campaign.start_date);
         const completionDate = new Date(startDate);
-        completionDate.setDate(completionDate.getDate() + campaign.duration_days);
+        completionDate.setDate(completionDate.getDate() + (campaign.duration_days || 0));
 
         const payoutData: VendorPayout = {
-          vendor_id: vendorId,
+          vendor_id: vendor.id,
           vendor_name: vendor.name,
           campaign_id: campaign.id,
           campaign_name: campaign.name,
           amount_owed: amountOwed,
           payment_status: paymentStatus,
-          campaign_completion_date: completionDate.toISOString().split('T')[0],
+          campaign_completion_date: isNaN(completionDate.getTime()) ? undefined : completionDate.toISOString().split('T')[0],
           invoice_id: invoice?.id,
           payment_date: invoice?.paid_date,
-          allocated_streams: allocation.allocated_streams,
-          actual_streams: allocation.actual_streams,
-          cost_per_stream: allocation.actual_cost_per_stream || allocation.cost_per_stream || 0
+          allocated_streams: allocation.allocated_streams || 0,
+          actual_streams: actualStreams || 0,
+          cost_per_stream: costPerStream || 0,
         };
 
-        if (!vendorPayouts.has(vendorId)) {
-          vendorPayouts.set(vendorId, {
-            vendor_id: vendorId,
+        if (!vendorPayouts.has(vendor.id)) {
+          vendorPayouts.set(vendor.id, {
+            vendor_id: vendor.id,
             vendor_name: vendor.name,
             total_owed: 0,
             unpaid_campaigns: 0,
             paid_campaigns: 0,
-            campaigns: []
+            campaigns: [],
           });
         }
 
-        const summary = vendorPayouts.get(vendorId)!;
+        const summary = vendorPayouts.get(vendor.id)!;
         summary.campaigns.push(payoutData);
         summary.total_owed += amountOwed;
-        
-        if (paymentStatus === 'paid') {
-          summary.paid_campaigns += 1;
-        } else {
-          summary.unpaid_campaigns += 1;
-        }
+        if (paymentStatus === 'paid') summary.paid_campaigns += 1;
+        else summary.unpaid_campaigns += 1;
       });
 
       return Array.from(vendorPayouts.values());
@@ -233,7 +225,7 @@ export const useMarkPayoutPaid = () => {
         .from('campaign_invoices')
         .select('id')
         .eq('campaign_id', campaignId)
-        .single();
+        .maybeSingle();
 
       if (existingInvoice) {
         // Update existing invoice
@@ -298,7 +290,7 @@ export const useBulkMarkPayoutsPaid = () => {
           .from('campaign_invoices')
           .select('id')
           .eq('campaign_id', payout.campaignId)
-          .single();
+          .maybeSingle();
 
         if (existingInvoice) {
           // Update existing invoice
