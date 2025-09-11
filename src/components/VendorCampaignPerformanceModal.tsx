@@ -10,6 +10,7 @@ import { useUpdatePlaylistAllocation } from '@/hooks/useVendorCampaigns';
 import { useMyPlaylists } from '@/hooks/useVendorPlaylists';
 import { useCampaignPerformanceData, useCampaignOverallPerformance } from '@/hooks/useCampaignPerformanceData';
 import { VendorPerformanceChart } from '@/components/VendorPerformanceChart';
+import { VendorGroupedPlaylistView } from '@/components/VendorGroupedPlaylistView';
 import AddPlaylistModal from '@/components/AddPlaylistModal';
 
 interface VendorCampaignPerformanceModalProps {
@@ -149,12 +150,12 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
             </div>
           )}
 
-          {/* Playlist Management */}
+            {/* Campaign Playlists - Grouped by Vendor */}
           <div className="border rounded-lg p-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Music className="h-4 w-4" />
-                <span className="font-medium">Playlist Management</span>
+                <span className="font-medium">Campaign Playlists by Vendor</span>
               </div>
               <Button 
                 variant="outline" 
@@ -168,7 +169,7 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
             </div>
             
             {/* Search Bar for Adding Playlists */}
-            <div className="space-y-3">
+            <div className="space-y-3 mb-4">
               <div className="flex items-center gap-2">
                 <Input
                   placeholder="Search playlists by name or paste Spotify URL..."
@@ -206,48 +207,36 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
               )}
             </div>
 
-            {/* Active Playlists */}
-            <div className="space-y-3 pt-4 border-t">
-              <div className="text-sm font-medium">Active Playlists:</div>
-              {campaign.vendor_playlists?.filter((p: any) => p.is_allocated).length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {campaign.vendor_playlists
-                    .filter((playlist: any) => playlist.is_allocated)
-                    .map((playlist: any) => (
-                    <div key={playlist.id} className="flex items-center gap-2 p-2 bg-accent/10 border border-accent/30 rounded-lg">
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm text-accent truncate">{playlist.name}</div>
-                        <div className="text-xs text-accent/80">
-                          {playlist.avg_daily_streams.toLocaleString()} streams/day
-                          {playlist.current_streams && (
-                            <span className="ml-1">• {playlist.current_streams.toLocaleString()} campaign</span>
-                          )}
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handlePlaylistToggle(playlist.id, true)}
-                        disabled={updatePlaylistAllocation.isPending}
-                        className="h-6 w-6 p-0 hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
-                      >
-                        {updatePlaylistAllocation.isPending ? (
-                          <RotateCcw className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <X className="h-3 w-3" />
-                        )}
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6 text-muted-foreground border-2 border-dashed rounded-lg">
-                  <Music className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No playlists active in this campaign</p>
-                  <p className="text-xs">Search above to add playlists or create new ones</p>
-                </div>
-              )}
-            </div>
+            {/* Vendor Grouped Playlist View */}
+            {performanceData && performanceData.length > 0 ? (
+              <VendorGroupedPlaylistView
+                vendorData={performanceData.map(vendor => ({
+                  vendor_id: vendor.vendor_id,
+                  vendor_name: vendor.vendor_name,
+                  total_daily_streams: vendor.playlists.reduce((sum, p) => sum + (p.daily_data.length > 0 ? p.daily_data[p.daily_data.length - 1].streams : 0), 0),
+                  total_twelve_month_streams: vendor.playlists.reduce((sum, p) => sum + p.actual_streams, 0), // Using actual streams as proxy for now
+                  playlists: vendor.playlists.map(playlist => ({
+                    id: playlist.id,
+                    name: playlist.name,
+                    url: '#', // URL would come from playlists table
+                    allocated_streams: playlist.allocated_streams,
+                    actual_streams: playlist.actual_streams,
+                    twelve_month_streams: playlist.actual_streams, // Using actual streams as proxy for now
+                    daily_data: playlist.daily_data,
+                    is_allocated: true
+                  }))
+                }))}
+                onRemovePlaylist={(playlistId) => handlePlaylistToggle(playlistId, true)}
+                isRemoving={updatePlaylistAllocation.isPending}
+                showHistoricalData={true}
+              />
+            ) : (
+              <div className="text-center py-6 text-muted-foreground border-2 border-dashed rounded-lg">
+                <Music className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No playlists active in this campaign</p>
+                <p className="text-xs">Search above to add playlists or create new ones</p>
+              </div>
+            )}
           </div>
 
           {/* Campaign Details */}

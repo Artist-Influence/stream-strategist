@@ -5,15 +5,26 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit2, Trash2, ExternalLink, Music } from 'lucide-react';
+import { Plus, Edit2, Trash2, ExternalLink, Music, TrendingUp, Calendar, AlertCircle } from 'lucide-react';
 import { useMyPlaylists, useCreatePlaylist, useUpdatePlaylist, useDeletePlaylist } from '@/hooks/useVendorPlaylists';
+import { usePlaylistHistoricalPerformance, useCampaignPaceAnalysis } from '@/hooks/usePlaylistHistoricalPerformance';
+import { useVendorCampaigns } from '@/hooks/useVendorCampaigns';
+import { CampaignPaceIndicator } from '@/components/CampaignPaceIndicator';
 import { toast } from 'sonner';
 
 export default function VendorPlaylistManager() {
   const { data: playlists, isLoading } = useMyPlaylists();
+  const { data: vendorCampaigns } = useVendorCampaigns();
   const createMutation = useCreatePlaylist();
   const updateMutation = useUpdatePlaylist();
   const deleteMutation = useDeletePlaylist();
+  
+  // Get playlist IDs for historical performance data
+  const playlistIds = playlists?.map(p => p.id) || [];
+  const campaignIds = vendorCampaigns?.map(c => c.id) || [];
+  
+  const { data: historicalPerformance } = usePlaylistHistoricalPerformance(playlistIds);
+  const { data: campaignPaceData } = useCampaignPaceAnalysis(campaignIds);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingPlaylist, setEditingPlaylist] = useState<any>(null);
@@ -111,11 +122,35 @@ export default function VendorPlaylistManager() {
 
   return (
     <div className="space-y-6">
+      {/* Campaign Pace Overview */}
+      {campaignPaceData && campaignPaceData.length > 0 && (
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold">Active Campaign Status</h3>
+            <p className="text-sm text-muted-foreground">Monitor your campaign progress and pace</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {campaignPaceData.map((campaign) => (
+              <CampaignPaceIndicator
+                key={campaign.campaign_id}
+                currentStreams={campaign.current_streams}
+                goalStreams={campaign.goal_streams}
+                daysElapsed={campaign.days_elapsed}
+                daysRemaining={campaign.days_remaining}
+                projectedCompletionPercentage={campaign.projected_completion_percentage}
+                isOnTrack={campaign.is_on_track}
+                size="md"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">My Playlists</h2>
           <p className="text-muted-foreground">
-            Manage your playlists for campaign participation
+            Manage your playlists with 12-month performance tracking
           </p>
         </div>
         <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
@@ -214,61 +249,99 @@ export default function VendorPlaylistManager() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {playlists?.map((playlist) => (
-          <Card key={playlist.id}>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Music className="h-4 w-4" />
-                  {playlist.name}
-                </CardTitle>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => handleEditClick(playlist)}>
-                    <Edit2 className="h-3 w-3" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => handleDelete(playlist.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+        {playlists?.map((playlist) => {
+          const historicalData = historicalPerformance?.find(hp => hp.playlist_id === playlist.id);
+          const activeCampaigns = historicalData?.campaign_performance?.length || 0;
+          const totalCampaignStreams = historicalData?.campaign_performance?.reduce((sum, cp) => sum + cp.streams_contributed, 0) || 0;
+
+          return (
+            <Card key={playlist.id} className="relative">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Music className="h-4 w-4" />
+                    {playlist.name}
+                  </CardTitle>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => handleEditClick(playlist)}>
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleDelete(playlist.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <ExternalLink className="h-3 w-3" />
-                  <a href={playlist.url} target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
-                    View on Spotify
-                  </a>
-                </div>
-                <div className="text-sm">
-                  <div className="font-medium">{playlist.avg_daily_streams.toLocaleString()} daily streams</div>
+                {activeCampaigns > 0 && (
+                  <Badge variant="secondary" className="w-fit">
+                    {activeCampaigns} active campaigns
+                  </Badge>
+                )}
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <ExternalLink className="h-3 w-3" />
+                    <a href={playlist.url} target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
+                      View on Spotify
+                    </a>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                        <TrendingUp className="h-3 w-3" />
+                        <span>Daily Streams</span>
+                      </div>
+                      <div className="font-medium">{playlist.avg_daily_streams.toLocaleString()}</div>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                        <Calendar className="h-3 w-3" />
+                        <span>12 Month Total</span>
+                      </div>
+                      <div className="font-medium">
+                        {historicalData?.total_streams_12_months.toLocaleString() || '0'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {totalCampaignStreams > 0 && (
+                    <div className="p-2 bg-accent/10 rounded-lg">
+                      <div className="text-xs text-muted-foreground">Campaign Contributions</div>
+                      <div className="font-medium text-sm">{totalCampaignStreams.toLocaleString()} streams</div>
+                    </div>
+                  )}
+
                   {playlist.follower_count && (
-                    <div className="text-muted-foreground">{playlist.follower_count.toLocaleString()} followers</div>
+                    <div className="text-sm text-muted-foreground">
+                      {playlist.follower_count.toLocaleString()} followers
+                    </div>
+                  )}
+                  
+                  {playlist.genres?.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {playlist.genres.slice(0, 3).map((genre) => (
+                        <Badge key={genre} variant="outline" className="text-xs">
+                          {genre}
+                        </Badge>
+                      ))}
+                      {playlist.genres.length > 3 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{playlist.genres.length - 3} more
+                        </Badge>
+                      )}
+                    </div>
                   )}
                 </div>
-                {playlist.genres?.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {playlist.genres.slice(0, 3).map((genre) => (
-                      <Badge key={genre} variant="outline" className="text-xs">
-                        {genre}
-                      </Badge>
-                    ))}
-                    {playlist.genres.length > 3 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{playlist.genres.length - 3} more
-                      </Badge>
-                    )}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {playlists?.length === 0 && (
