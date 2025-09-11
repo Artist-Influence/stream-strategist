@@ -1,7 +1,8 @@
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, List, CheckCircle, XCircle, Music, TrendingUp } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Plus, List, CheckCircle, XCircle, Music, TrendingUp, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyVendor } from "@/hooks/useVendors";
 import { useMyPlaylists } from "@/hooks/useVendorPlaylists";
@@ -56,10 +57,6 @@ export default function VendorDashboard() {
               {vendor ? `${vendor.name} - Manage your playlists and campaigns` : 'Manage your playlists and campaign participation'}
             </p>
           </div>
-          <Button onClick={() => window.location.href = '/vendor/playlists'}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Playlist
-          </Button>
         </div>
 
         {/* Stats Cards */}
@@ -106,11 +103,17 @@ export default function VendorDashboard() {
 
         {/* Playlist Management */}
         <Card>
-          <CardHeader>
-            <CardTitle>Recent Playlists</CardTitle>
-            <CardDescription>
-              Your active playlists available for campaigns
-            </CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <div className="space-y-1">
+              <CardTitle>Recent Playlists</CardTitle>
+              <CardDescription>
+                Your active playlists available for campaigns
+              </CardDescription>
+            </div>
+            <Button onClick={() => window.location.href = '/vendor/playlists'} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Playlist
+            </Button>
           </CardHeader>
           <CardContent>
             {playlistsLoading ? (
@@ -119,27 +122,33 @@ export default function VendorDashboard() {
               </div>
             ) : playlists && playlists.length > 0 ? (
               <div className="space-y-3">
-                {playlists.slice(0, 3).map((playlist) => (
-                  <div key={playlist.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Music className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <div className="font-medium">{playlist.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {playlist.avg_daily_streams.toLocaleString()} daily streams
+                <ScrollArea className="h-60">
+                  <div className="space-y-3 pr-3">
+                    {playlists.map((playlist) => (
+                      <div key={playlist.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Music className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <div className="font-medium">{playlist.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {playlist.avg_daily_streams.toLocaleString()} daily streams
+                            </div>
+                            <div className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {playlist.follower_count?.toLocaleString() || '0'} followers
+                            </div>
+                          </div>
                         </div>
+                        <Button variant="ghost" size="sm" onClick={() => window.location.href = '/vendor/playlists'}>
+                          Manage
+                        </Button>
                       </div>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={() => window.location.href = '/vendor/playlists'}>
-                      Manage
-                    </Button>
+                    ))}
                   </div>
-                ))}
-                {playlists.length > 3 && (
-                  <Button variant="outline" className="w-full" onClick={() => window.location.href = '/vendor/playlists'}>
-                    View All {playlists.length} Playlists
-                  </Button>
-                )}
+                </ScrollArea>
+                <Button variant="outline" className="w-full" onClick={() => window.location.href = '/vendor/playlists'}>
+                  View All {playlists.length} Playlists
+                </Button>
               </div>
             ) : (
               <div className="text-center py-8">
