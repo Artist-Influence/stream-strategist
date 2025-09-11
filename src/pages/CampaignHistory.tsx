@@ -66,6 +66,7 @@ import CampaignImportModal from "@/components/CampaignImportModal";
 import { CampaignDetailsModal } from "@/components/CampaignDetailsModal";
 import { DraftCampaignReviewModal } from "@/components/DraftCampaignReviewModal";
 import { CampaignSubmissionsManager } from "@/components/CampaignSubmissionsManager";
+import { VendorPayoutManager } from "@/components/VendorPayoutManager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Campaign {
@@ -548,9 +549,10 @@ export default function CampaignHistory() {
 
       <div className="container mx-auto px-6 space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
+          <TabsList className="grid w-full grid-cols-3 lg:w-[600px]">
             <TabsTrigger value="campaigns">Campaign History</TabsTrigger>
             <TabsTrigger value="submissions">Campaign Submissions</TabsTrigger>
+            <TabsTrigger value="payouts">Vendor Payouts</TabsTrigger>
           </TabsList>
           
           <TabsContent value="campaigns" className="space-y-6">
@@ -896,6 +898,10 @@ export default function CampaignHistory() {
           
           <TabsContent value="submissions">
             <CampaignSubmissionsManager highlightSubmissionId={submissionId} />
+          </TabsContent>
+          
+          <TabsContent value="payouts">
+            <VendorPayoutManager />
           </TabsContent>
         </Tabs>
 

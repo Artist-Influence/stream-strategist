@@ -112,7 +112,7 @@ export function VendorOwnPlaylistView({
                 <div className="font-semibold">{playlist.allocated_streams.toLocaleString()}</div>
               </div>
               <div className="text-center p-2 border rounded-lg">
-                <div className="text-xs text-muted-foreground mb-1">Current</div>
+                <div className="text-xs text-muted-foreground mb-1">Total Streams Driven</div>
                 <div className="font-semibold">{playlist.actual_streams.toLocaleString()}</div>
               </div>
               <div className="text-center p-2 border rounded-lg">
