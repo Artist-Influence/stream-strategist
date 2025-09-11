@@ -22,6 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useSalespeople } from '@/hooks/useSalespeople';
 import { UNIFIED_GENRES, APP_CAMPAIGN_SOURCE, APP_CAMPAIGN_TYPE } from '@/lib/constants';
 
 interface Campaign {
@@ -39,6 +40,7 @@ interface Campaign {
   daily_streams?: number;
   weekly_streams?: number;
   remaining_streams?: number;
+  salesperson?: string;
   playlists?: Array<{ id?: string; name: string; url?: string; vendor_name?: string; vendor?: any; genres?: string[] }>;
 }
 
@@ -63,6 +65,7 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
     daily_streams: campaign.daily_streams || 0,
     weekly_streams: campaign.weekly_streams || 0,
     remaining_streams: campaign.remaining_streams || campaign.stream_goal,
+    salesperson: campaign.salesperson || '',
     playlists: campaign.playlists || []
   });
   const [saving, setSaving] = useState(false);
@@ -72,6 +75,7 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
   const [isStartDateOpen, setIsStartDateOpen] = useState(false);
   const [startDate, setStartDate] = useState<Date | undefined>(formData.start_date ? new Date(`${formData.start_date}T12:00:00`) : undefined);
   const { toast } = useToast();
+  const { data: salespeople = [] } = useSalespeople();
 
   useEffect(() => {
     if (open) {
@@ -114,6 +118,7 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
           daily_streams: formData.daily_streams,
           weekly_streams: formData.weekly_streams,
           remaining_streams: formData.remaining_streams,
+          salesperson: formData.salesperson,
           selected_playlists: formData.playlists.map(playlist => ({
             id: playlist.id,
             name: playlist.name,
@@ -169,6 +174,26 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
                 value={formData.client_name}
                 onChange={(e) => setFormData({...formData, client_name: e.target.value})}
               />
+            </div>
+            <div>
+              <Label>Salesperson</Label>
+              <Select 
+                value={formData.salesperson}
+                onValueChange={(value) => setFormData({...formData, salesperson: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select salesperson" />
+                </SelectTrigger>
+                <SelectContent>
+                  {salespeople
+                    .filter(sp => sp.is_active)
+                    .map(salesperson => (
+                      <SelectItem key={salesperson.id} value={salesperson.email || salesperson.name}>
+                        {salesperson.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
             
             {/* Track URL field */}
