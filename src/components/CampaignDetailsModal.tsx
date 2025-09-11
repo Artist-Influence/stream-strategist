@@ -32,7 +32,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Trash2, Plus, ExternalLink, CheckCircle, XCircle, Clock, BarChart3, ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Trash2, Plus, ExternalLink, CheckCircle, XCircle, Clock, BarChart3, ChevronDown, ChevronRight, MessageCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PlaylistSelector } from './PlaylistSelector';
@@ -76,6 +82,7 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
   const [loading, setLoading] = useState(false);
   const [showPlaylistSelector, setShowPlaylistSelector] = useState(false);
   const [expandedVendors, setExpandedVendors] = useState<Record<string, boolean>>({});
+  const [vendorData, setVendorData] = useState<Record<string, any>>({});
   const { toast } = useToast();
   
   // Fetch vendor responses for this campaign
@@ -110,6 +117,19 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
       if (error) throw error;
 
       setCampaignData(data as any);
+      
+      // Fetch vendor data with cost information
+      const { data: vendorInfo } = await supabase
+        .from('vendors')
+        .select('id, name, cost_per_1k_streams');
+      
+      if (vendorInfo) {
+        const vendorMap = vendorInfo.reduce((acc, vendor) => {
+          acc[vendor.name] = vendor;
+          return acc;
+        }, {} as Record<string, any>);
+        setVendorData(vendorMap);
+      }
       
       // Parse selected_playlists with proper status handling
       if (data?.selected_playlists && Array.isArray(data.selected_playlists) && data.selected_playlists.length > 0) {
@@ -386,11 +406,26 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
   const groupedPlaylists = playlists.reduce((acc, playlist, idx) => {
     const vendorName = playlist.vendor_name || 'Unknown Vendor';
     if (!acc[vendorName]) {
+      // Get vendor cost data and calculate total payment
+      const vendor = vendorData[vendorName];
+      const vendorAllocation = campaignData?.vendor_allocations?.[vendorName] || 0;
+      const costPer1k = vendor?.cost_per_1k_streams || 0;
+      const totalPayment = (vendorAllocation * costPer1k) / 1000;
+      
+      // Get vendor notes from vendorResponses
+      const vendorResponse = vendorResponses.find(vr => 
+        vr.vendor?.name === vendorName
+      );
+      
       acc[vendorName] = {
         playlists: [],
         totalAllocated: 0,
         totalActual: 0,
-        vendorPerformance: null
+        vendorPerformance: null,
+        totalPayment,
+        paymentStatus: 'Unpaid', // Default status - can be enhanced later
+        hasNotes: Boolean(vendorResponse?.response_notes?.trim()),
+        notes: vendorResponse?.response_notes || ''
       };
     }
     
@@ -610,41 +645,80 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
                   return (
                     <Card key={vendorName} className="overflow-hidden">
                       <Collapsible open={isExpanded} onOpenChange={() => toggleVendor(vendorName)}>
-                        <CollapsibleTrigger asChild>
-                          <div className="p-4 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                {isExpanded ? (
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                )}
-                                <Badge variant="secondary" className="font-medium">
-                                  {vendorName}
-                                </Badge>
-                                <span className="text-sm text-muted-foreground">
-                                  {vendorData.playlists.length} playlist{vendorData.playlists.length !== 1 ? 's' : ''}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-4">
-                                <div className="text-right text-sm">
-                                  <div className="font-medium">
-                                    {vendorData.totalActual.toLocaleString()} / {vendorData.totalAllocated.toLocaleString()}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    Total Stream Goal
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Progress value={progress} className="w-20 h-2" />
-                                  <span className="text-xs text-muted-foreground w-10">
-                                    {progress.toFixed(0)}%
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </CollapsibleTrigger>
+                         <CollapsibleTrigger asChild>
+                           <div className="p-4 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                             <div className="flex items-center justify-between">
+                               <div className="flex items-center gap-3">
+                                 {isExpanded ? (
+                                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                 ) : (
+                                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                 )}
+                                 <Badge variant="secondary" className="font-medium">
+                                   {vendorName}
+                                 </Badge>
+                                 <span className="text-sm text-muted-foreground">
+                                   {vendorData.playlists.length} playlist{vendorData.playlists.length !== 1 ? 's' : ''}
+                                 </span>
+                               </div>
+                               <div className="flex items-center gap-4">
+                                 {vendorData.totalPayment > 0 && (
+                                   <div className="text-right text-sm">
+                                     <div className="font-medium">
+                                       ${vendorData.totalPayment.toLocaleString(undefined, { 
+                                         minimumFractionDigits: 2, 
+                                         maximumFractionDigits: 2 
+                                       })}
+                                     </div>
+                                     <Badge 
+                                       variant={vendorData.paymentStatus === 'Paid' ? 'default' : 'destructive'}
+                                       className="text-xs"
+                                     >
+                                       {vendorData.paymentStatus}
+                                     </Badge>
+                                   </div>
+                                 )}
+                                 <TooltipProvider>
+                                   <Tooltip>
+                                     <TooltipTrigger asChild>
+                                       <button className="p-1">
+                                         <MessageCircle 
+                                           className={`h-4 w-4 transition-colors ${
+                                             vendorData.hasNotes 
+                                               ? 'text-primary hover:text-primary/80' 
+                                               : 'text-muted-foreground/50'
+                                           }`}
+                                         />
+                                       </button>
+                                     </TooltipTrigger>
+                                     <TooltipContent side="top" className="max-w-xs">
+                                       <p className="text-sm">
+                                         {vendorData.hasNotes 
+                                           ? vendorData.notes
+                                           : 'No vendor notes available'
+                                         }
+                                       </p>
+                                     </TooltipContent>
+                                   </Tooltip>
+                                 </TooltipProvider>
+                                 <div className="text-right text-sm">
+                                   <div className="font-medium">
+                                     {vendorData.totalActual.toLocaleString()} / {vendorData.totalAllocated.toLocaleString()}
+                                   </div>
+                                   <div className="text-xs text-muted-foreground">
+                                     Total Stream Goal
+                                   </div>
+                                 </div>
+                                 <div className="flex items-center gap-2">
+                                   <Progress value={progress} className="w-20 h-2" />
+                                   <span className="text-xs text-muted-foreground w-10">
+                                     {progress.toFixed(0)}%
+                                   </span>
+                                 </div>
+                               </div>
+                             </div>
+                           </div>
+                         </CollapsibleTrigger>
                         
                         <CollapsibleContent>
                           <div className="p-0">
