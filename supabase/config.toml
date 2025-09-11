@@ -22,3 +22,6 @@ verify_jwt = false
 
 [functions.campaign-submission-notify]
 verify_jwt = false
+
+[functions.spotify-playlist-fetch]
+verify_jwt = false

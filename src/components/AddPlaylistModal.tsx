@@ -150,7 +150,7 @@ export default function AddPlaylistModal({ open, onOpenChange, vendorId, editing
         setFormData(prev => ({
           ...prev,
           name: data.name || prev.name,
-          follower_count: data.followers?.total?.toString() || prev.follower_count,
+          follower_count: data.followers?.toString() || prev.follower_count,
           genres: data.genres || prev.genres,
         }));
         
