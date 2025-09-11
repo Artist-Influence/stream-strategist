@@ -31,7 +31,7 @@ export const useVendorPayouts = () => {
     queryKey: ['vendor-payouts'],
     queryFn: async (): Promise<VendorPayoutSummary[]> => {
       // Fetch campaign allocations with vendor and campaign data
-      const { data: allocations, error } = await supabase
+      const { data: allocations, error: allocationsError } = await supabase
         .from('campaign_allocations_performance')
         .select(`
           *,
@@ -56,12 +56,94 @@ export const useVendorPayouts = () => {
         .not('vendors', 'is', null)
         .not('campaigns', 'is', null);
 
-      if (error) throw error;
+      // Also fetch active/completed campaigns with vendor allocations that may not be in allocations table yet
+      const { data: campaigns, error: campaignsError } = await supabase
+        .from('campaigns')
+        .select(`
+          id,
+          name,
+          status,
+          start_date,
+          duration_days,
+          vendor_allocations,
+          campaign_invoices!left (
+            id,
+            status,
+            paid_date,
+            amount
+          )
+        `)
+        .in('status', ['active', 'completed'])
+        .not('vendor_allocations', 'is', null);
+
+      // Fetch all vendors to get cost_per_1k_streams rates
+      const { data: vendors, error: vendorsError } = await supabase
+        .from('vendors')
+        .select('id, name, cost_per_1k_streams');
+
+      if (allocationsError && campaignsError && vendorsError) {
+        throw allocationsError || campaignsError || vendorsError;
+      }
+
+      const vendorMap = new Map(vendors?.map(v => [v.id, v]) || []);
+      const allPayoutData = [];
+
+      // Process campaign_allocations_performance data
+      if (allocations) {
+        allPayoutData.push(...allocations);
+      }
+
+      // Process campaigns with vendor_allocations data (for approved campaigns not yet in allocations table)
+      if (campaigns) {
+        for (const campaign of campaigns) {
+          const vendorAllocations = campaign.vendor_allocations || {};
+          
+          for (const [vendorId, allocation] of Object.entries(vendorAllocations)) {
+            // Check if this allocation already exists in allocations table
+            const existingAllocation = allocations?.find(a => 
+              a.campaign_id === campaign.id && a.vendor_id === vendorId
+            );
+            
+            if (!existingAllocation && allocation && typeof allocation === 'object') {
+              const vendor = vendorMap.get(vendorId);
+              if (vendor) {
+                const allocatedStreams = (allocation as any).allocatedStreams || 0;
+                const costPer1k = vendor.cost_per_1k_streams || 0;
+                const costPerStream = costPer1k / 1000;
+                
+                allPayoutData.push({
+                  id: `campaign-${campaign.id}-${vendorId}`,
+                  campaign_id: campaign.id,
+                  vendor_id: vendorId,
+                  allocated_streams: allocatedStreams,
+                  predicted_streams: allocatedStreams,
+                  actual_streams: 0, // Will be updated when performance data comes in
+                  cost_per_stream: costPerStream,
+                  actual_cost_per_stream: costPerStream,
+                  performance_score: 0,
+                  campaigns: {
+                    id: campaign.id,
+                    name: campaign.name,
+                    status: campaign.status,
+                    start_date: campaign.start_date,
+                    duration_days: campaign.duration_days
+                  },
+                  vendors: {
+                    id: vendor.id,
+                    name: vendor.name
+                  },
+                  campaign_invoices: campaign.campaign_invoices || []
+                });
+              }
+            }
+          }
+        }
+      }
 
       // Group by vendor and calculate totals
       const vendorPayouts = new Map<string, VendorPayoutSummary>();
 
-      allocations?.forEach((allocation: any) => {
+      allPayoutData?.forEach((allocation: any) => {
         const vendor = allocation.vendors;
         const campaign = allocation.campaigns;
         const invoice = allocation.campaign_invoices?.[0];

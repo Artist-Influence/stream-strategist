@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useVendorPayouts, useMarkPayoutPaid, useBulkMarkPayoutsPaid, VendorPayout } from '@/hooks/useVendorPayouts';
-import { Search, Download, DollarSign, CheckCircle, Clock, Receipt } from 'lucide-react';
+import { Search, Download, DollarSign, CheckCircle, Clock, Receipt, Edit, Save, X } from 'lucide-react';
 import Papa from 'papaparse';
 import { useToast } from '@/hooks/use-toast';
 
@@ -28,6 +28,8 @@ export function VendorPayoutManager() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
   const [selectedPayouts, setSelectedPayouts] = useState<Set<string>>(new Set());
+  const [editingPayouts, setEditingPayouts] = useState<Map<string, number>>(new Map());
+  const [pendingEdits, setPendingEdits] = useState<Map<string, number>>(new Map());
   
   const { data: vendorPayouts, isLoading } = useVendorPayouts();
   const markPayoutPaid = useMarkPayoutPaid();
@@ -97,14 +99,51 @@ export function VendorPayoutManager() {
       return;
     }
 
-    const payoutData = selectedUnpaidPayouts.map(p => ({
-      campaignId: p.campaign_id,
-      vendorId: p.vendor_id,
-      amount: p.amount_owed
-    }));
+    const payoutData = selectedUnpaidPayouts.map(p => {
+      const payoutKey = `${p.campaign_id}-${p.vendor_id}`;
+      const editedAmount = pendingEdits.get(payoutKey);
+      return {
+        campaignId: p.campaign_id,
+        vendorId: p.vendor_id,
+        amount: editedAmount !== undefined ? editedAmount : p.amount_owed
+      };
+    });
 
     bulkMarkPayoutsPaid.mutate(payoutData);
     setSelectedPayouts(new Set());
+    setPendingEdits(new Map());
+    setEditingPayouts(new Map());
+  };
+
+  const handleEditAmount = (payoutKey: string, currentAmount: number) => {
+    setEditingPayouts(prev => new Map(prev).set(payoutKey, currentAmount));
+    setPendingEdits(prev => new Map(prev).set(payoutKey, currentAmount));
+  };
+
+  const handleSaveAmount = (payoutKey: string) => {
+    setEditingPayouts(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(payoutKey);
+      return newMap;
+    });
+  };
+
+  const handleCancelEdit = (payoutKey: string) => {
+    setEditingPayouts(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(payoutKey);
+      return newMap;
+    });
+    setPendingEdits(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(payoutKey);
+      return newMap;
+    });
+  };
+
+  const handleAmountChange = (payoutKey: string, newAmount: string) => {
+    const amount = parseFloat(newAmount) || 0;
+    setPendingEdits(prev => new Map(prev).set(payoutKey, amount));
   };
 
   const exportPayouts = () => {
@@ -280,7 +319,46 @@ export function VendorPayoutManager() {
                       </TableCell>
                       <TableCell className="font-medium">{payout.vendor_name}</TableCell>
                       <TableCell>{payout.campaign_name}</TableCell>
-                      <TableCell>${payout.amount_owed.toFixed(2)}</TableCell>
+                      <TableCell>
+                        {editingPayouts.has(payoutKey) ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={pendingEdits.get(payoutKey) || 0}
+                              onChange={(e) => handleAmountChange(payoutKey, e.target.value)}
+                              className="w-24 h-8"
+                            />
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleSaveAmount(payoutKey)}
+                            >
+                              <Save className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleCancelEdit(payoutKey)}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span>${(pendingEdits.get(payoutKey) || payout.amount_owed).toFixed(2)}</span>
+                            {payout.payment_status === 'unpaid' && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleEditAmount(payoutKey, payout.amount_owed)}
+                              >
+                                <Edit className="w-3 h-3" />
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div className="text-sm">
                           <div>{payout.actual_streams.toLocaleString()} actual</div>
@@ -311,7 +389,20 @@ export function VendorPayoutManager() {
                         {payout.payment_status === 'unpaid' && (
                           <Button
                             size="sm"
-                            onClick={() => handleMarkPaid(payout)}
+                            onClick={() => {
+                              const editedAmount = pendingEdits.get(payoutKey);
+                              const finalAmount = editedAmount !== undefined ? editedAmount : payout.amount_owed;
+                              markPayoutPaid.mutate({
+                                campaignId: payout.campaign_id,
+                                vendorId: payout.vendor_id,
+                                amount: finalAmount
+                              });
+                              setPendingEdits(prev => {
+                                const newMap = new Map(prev);
+                                newMap.delete(payoutKey);
+                                return newMap;
+                              });
+                            }}
                             disabled={markPayoutPaid.isPending}
                           >
                             Mark Paid

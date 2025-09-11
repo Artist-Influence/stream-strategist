@@ -585,14 +585,6 @@ export default function CampaignHistory() {
                     Pending Review ({getStatusCount('draft')})
                   </Button>
                   <Button
-                    variant={statusFilter === 'operator_review_complete' ? 'default' : 'outline'}
-                    onClick={() => setStatusFilter('operator_review_complete')}
-                    size="sm"
-                    className="bg-purple-500/20 text-purple-600 hover:bg-purple-500/30 border-purple-500/50"
-                  >
-                    Ready to Build ({getStatusCount('operator_review_complete')})
-                  </Button>
-                  <Button
                     variant={statusFilter === 'paused' ? 'default' : 'outline'}
                     onClick={() => setStatusFilter('paused')}
                     size="sm"
