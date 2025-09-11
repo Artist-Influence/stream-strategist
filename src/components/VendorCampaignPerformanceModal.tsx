@@ -3,11 +3,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Music, TrendingUp, Target, ExternalLink, RotateCcw, Plus, Minus, Search, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Music, TrendingUp, Target, ExternalLink, RotateCcw, Plus, X } from 'lucide-react';
 import { useUpdatePlaylistAllocation } from '@/hooks/useVendorCampaigns';
 import { useMyPlaylists } from '@/hooks/useVendorPlaylists';
+import AddPlaylistModal from '@/components/AddPlaylistModal';
 
 interface VendorCampaignPerformanceModalProps {
   campaign: any;
@@ -16,7 +16,8 @@ interface VendorCampaignPerformanceModalProps {
 }
 
 export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: VendorCampaignPerformanceModalProps) {
-  const [isAddingPlaylist, setIsAddingPlaylist] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAddPlaylistModal, setShowAddPlaylistModal] = useState(false);
   
   const updatePlaylistAllocation = useUpdatePlaylistAllocation();
   const { data: myPlaylists } = useMyPlaylists();
@@ -43,6 +44,18 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
       playlistId: playlistId,
       action: isCurrentlyActive ? 'remove' : 'add'
     });
+  };
+
+  // Filter playlists based on search query
+  const filteredAvailablePlaylists = myPlaylists?.filter(playlist => 
+    !campaign.vendor_playlists?.some((vp: any) => vp.id === playlist.id && vp.is_allocated) &&
+    playlist.name.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
+
+  // Handle adding playlist by search or URL
+  const handleAddPlaylist = (playlistId: string) => {
+    handlePlaylistToggle(playlistId, false);
+    setSearchQuery('');
   };
 
   return (
@@ -121,59 +134,68 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
                 <Music className="h-4 w-4" />
                 <span className="font-medium">Playlist Management</span>
               </div>
-              <Popover open={isAddingPlaylist} onOpenChange={setIsAddingPlaylist}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="flex items-center gap-2">
-                    <Plus className="h-3 w-3" />
-                    Add Playlist
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0">
-                  <Command>
-                    <CommandInput placeholder="Search playlists..." />
-                    <CommandList>
-                      <CommandEmpty>No playlists found.</CommandEmpty>
-                      <CommandGroup>
-                        {myPlaylists?.filter(playlist => 
-                          !campaign.vendor_playlists?.some((vp: any) => vp.id === playlist.id && vp.is_allocated)
-                        ).map((playlist) => (
-                          <CommandItem
-                            key={playlist.id}
-                            value={playlist.name}
-                            onSelect={() => {
-                              handlePlaylistToggle(playlist.id, false);
-                              setIsAddingPlaylist(false);
-                            }}
-                            className="flex items-center justify-between"
-                          >
-                            <div>
-                              <div className="font-medium">{playlist.name}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {playlist.avg_daily_streams.toLocaleString()} daily streams
-                              </div>
-                            </div>
-                            <Plus className="h-3 w-3" />
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-2"
+                onClick={() => setShowAddPlaylistModal(true)}
+              >
+                <Plus className="h-3 w-3" />
+                Add New Playlist
+              </Button>
             </div>
             
-            {/* Active Playlists */}
+            {/* Search Bar for Adding Playlists */}
             <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Search playlists by name or paste Spotify URL..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-1"
+                />
+              </div>
+              
+              {/* Search Results */}
+              {searchQuery && filteredAvailablePlaylists.length > 0 && (
+                <div className="max-h-32 overflow-y-auto border rounded-lg">
+                  {filteredAvailablePlaylists.map((playlist) => (
+                    <div 
+                      key={playlist.id} 
+                      className="flex items-center justify-between p-2 hover:bg-muted/10 border-b last:border-0 cursor-pointer"
+                      onClick={() => handleAddPlaylist(playlist.id)}
+                    >
+                      <div>
+                        <div className="font-medium text-sm">{playlist.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {playlist.avg_daily_streams.toLocaleString()} daily streams
+                        </div>
+                      </div>
+                      <Plus className="h-4 w-4" />
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {searchQuery && filteredAvailablePlaylists.length === 0 && (
+                <div className="text-center py-2 text-sm text-muted-foreground border rounded-lg">
+                  No playlists found matching "{searchQuery}"
+                </div>
+              )}
+            </div>
+
+            {/* Active Playlists */}
+            <div className="space-y-3 pt-4 border-t">
               <div className="text-sm font-medium">Active Playlists:</div>
               {campaign.vendor_playlists?.filter((p: any) => p.is_allocated).length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {campaign.vendor_playlists
                     .filter((playlist: any) => playlist.is_allocated)
                     .map((playlist: any) => (
-                    <div key={playlist.id} className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                    <div key={playlist.id} className="flex items-center gap-2 p-2 bg-accent/10 border border-accent/30 rounded-lg">
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">{playlist.name}</div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="font-medium text-sm text-accent truncate">{playlist.name}</div>
+                        <div className="text-xs text-accent/80">
                           {playlist.avg_daily_streams.toLocaleString()} streams/day
                           {playlist.current_streams && (
                             <span className="ml-1">• {playlist.current_streams.toLocaleString()} campaign</span>
@@ -185,7 +207,7 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
                         size="sm"
                         onClick={() => handlePlaylistToggle(playlist.id, true)}
                         disabled={updatePlaylistAllocation.isPending}
-                        className="h-6 w-6 p-0 hover:bg-red-100"
+                        className="h-6 w-6 p-0 hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
                       >
                         {updatePlaylistAllocation.isPending ? (
                           <RotateCcw className="h-3 w-3 animate-spin" />
@@ -200,41 +222,7 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
                 <div className="text-center py-6 text-muted-foreground border-2 border-dashed rounded-lg">
                   <Music className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No playlists active in this campaign</p>
-                  <p className="text-xs">Use "Add Playlist" to get started</p>
-                </div>
-              )}
-              
-              {/* Available Playlists */}
-              {campaign.vendor_playlists?.filter((p: any) => !p.is_allocated).length > 0 && (
-                <div className="pt-3 border-t">
-                  <div className="text-sm font-medium mb-2">Available Playlists:</div>
-                  <div className="flex flex-wrap gap-2">
-                    {campaign.vendor_playlists
-                      .filter((playlist: any) => !playlist.is_allocated)
-                      .map((playlist: any) => (
-                      <div key={playlist.id} className="flex items-center gap-2 p-2 bg-muted/20 border rounded-lg">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm truncate">{playlist.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {playlist.avg_daily_streams.toLocaleString()} streams/day
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handlePlaylistToggle(playlist.id, false)}
-                          disabled={updatePlaylistAllocation.isPending}
-                          className="h-6 w-6 p-0"
-                        >
-                          {updatePlaylistAllocation.isPending ? (
-                            <RotateCcw className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Plus className="h-3 w-3" />
-                          )}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-xs">Search above to add playlists or create new ones</p>
                 </div>
               )}
             </div>
@@ -274,6 +262,12 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
             Close
           </Button>
         </div>
+
+        {/* Add New Playlist Modal */}
+        <AddPlaylistModal
+          open={showAddPlaylistModal}
+          onOpenChange={setShowAddPlaylistModal}
+        />
       </DialogContent>
     </Dialog>
   );
