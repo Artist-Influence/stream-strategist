@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Eye, Search, DollarSign, Target, Calendar, TrendingUp } from "lucide-react";
+import { Search, DollarSign, Target, Calendar, TrendingUp } from "lucide-react";
 import { useSalespersonCampaigns } from "@/hooks/useSalespersonCampaigns";
 
 interface SalespersonCampaignTableProps {
@@ -151,7 +151,6 @@ export function SalespersonCampaignTable({ onViewDetails }: SalespersonCampaignT
                             Commission
                           </div>
                         </TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -212,18 +211,6 @@ export function SalespersonCampaignTable({ onViewDetails }: SalespersonCampaignT
                             <div className="font-medium text-green-600">
                               ${campaign.commission_amount.toLocaleString()}
                             </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onViewDetails(campaign.id);
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
