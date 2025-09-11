@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -15,9 +17,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ExternalLink, CheckCircle, XCircle, Clock, DollarSign } from 'lucide-react';
+import { ExternalLink, CheckCircle, XCircle, Clock, DollarSign, MessageSquare, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCampaignVendorResponses } from '@/hooks/useCampaignVendorResponses';
+import { useToast } from '@/hooks/use-toast';
 
 interface PlaylistWithStatus {
   id: string;
@@ -38,9 +41,12 @@ export function ReadOnlyCampaignDetailsModal({ campaign, open, onClose }: ReadOn
   const [campaignData, setCampaignData] = useState<any>(null);
   const [playlists, setPlaylists] = useState<PlaylistWithStatus[]>([]);
   const [loading, setLoading] = useState(false);
+  const [notes, setNotes] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
   
   // Fetch vendor responses for this campaign
   const { data: vendorResponses = [], isLoading: vendorResponsesLoading } = useCampaignVendorResponses(campaign?.id);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (campaign?.id && open) {
@@ -62,6 +68,7 @@ export function ReadOnlyCampaignDetailsModal({ campaign, open, onClose }: ReadOn
       if (error) throw error;
 
       setCampaignData(data as any);
+      setNotes(data?.notes || '');
       
       // Parse selected_playlists
       if (data?.selected_playlists) {
@@ -119,6 +126,34 @@ export function ReadOnlyCampaignDetailsModal({ campaign, open, onClose }: ReadOn
 
   // Calculate commission (20% of budget)
   const commissionAmount = (campaignData?.budget || 0) * 0.2;
+
+  const saveNotes = async () => {
+    if (!campaignData?.id) return;
+    
+    setSavingNotes(true);
+    try {
+      const { error } = await supabase
+        .from('campaigns')
+        .update({ notes })
+        .eq('id', campaignData.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Notes saved",
+        description: "Your notes have been saved and will be visible to operators.",
+      });
+    } catch (error) {
+      console.error('Failed to save notes:', error);
+      toast({
+        title: "Failed to save notes",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingNotes(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -204,6 +239,38 @@ export function ReadOnlyCampaignDetailsModal({ campaign, open, onClose }: ReadOn
               </div>
             </div>
           )}
+          
+          {/* Notes Section for Salesperson */}
+          <div className="p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800">
+            <div className="flex items-center gap-2 mb-3">
+              <MessageSquare className="h-4 w-4 text-orange-600" />
+              <Label className="text-orange-800 dark:text-orange-200 font-medium">
+                Campaign Notes for Operators
+              </Label>
+            </div>
+            <div className="space-y-3">
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Add notes for operators (e.g., 'Please increase daily streams for this track' or 'Client needs faster delivery')"
+                className="min-h-[100px] bg-background border-orange-200 dark:border-orange-800"
+              />
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-orange-700 dark:text-orange-300">
+                  These notes will be visible to campaign operators to help manage your campaign better.
+                </p>
+                <Button 
+                  onClick={saveNotes} 
+                  disabled={savingNotes}
+                  size="sm"
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {savingNotes ? 'Saving...' : 'Save Notes'}
+                </Button>
+              </div>
+            </div>
+          </div>
           
           {/* Vendor Responses */}
           {vendorResponses.length > 0 && (

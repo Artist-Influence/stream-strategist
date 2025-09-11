@@ -79,24 +79,17 @@ const getNavItemsForRole = (currentRole: string | null) => {
 
   if (currentRole === 'salesperson') {
     return [
-      ...baseItems,
+      {
+        title: "Dashboard",
+        href: "/salesperson",
+        icon: Home,
+        hotkey: "Ctrl+1"
+      },
       {
         title: "Submit Campaign",
         href: "/campaign-intake",
         icon: Plus,
         hotkey: "Ctrl+2"
-      },
-      {
-        title: "My Campaigns", 
-        href: "/campaigns",
-        icon: History,
-        hotkey: "Ctrl+3"
-      },
-      {
-        title: "Campaign Approvals",
-        href: "/clients?tab=submissions",
-        icon: Users,
-        hotkey: "Ctrl+4"
       }
     ];
   }

@@ -143,6 +143,8 @@ export function SalespersonCampaignTable({ onViewDetails }: SalespersonCampaignT
                             Streams
                           </div>
                         </TableHead>
+                        <TableHead className="text-right">Daily Streams</TableHead>
+                        <TableHead className="text-right">Weekly Streams</TableHead>
                         <TableHead className="text-right">
                           <div className="flex items-center justify-end gap-1">
                             <DollarSign className="h-4 w-4" />
@@ -154,7 +156,11 @@ export function SalespersonCampaignTable({ onViewDetails }: SalespersonCampaignT
                     </TableHeader>
                     <TableBody>
                       {filteredCampaigns.map((campaign) => (
-                        <TableRow key={campaign.id} className="cursor-pointer hover:bg-muted/50">
+                        <TableRow 
+                          key={campaign.id} 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => onViewDetails(campaign.id)}
+                        >
                           <TableCell>
                             <div>
                               <div className="font-medium">{campaign.name}</div>
@@ -193,6 +199,16 @@ export function SalespersonCampaignTable({ onViewDetails }: SalespersonCampaignT
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
+                            <div className="font-medium">
+                              {campaign.daily_streams?.toLocaleString() || '0'}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="font-medium">
+                              {campaign.weekly_streams?.toLocaleString() || '0'}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
                             <div className="font-medium text-green-600">
                               ${campaign.commission_amount.toLocaleString()}
                             </div>
@@ -201,7 +217,10 @@ export function SalespersonCampaignTable({ onViewDetails }: SalespersonCampaignT
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => onViewDetails(campaign.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onViewDetails(campaign.id);
+                              }}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
