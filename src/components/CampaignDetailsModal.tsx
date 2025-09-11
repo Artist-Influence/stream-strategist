@@ -38,6 +38,8 @@ interface PlaylistWithStatus {
   vendor_name?: string;
   status?: string;
   placed_date?: string;
+  follower_count?: number;
+  avg_daily_streams?: number;
 }
 
 interface CampaignDetailsModalProps {
@@ -107,6 +109,8 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
                   name: playlist?.name || 'Unknown Playlist',
                   url: playlist?.url || '',
                   vendor_name: playlist?.vendor?.name || 'Unknown Vendor',
+                  follower_count: playlist?.follower_count || 0,
+                  avg_daily_streams: playlist?.avg_daily_streams || 0,
                   status: 'Selected',
                   placed_date: null
                 };
@@ -146,6 +150,8 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
                   name: playlist?.name || 'Unknown Playlist',
                   url: playlist?.url || '',
                   vendor_name: playlist?.vendor?.name || 'Unknown Vendor',
+                  follower_count: playlist?.follower_count || 0,
+                  avg_daily_streams: playlist?.avg_daily_streams || 0,
                   status: 'Algorithm Generated',
                   placed_date: null
                 } as PlaylistWithStatus;
@@ -475,6 +481,8 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
                   <TableRow>
                     <TableHead>Playlist Name</TableHead>
                     <TableHead>Vendor</TableHead>
+                    <TableHead>Followers</TableHead>
+                    <TableHead>Avg Daily Streams</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Placed Date</TableHead>
                     <TableHead className="w-[100px]">Actions</TableHead>
@@ -502,6 +510,12 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
                         <Badge variant="secondary">
                           {playlist.vendor_name || 'Unknown'}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {playlist.follower_count?.toLocaleString() || '0'}
+                      </TableCell>
+                      <TableCell>
+                        {playlist.avg_daily_streams?.toLocaleString() || '0'}
                       </TableCell>
                       <TableCell>
                         <Select

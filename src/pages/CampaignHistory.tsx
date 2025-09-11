@@ -342,7 +342,7 @@ export default function CampaignHistory() {
     if ((event.target as HTMLElement).closest('button')) {
       return;
     }
-    handleEditCampaign(campaignId);
+    handleViewDetails(campaignId);
   };
 
   const exportCampaigns = async () => {

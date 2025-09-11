@@ -44,7 +44,17 @@ interface Campaign {
   weekly_streams?: number;
   remaining_streams?: number;
   salesperson?: string;
-  playlists?: Array<{ id?: string; name: string; url?: string; vendor_name?: string; vendor?: any; genres?: string[] }>;
+  playlists?: Array<{ 
+    id?: string; 
+    name: string; 
+    url?: string; 
+    vendor_name?: string; 
+    vendor?: any; 
+    genres?: string[];
+    follower_count?: number;
+    avg_daily_streams?: number;
+    status?: string;
+  }>;
 }
 
 interface EditCampaignModalProps {
@@ -85,8 +95,9 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
   useEffect(() => {
     if (open) {
       fetchAvailablePlaylists();
+      hydrateExistingPlaylists();
     }
-  }, [open]);
+  }, [open, campaign.id]);
 
   const fetchAvailablePlaylists = async () => {
     try {
@@ -102,6 +113,108 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
       setAvailablePlaylists(data || []);
     } catch (error) {
       console.error('Failed to fetch playlists:', error);
+    }
+  };
+
+  const hydrateExistingPlaylists = async () => {
+    if (!campaign.id) return;
+    
+    try {
+      // Fetch the full campaign record to get selected_playlists
+      const { data: campaignData, error } = await supabase
+        .from('campaigns')
+        .select('selected_playlists, algorithm_recommendations')
+        .eq('id', campaign.id)
+        .single();
+
+      if (error) throw error;
+
+      let hydratedPlaylists = [];
+
+      // First try selected_playlists
+      if (campaignData?.selected_playlists && Array.isArray(campaignData.selected_playlists) && campaignData.selected_playlists.length > 0) {
+        const isStringArray = typeof campaignData.selected_playlists[0] === 'string';
+        
+        if (isStringArray) {
+          // Fetch full playlist details for string IDs
+          const playlistIds = campaignData.selected_playlists.filter((id): id is string => typeof id === 'string');
+          const { data: playlistDetails } = await supabase
+            .from('playlists')
+            .select(`*, vendor:vendors(name)`)
+            .in('id', playlistIds);
+            
+          if (playlistDetails) {
+            hydratedPlaylists = playlistIds.map((id: string) => {
+              const playlist = playlistDetails.find(p => p.id === id);
+              return {
+                id,
+                name: playlist?.name || 'Unknown Playlist',
+                url: playlist?.url || '',
+                vendor_name: playlist?.vendor?.name || 'Unknown Vendor',
+                follower_count: playlist?.follower_count || 0,
+                avg_daily_streams: playlist?.avg_daily_streams || 0,
+                genres: playlist?.genres || [],
+                status: 'Selected'
+              };
+            }).filter(Boolean);
+          }
+        } else {
+          // Already objects, normalize and add missing fields
+          const playlistIds = campaignData.selected_playlists.map((p: any) => p.id).filter(Boolean);
+          if (playlistIds.length > 0) {
+            const { data: playlistDetails } = await supabase
+              .from('playlists')
+              .select(`*, vendor:vendors(name)`)
+              .in('id', playlistIds);
+              
+            hydratedPlaylists = campaignData.selected_playlists.map((playlist: any) => {
+              const fullPlaylist = playlistDetails?.find(p => p.id === playlist.id);
+              return {
+                ...playlist,
+                vendor_name: playlist.vendor_name || fullPlaylist?.vendor?.name || 'Unknown Vendor',
+                follower_count: fullPlaylist?.follower_count || 0,
+                avg_daily_streams: fullPlaylist?.avg_daily_streams || 0,
+                genres: fullPlaylist?.genres || playlist.genres || []
+              };
+            });
+          }
+        }
+      } else if (campaignData?.algorithm_recommendations) {
+        // Fallback to algorithm recommendations
+        const allocations = (campaignData.algorithm_recommendations as any)?.allocations;
+        if (allocations && Array.isArray(allocations)) {
+          const playlistIds = allocations.map((a: any) => a.playlistId).filter(Boolean);
+          if (playlistIds.length > 0) {
+            const { data: playlistDetails } = await supabase
+              .from('playlists')
+              .select(`*, vendor:vendors(name)`)
+              .in('id', playlistIds);
+              
+            if (playlistDetails) {
+              hydratedPlaylists = allocations.map((allocation: any) => {
+                const playlist = playlistDetails.find(p => p.id === allocation.playlistId);
+                return {
+                  id: allocation.playlistId,
+                  name: playlist?.name || 'Unknown Playlist',
+                  url: playlist?.url || '',
+                  vendor_name: playlist?.vendor?.name || 'Unknown Vendor',
+                  follower_count: playlist?.follower_count || 0,
+                  avg_daily_streams: playlist?.avg_daily_streams || 0,
+                  genres: playlist?.genres || [],
+                  status: 'Algorithm Generated'
+                };
+              }).filter(Boolean);
+            }
+          }
+        }
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        playlists: hydratedPlaylists
+      }));
+    } catch (error) {
+      console.error('Failed to hydrate existing playlists:', error);
     }
   };
 
@@ -130,8 +243,10 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
             name: playlist.name,
             url: playlist.url,
             vendor_name: playlist.vendor_name || playlist.vendor?.name,
+            follower_count: playlist.follower_count || 0,
+            avg_daily_streams: playlist.avg_daily_streams || 0,
             genres: playlist.genres,
-            status: 'Pending'
+            status: playlist.status || 'Pending'
           }))
         })
         .eq('id', campaign.id)
@@ -312,8 +427,21 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
             {formData.playlists && formData.playlists.length > 0 ? (
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {formData.playlists.map((playlist, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2 bg-zinc-900 rounded">
-                    <span className="text-sm">{typeof playlist === 'string' ? playlist : playlist.name}</span>
+                  <div key={idx} className="flex items-center justify-between p-3 bg-zinc-900 rounded">
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">
+                        {typeof playlist === 'string' ? playlist : playlist.name}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {typeof playlist !== 'string' && playlist.vendor_name && (
+                          <>
+                            {playlist.vendor_name}
+                            {playlist.follower_count > 0 && ` • ${playlist.follower_count.toLocaleString()} followers`}
+                            {playlist.avg_daily_streams > 0 && ` • ${playlist.avg_daily_streams.toLocaleString()} daily streams`}
+                          </>
+                        )}
+                      </div>
+                    </div>
                     <Button 
                       size="sm" 
                       variant="ghost"
@@ -422,7 +550,10 @@ export function EditCampaignModal({ campaign, open, onClose, onSuccess }: EditCa
                     <div>
                       <p className="font-medium">{playlist.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {playlist.vendor?.name} • {playlist.genres?.join(', ')}
+                        {playlist.vendor?.name}
+                        {playlist.follower_count > 0 && ` • ${playlist.follower_count.toLocaleString()} followers`}
+                        {playlist.avg_daily_streams > 0 && ` • ${playlist.avg_daily_streams.toLocaleString()} daily streams`}
+                        {playlist.genres?.length > 0 && ` • ${playlist.genres.join(', ')}`}
                       </p>
                     </div>
                     <Button size="sm" variant="ghost">
