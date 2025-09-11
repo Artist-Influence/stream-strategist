@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Trash2, Plus, ExternalLink, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Trash2, Plus, ExternalLink, CheckCircle, XCircle, Clock, BarChart3 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PlaylistSelector } from './PlaylistSelector';
@@ -33,6 +33,10 @@ import { useCampaignVendorResponses } from '@/hooks/useCampaignVendorResponses';
 import { useIsVendorManager } from '@/hooks/useIsVendorManager';
 import { useAuth } from '@/hooks/useAuth';
 import { useSalespeople } from '@/hooks/useSalespeople';
+import { VendorGroupedPlaylistView } from '@/components/VendorGroupedPlaylistView';
+import { VendorPerformanceChart } from '@/components/VendorPerformanceChart';
+import { useCampaignPerformanceData } from '@/hooks/useCampaignPerformanceData';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface PlaylistWithStatus {
   id: string;
@@ -71,6 +75,9 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
   const { data: isVendorManager = false } = useIsVendorManager();
   const { hasRole } = useAuth();
   const { data: salespeople = [] } = useSalespeople();
+  
+  // Fetch performance data for admin view
+  const { data: performanceData, isLoading: performanceLoading } = useCampaignPerformanceData(campaign?.id);
   
   const canEditCampaign = hasRole('admin') || hasRole('manager');
 
@@ -393,7 +400,18 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-6">
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              Campaign Details
+            </TabsTrigger>
+            <TabsTrigger value="performance" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Performance Analytics
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
           {/* Campaign Info */}
           <div className="grid grid-cols-2 gap-4 p-4 bg-card rounded-lg">
             <div>
@@ -655,7 +673,69 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
               <p>{campaignData?.updated_at ? formatDate(campaignData.updated_at) : 'Unknown'}</p>
             </div>
           </div>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="performance" className="space-y-6">
+            {/* Performance Analytics Tab */}
+            {performanceLoading ? (
+              <div className="text-center py-8">
+                <div className="text-muted-foreground">Loading performance data...</div>
+              </div>
+            ) : performanceData && performanceData.length > 0 ? (
+              <div className="space-y-6">
+                {/* Performance Chart */}
+                <div className="p-4 border rounded-lg">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5" />
+                    Campaign Performance Overview
+                  </h3>
+                  <VendorPerformanceChart 
+                    data={performanceData} 
+                    campaignGoal={campaignData?.stream_goal || 0} 
+                  />
+                </div>
+
+                {/* Vendor Grouped Playlist View */}
+                <div className="p-4 border rounded-lg">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5" />
+                    Playlists by Vendor Performance
+                  </h3>
+                  <VendorGroupedPlaylistView
+                    vendorData={performanceData.map(vendor => ({
+                      vendor_id: vendor.vendor_id,
+                      vendor_name: vendor.vendor_name,
+                      total_daily_streams: vendor.playlists.reduce((sum, p) => sum + (p.daily_data.length > 0 ? p.daily_data[p.daily_data.length - 1].streams : 0), 0),
+                      total_twelve_month_streams: vendor.playlists.reduce((sum, p) => sum + p.actual_streams, 0),
+                      playlists: vendor.playlists.map(playlist => ({
+                        id: playlist.id,
+                        name: playlist.name,
+                        url: '#',
+                        allocated_streams: playlist.allocated_streams,
+                        actual_streams: playlist.actual_streams,
+                        twelve_month_streams: playlist.actual_streams,
+                        daily_data: playlist.daily_data,
+                        is_allocated: true
+                      }))
+                    }))}
+                    showHistoricalData={true}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 border-2 border-dashed rounded-lg">
+                <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <div className="text-lg font-semibold mb-2">No Performance Data Available</div>
+                <div className="text-sm text-muted-foreground mb-4">
+                  Performance analytics will appear here once the campaign starts collecting stream data.
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Data is collected through web scraping and updated weekly.
+                </div>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
 
         {/* Playlist Selector Modal */}
         <PlaylistSelector

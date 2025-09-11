@@ -10,7 +10,7 @@ import { useUpdatePlaylistAllocation } from '@/hooks/useVendorCampaigns';
 import { useMyPlaylists } from '@/hooks/useVendorPlaylists';
 import { useCampaignPerformanceData, useCampaignOverallPerformance } from '@/hooks/useCampaignPerformanceData';
 import { VendorPerformanceChart } from '@/components/VendorPerformanceChart';
-import { VendorGroupedPlaylistView } from '@/components/VendorGroupedPlaylistView';
+import { VendorOwnPlaylistView } from '@/components/VendorOwnPlaylistView';
 import AddPlaylistModal from '@/components/AddPlaylistModal';
 
 interface VendorCampaignPerformanceModalProps {
@@ -153,9 +153,9 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
             {/* Campaign Playlists - Grouped by Vendor */}
           <div className="border rounded-lg p-4">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
                 <Music className="h-4 w-4" />
-                <span className="font-medium">Campaign Playlists by Vendor</span>
+                <span className="font-medium">Your Campaign Playlists</span>
               </div>
               <Button 
                 variant="outline" 
@@ -207,34 +207,30 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
               )}
             </div>
 
-            {/* Vendor Grouped Playlist View */}
-            {performanceData && performanceData.length > 0 ? (
-              <VendorGroupedPlaylistView
-                vendorData={performanceData.map(vendor => ({
-                  vendor_id: vendor.vendor_id,
-                  vendor_name: vendor.vendor_name,
-                  total_daily_streams: vendor.playlists.reduce((sum, p) => sum + (p.daily_data.length > 0 ? p.daily_data[p.daily_data.length - 1].streams : 0), 0),
-                  total_twelve_month_streams: vendor.playlists.reduce((sum, p) => sum + p.actual_streams, 0), // Using actual streams as proxy for now
-                  playlists: vendor.playlists.map(playlist => ({
-                    id: playlist.id,
-                    name: playlist.name,
-                    url: '#', // URL would come from playlists table
-                    allocated_streams: playlist.allocated_streams,
-                    actual_streams: playlist.actual_streams,
-                    twelve_month_streams: playlist.actual_streams, // Using actual streams as proxy for now
-                    daily_data: playlist.daily_data,
-                    is_allocated: true
-                  }))
+            {/* Your Allocated Playlists */}
+            {campaign.vendor_playlists && campaign.vendor_playlists.length > 0 ? (
+              <VendorOwnPlaylistView
+                playlists={campaign.vendor_playlists.map(playlist => ({
+                  id: playlist.id,
+                  name: playlist.name,
+                  url: '#', // URL would come from playlists table
+                  avg_daily_streams: playlist.avg_daily_streams,
+                  follower_count: playlist.follower_count,
+                  allocated_streams: 0, // Would come from performance data
+                  actual_streams: 0, // Would come from performance data
+                  twelve_month_streams: 0, // Would come from historical data
+                  daily_data: [], // Would come from performance entries
+                  is_allocated: playlist.is_allocated
                 }))}
                 onRemovePlaylist={(playlistId) => handlePlaylistToggle(playlistId, true)}
                 isRemoving={updatePlaylistAllocation.isPending}
-                showHistoricalData={true}
+                showHistoricalData={false}
               />
             ) : (
               <div className="text-center py-6 text-muted-foreground border-2 border-dashed rounded-lg">
                 <Music className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No playlists active in this campaign</p>
-                <p className="text-xs">Search above to add playlists or create new ones</p>
+                <p className="text-sm">No playlists allocated to this campaign</p>
+                <p className="text-xs">Search above to add your playlists to this campaign</p>
               </div>
             )}
           </div>
@@ -269,27 +265,16 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
           </TabsContent>
 
           <TabsContent value="performance" className="space-y-6">
-            {performanceLoading ? (
-              <div className="text-center py-8">
-                <div className="text-muted-foreground">Loading performance data...</div>
+            <div className="text-center py-8 border-2 border-dashed rounded-lg">
+              <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <div className="text-lg font-semibold mb-2">Your Performance Analytics</div>
+              <div className="text-sm text-muted-foreground mb-4">
+                View detailed analytics for your playlists' performance in this campaign.
               </div>
-            ) : performanceData && performanceData.length > 0 ? (
-              <VendorPerformanceChart 
-                data={performanceData} 
-                campaignGoal={campaign.stream_goal || 0} 
-              />
-            ) : (
-              <div className="text-center py-8 border-2 border-dashed rounded-lg">
-                <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <div className="text-lg font-semibold mb-2">No Performance Data Available</div>
-                <div className="text-sm text-muted-foreground mb-4">
-                  Performance data will appear here once the campaign starts collecting stream data from Spotify.
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Data is collected through web scraping and updated weekly.
-                </div>
+              <div className="text-xs text-muted-foreground">
+                Performance data is collected through web scraping and updated weekly.
               </div>
-            )}
+            </div>
           </TabsContent>
         </Tabs>
 

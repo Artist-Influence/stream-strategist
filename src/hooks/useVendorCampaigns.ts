@@ -164,6 +164,8 @@ export function useUpdatePlaylistAllocation() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['vendor-campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['campaign-performance-data'] });
+      queryClient.invalidateQueries({ queryKey: ['my-playlists'] });
       
       toast({
         title: variables.action === 'add' ? 'Playlist Added' : 'Playlist Removed',
