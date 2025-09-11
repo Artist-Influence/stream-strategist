@@ -66,11 +66,10 @@ export function useVendorCampaigns() {
       const playlistIds = playlists?.map(p => p.id) || [];
       if (playlistIds.length === 0) return [];
 
-      // Fetch campaigns that include vendor's playlists in selected_playlists
+      // Fetch campaigns; RLS ensures vendors see only campaigns where they have assigned playlists
       const { data: campaigns, error: campaignError } = await supabase
         .from('campaigns')
-        .select('*')
-        .contains('selected_playlists', playlistIds);
+        .select('*');
 
       if (campaignError) throw campaignError;
 

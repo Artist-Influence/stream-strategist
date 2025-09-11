@@ -62,38 +62,33 @@ export function useVendorCampaignRequests() {
       const vendorIds = vendorUsers?.map(vu => vu.vendor_id) || [];
       if (vendorIds.length === 0) return [];
 
-      // Fetch campaign vendor requests for current user's vendors
-      const { data, error } = await supabase
+      // Fetch campaign vendor requests for current user's vendors (without broken joins)
+      const { data: requests, error } = await supabase
         .from('campaign_vendor_requests')
-        .select(`
-          *,
-          campaigns (
-            id,
-            name,
-            brand_name,
-            track_name,
-            track_url,
-            budget,
-            start_date,
-            duration_days,
-            music_genres,
-            content_types,
-            territory_preferences,
-            post_types,
-            sub_genres,
-            stream_goal,
-            creator_count
-          )
-        `)
+        .select('*')
         .in('vendor_id', vendorIds)
         .order('requested_at', { ascending: false });
 
       if (error) throw error;
 
-      // Fetch playlist details for each request
+      // Fetch related campaign details separately and map by id
+      const campaignIds = Array.from(new Set((requests || []).map((r: any) => r.campaign_id)));
+      let campaignsById: Record<string, any> = {};
+      if (campaignIds.length > 0) {
+        const { data: campaigns, error: campaignsError } = await supabase
+          .from('campaigns')
+          .select('id, name, brand_name, track_name, track_url, budget, start_date, duration_days, music_genres, content_types, territory_preferences, post_types, sub_genres, stream_goal, creator_count')
+          .in('id', campaignIds);
+        if (campaignsError) throw campaignsError;
+        campaignsById = Object.fromEntries((campaigns || []).map((c: any) => [c.id, c]));
+      }
+
+      // Fetch playlist details for each request and attach campaign data
       const requestsWithPlaylists = await Promise.all(
-        (data || []).map(async (request) => {
-          const playlistIds = Array.isArray(request.playlist_ids) ? request.playlist_ids as string[] : [];
+        (requests || []).map(async (request: any) => {
+          const playlistIds = Array.isArray(request.playlist_ids) ? (request.playlist_ids as string[]) : [];
+          let playlistsForRequest: any[] = [];
+
           if (playlistIds && playlistIds.length > 0) {
             const { data: playlists, error: playlistError } = await supabase
               .from('playlists')
@@ -102,12 +97,16 @@ export function useVendorCampaignRequests() {
 
             if (playlistError) {
               console.error('Error fetching playlists:', playlistError);
-              return { ...request, playlists: [] };
+            } else {
+              playlistsForRequest = playlists || [];
             }
-
-            return { ...request, playlists };
           }
-          return { ...request, playlists: [] };
+
+          return { 
+            ...request, 
+            campaign: campaignsById[request.campaign_id],
+            playlists: playlistsForRequest 
+          };
         })
       );
 
