@@ -72,7 +72,7 @@ export function useVendorCampaigns() {
         .from('campaigns')
         .select(`
           *,
-          campaign_invoices!inner(status)
+          campaign_invoices(status)
         `);
 
       if (campaignError) throw campaignError;

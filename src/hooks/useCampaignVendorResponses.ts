@@ -33,7 +33,7 @@ export function useCampaignVendorResponses(campaignId: string) {
         .from('campaign_vendor_requests')
         .select(`
           *,
-          vendors:vendor_id (
+          vendor:vendor_id (
             id,
             name
           )
@@ -64,7 +64,7 @@ export function useCampaignVendorResponses(campaignId: string) {
         })
       );
 
-      return responsesWithPlaylists as CampaignVendorResponse[];
+      return responsesWithPlaylists as unknown as CampaignVendorResponse[];
     },
     enabled: !!campaignId,
   });
