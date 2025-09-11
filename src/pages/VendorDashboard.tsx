@@ -336,6 +336,9 @@ export default function VendorDashboard() {
                             {campaign.brand_name && (
                               <p className="text-sm text-muted-foreground">{campaign.brand_name}</p>
                             )}
+                            <p className="text-xs text-muted-foreground">
+                              Started: {new Date(campaign.start_date).toLocaleDateString()}
+                            </p>
                           </div>
                           <div className="text-right text-sm">
                             <div className="font-medium">{vendorStreamGoal.toLocaleString()} streams</div>
