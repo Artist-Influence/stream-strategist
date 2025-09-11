@@ -1244,6 +1244,25 @@ export type Database = {
           track_url: string
         }[]
       }
+      get_public_creators: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          audience_territories: string[]
+          base_country: string
+          carousel_rate: number
+          content_types: string[]
+          created_at: string
+          engagement_rate: number
+          followers: number
+          id: string
+          instagram_handle: string
+          median_views_per_video: number
+          music_genres: string[]
+          reel_rate: number
+          story_rate: number
+          updated_at: string
+        }[]
+      }
       get_spotify_token: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -1254,6 +1273,23 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      insert_creator: {
+        Args: {
+          p_audience_territories: string[]
+          p_base_country: string
+          p_carousel_rate?: number
+          p_content_types: string[]
+          p_email?: string
+          p_engagement_rate: number
+          p_followers: number
+          p_instagram_handle: string
+          p_median_views_per_video: number
+          p_music_genres: string[]
+          p_reel_rate: number
+          p_story_rate?: number
+        }
+        Returns: string
       }
       is_salesperson: {
         Args: Record<PropertyKey, never>
