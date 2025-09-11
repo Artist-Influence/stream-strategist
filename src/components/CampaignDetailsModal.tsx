@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Card } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -35,7 +37,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSalespeople } from '@/hooks/useSalespeople';
 import { VendorGroupedPlaylistView } from '@/components/VendorGroupedPlaylistView';
 import { VendorPerformanceChart } from '@/components/VendorPerformanceChart';
-import { useCampaignPerformanceData } from '@/hooks/useCampaignPerformanceData';
+import { useCampaignPerformanceData, useCampaignOverallPerformance } from '@/hooks/useCampaignPerformanceData';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface PlaylistWithStatus {
@@ -78,6 +80,7 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
   
   // Fetch performance data for admin view
   const { data: performanceData, isLoading: performanceLoading } = useCampaignPerformanceData(campaign?.id);
+  const { data: overallPerformance } = useCampaignOverallPerformance(campaign?.id);
   
   const canEditCampaign = hasRole('admin') || hasRole('manager');
 
@@ -559,13 +562,14 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
             </div>
             
             {playlists.length > 0 ? (
-              <Table>
+                <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Playlist Name</TableHead>
                     <TableHead>Vendor</TableHead>
                     <TableHead>Followers</TableHead>
-                    <TableHead>Avg Daily Streams</TableHead>
+                    <TableHead>Total Streams Driven</TableHead>
+                    <TableHead>Progress</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Placed Date</TableHead>
                     {isVendorManager && <TableHead className="w-[100px]">Actions</TableHead>}
@@ -598,7 +602,47 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
                         {playlist.follower_count?.toLocaleString() || '0'}
                       </TableCell>
                       <TableCell>
-                        {playlist.avg_daily_streams?.toLocaleString() || '0'}
+                        {/* Get performance data for this playlist */}
+                        {(() => {
+                          const vendorPerf = performanceData?.find(v => 
+                            v.playlists.some(p => p.id === playlist.id)
+                          );
+                          const playlistPerf = vendorPerf?.playlists.find(p => p.id === playlist.id);
+                          const actualStreams = playlistPerf?.actual_streams || 0;
+                          const allocatedStreams = playlistPerf?.allocated_streams || playlist.avg_daily_streams || 0;
+                          
+                          return (
+                            <div className="space-y-1">
+                              <div className="text-sm">
+                                {actualStreams.toLocaleString()} / {allocatedStreams.toLocaleString()}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Goal: {allocatedStreams.toLocaleString()}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </TableCell>
+                      <TableCell>
+                        {/* Progress indicator */}
+                        {(() => {
+                          const vendorPerf = performanceData?.find(v => 
+                            v.playlists.some(p => p.id === playlist.id)
+                          );
+                          const playlistPerf = vendorPerf?.playlists.find(p => p.id === playlist.id);
+                          const actualStreams = playlistPerf?.actual_streams || 0;
+                          const allocatedStreams = playlistPerf?.allocated_streams || playlist.avg_daily_streams || 1;
+                          const progress = Math.min((actualStreams / allocatedStreams) * 100, 100);
+                          
+                          return (
+                            <div className="space-y-1">
+                              <Progress value={progress} className="w-16 h-2" />
+                              <div className="text-xs text-muted-foreground">
+                                {progress.toFixed(0)}%
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>
                         {isVendorManager ? (
@@ -676,66 +720,87 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
           </TabsContent>
 
           <TabsContent value="performance" className="space-y-6">
-            {/* Performance Analytics Tab */}
             {performanceLoading ? (
-              <div className="text-center py-8">
-                <div className="text-muted-foreground">Loading performance data...</div>
+              <div className="flex items-center justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
-            ) : performanceData && performanceData.length > 0 ? (
+            ) : !performanceData || performanceData.length === 0 ? (
+              <div className="text-center p-8 text-muted-foreground">
+                No performance data available yet
+              </div>
+            ) : (
               <div className="space-y-6">
+                {/* Campaign Overview */}
+                <Card className="p-6">
+                  <h3 className="text-lg font-semibold mb-4">Campaign Performance Overview</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-primary">
+                        {overallPerformance?.total_actual?.toLocaleString() || '0'}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Total Streams Driven</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">
+                        {overallPerformance?.campaign_goal?.toLocaleString() || '0'}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Campaign Goal</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">
+                        {overallPerformance?.progress_percentage?.toFixed(1) || '0'}%
+                      </div>
+                      <div className="text-sm text-muted-foreground">Goal Progress</div>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <Progress 
+                      value={overallPerformance?.progress_percentage || 0} 
+                      className="h-3"
+                    />
+                  </div>
+                </Card>
+
+                {/* Vendor Performance Comparison */}
+                <Card className="p-6">
+                  <h3 className="text-lg font-semibold mb-4">Vendor Performance Comparison</h3>
+                  <div className="space-y-4">
+                    {performanceData.map(vendor => {
+                      const progress = vendor.allocated_streams > 0 ? (vendor.actual_streams / vendor.allocated_streams) * 100 : 0;
+                      return (
+                        <div key={vendor.vendor_id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="space-y-1">
+                            <div className="font-medium">{vendor.vendor_name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              Total Streams Driven: {vendor.actual_streams.toLocaleString()} / {vendor.allocated_streams.toLocaleString()}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <div className="text-sm font-medium">{progress.toFixed(1)}%</div>
+                              <div className="text-xs text-muted-foreground">
+                                {vendor.playlists.length} playlists
+                              </div>
+                            </div>
+                            <Progress value={progress} className="w-24 h-2" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+
                 {/* Performance Chart */}
-                <div className="p-4 border rounded-lg">
+                <Card className="p-6">
                   <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                     <BarChart3 className="h-5 w-5" />
-                    Campaign Performance Overview
+                    Performance Trends
                   </h3>
                   <VendorPerformanceChart 
                     data={performanceData} 
                     campaignGoal={campaignData?.stream_goal || 0} 
                   />
-                </div>
-
-                {/* Vendor Grouped Playlist View */}
-                <div className="p-4 border rounded-lg">
-                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
-                    Playlists by Vendor Performance
-                  </h3>
-                  <VendorGroupedPlaylistView
-                    vendorData={performanceData.map(vendor => ({
-                      vendor_id: vendor.vendor_id,
-                      vendor_name: vendor.vendor_name,
-                      total_daily_streams: vendor.playlists.reduce((sum, p) => {
-                        // Get most recent daily streams from weekly reports
-                        const mostRecentStream = p.daily_data.length > 0 ? p.daily_data[p.daily_data.length - 1].streams : 0;
-                        return sum + mostRecentStream;
-                      }, 0),
-                      total_twelve_month_streams: vendor.playlists.reduce((sum, p) => sum + p.actual_streams, 0),
-                      playlists: vendor.playlists.map(playlist => ({
-                        id: playlist.id,
-                        name: playlist.name,
-                        url: '#', // Playlist URL not available in performance data
-                        allocated_streams: playlist.allocated_streams, // Vendor's specific allocated goal
-                        actual_streams: playlist.actual_streams, // Total streams driven by this vendor
-                        twelve_month_streams: playlist.actual_streams,
-                        daily_data: playlist.daily_data, // Daily streams from weekly report updates
-                        is_allocated: true
-                      }))
-                    }))}
-                    showHistoricalData={true}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-8 border-2 border-dashed rounded-lg">
-                <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <div className="text-lg font-semibold mb-2">No Performance Data Available</div>
-                <div className="text-sm text-muted-foreground mb-4">
-                  Performance analytics will appear here once the campaign starts collecting stream data.
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Data is collected through web scraping and updated weekly.
-                </div>
+                </Card>
               </div>
             )}
           </TabsContent>
