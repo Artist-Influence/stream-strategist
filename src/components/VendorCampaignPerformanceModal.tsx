@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Music, TrendingUp, Target, ExternalLink, RotateCcw, Plus, X } from 'lucide-react';
-import { useUpdatePlaylistAllocation } from '@/hooks/useVendorCampaigns';
+import { useUpdatePlaylistAllocation, useVendorCampaigns } from '@/hooks/useVendorCampaigns';
 import { useMyPlaylists } from '@/hooks/useVendorPlaylists';
 import { useCampaignPerformanceData, useCampaignOverallPerformance } from '@/hooks/useCampaignPerformanceData';
 import { VendorPerformanceChart } from '@/components/VendorPerformanceChart';
@@ -24,13 +24,18 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
   
   const updatePlaylistAllocation = useUpdatePlaylistAllocation();
   const { data: myPlaylists } = useMyPlaylists();
-  const { data: performanceData, isLoading: performanceLoading } = useCampaignPerformanceData(campaign?.id);
-  const { data: overallPerformance } = useCampaignOverallPerformance(campaign?.id);
+  const { data: vendorCampaigns } = useVendorCampaigns();
+  
+  // Get fresh campaign data from the hook, fallback to prop
+  const freshCampaign = vendorCampaigns?.find(c => c.id === campaign?.id) || campaign;
+  
+  const { data: performanceData, isLoading: performanceLoading } = useCampaignPerformanceData(freshCampaign?.id);
+  const { data: overallPerformance } = useCampaignOverallPerformance(freshCampaign?.id);
 
-  if (!campaign) return null;
+  if (!freshCampaign) return null;
 
-  const vendorStreamGoal = campaign.vendor_stream_goal || 0;
-  const currentStreams = campaign.vendor_playlists?.reduce((sum: number, p: any) => 
+  const vendorStreamGoal = freshCampaign.vendor_stream_goal || 0;
+  const currentStreams = freshCampaign.vendor_playlists?.reduce((sum: number, p: any) => 
     p.is_allocated ? (p.current_streams || 0) : 0, 0) || 0;
   const progressPercentage = vendorStreamGoal > 0 ? (currentStreams / vendorStreamGoal) * 100 : 0;
 
@@ -45,7 +50,7 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
 
   const handlePlaylistToggle = (playlistId: string, isCurrentlyActive: boolean) => {
     updatePlaylistAllocation.mutate({
-      campaignId: campaign.id,
+      campaignId: freshCampaign.id,
       playlistId: playlistId,
       action: isCurrentlyActive ? 'remove' : 'add'
     });
@@ -53,7 +58,7 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
 
   // Filter playlists based on search query
   const filteredAvailablePlaylists = myPlaylists?.filter(playlist => 
-    !campaign.vendor_playlists?.some((vp: any) => vp.id === playlist.id && vp.is_allocated) &&
+    !freshCampaign.vendor_playlists?.some((vp: any) => vp.id === playlist.id && vp.is_allocated) &&
     playlist.name.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
@@ -68,13 +73,13 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
       <DialogContent className="sm:max-w-[1000px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
-            {campaign.name}
+            {freshCampaign.name}
             <Badge variant="outline" className="text-xs">
               {overallPerformance?.progress_percentage.toFixed(1)}% complete
             </Badge>
           </DialogTitle>
           <DialogDescription>
-            {campaign.brand_name && `${campaign.brand_name} • `}
+            {freshCampaign.brand_name && `${freshCampaign.brand_name} • `}
             Campaign Performance & Playlist Management
           </DialogDescription>
         </DialogHeader>
@@ -119,7 +124,7 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
           </div>
 
           {/* Track Information */}
-          {campaign.track_url && (
+          {freshCampaign.track_url && (
             <div className="p-4 border rounded-lg">
               <div className="flex items-center gap-2 mb-2">
                 <Music className="h-4 w-4" />
@@ -128,11 +133,11 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => window.open(campaign.track_url, '_blank')}
+                onClick={() => window.open(freshCampaign.track_url, '_blank')}
                 className="flex items-center gap-2"
               >
                 <ExternalLink className="h-3 w-3" />
-                {campaign.track_name || 'Listen to Track'}
+                {freshCampaign.track_name || 'Listen to Track'}
               </Button>
             </div>
           )}
@@ -195,9 +200,9 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
             </div>
 
             {/* Your Allocated Playlists */}
-            {campaign.vendor_playlists && campaign.vendor_playlists.length > 0 ? (
+            {freshCampaign.vendor_playlists && freshCampaign.vendor_playlists.length > 0 ? (
               <VendorOwnPlaylistView
-                playlists={campaign.vendor_playlists.map(playlist => ({
+                playlists={freshCampaign.vendor_playlists.map(playlist => ({
                   id: playlist.id,
                   name: playlist.name,
                   url: '#', // URL would come from playlists table
@@ -227,21 +232,21 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
             <div className="p-3 border rounded-lg">
               <span className="font-medium text-muted-foreground">Start Date:</span>
               <div className="mt-1">
-                {campaign.start_date ? new Date(campaign.start_date).toLocaleDateString() : 'Not specified'}
+                {freshCampaign.start_date ? new Date(freshCampaign.start_date).toLocaleDateString() : 'Not specified'}
               </div>
             </div>
             <div className="p-3 border rounded-lg">
               <span className="font-medium text-muted-foreground">Duration:</span>
-              <div className="mt-1">{campaign.duration_days || 0} days</div>
+              <div className="mt-1">{freshCampaign.duration_days || 0} days</div>
             </div>
           </div>
 
           {/* Genres */}
-          {campaign.music_genres && campaign.music_genres.length > 0 && (
+          {freshCampaign.music_genres && freshCampaign.music_genres.length > 0 && (
             <div className="border rounded-lg p-4">
               <div className="font-medium mb-2">Music Genres</div>
               <div className="flex flex-wrap gap-1">
-                {campaign.music_genres.map((genre: string, idx: number) => (
+                {freshCampaign.music_genres.map((genre: string, idx: number) => (
                   <Badge key={idx} variant="outline">
                     {genre}
                   </Badge>
