@@ -194,7 +194,7 @@ export default function Layout({ children }: LayoutProps) {
             <div className="flex items-center space-x-8">
               <Link to="/" className="flex items-center space-x-2">
                 <img 
-                  src="/src/assets/artist-influence-logo.png" 
+                  src="/artist-influence-logo.png" 
                   alt="Artist Influence Logo" 
                   className="h-8 w-auto"
                 />
