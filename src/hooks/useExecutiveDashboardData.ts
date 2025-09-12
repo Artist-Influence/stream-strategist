@@ -55,29 +55,31 @@ export const useExecutiveDashboardData = () => {
       const lastQuarterStart = startOfQuarter(subQuarters(currentDate, 1));
       const lastQuarterEnd = endOfQuarter(subQuarters(currentDate, 1));
 
-      // Get campaign data
+      // Get campaign data separately to avoid join issues
       const { data: campaigns, error: campaignsError } = await supabase
         .from("campaigns")
-        .select(`
-          *,
-          campaign_submissions(price_paid),
-          campaign_allocations_performance(actual_streams, predicted_streams, cost_per_stream)
-        `);
+        .select("*");
 
       if (campaignsError) throw campaignsError;
 
-      // Get vendor performance data
+      // Get campaign submissions
+      const { data: submissions, error: submissionsError } = await supabase
+        .from("campaign_submissions")
+        .select("*");
+
+      if (submissionsError) throw submissionsError;
+
+      // Get performance data
+      const { data: performanceData, error: performanceError } = await supabase
+        .from("campaign_allocations_performance")
+        .select("*");
+
+      if (performanceError) throw performanceError;
+
+      // Get vendor data
       const { data: vendorPerformance, error: vendorError } = await supabase
         .from("vendors")
-        .select(`
-          *,
-          campaign_allocations_performance(
-            actual_streams,
-            predicted_streams,
-            performance_score,
-            campaign_id
-          )
-        `);
+        .select("*");
 
       if (vendorError) throw vendorError;
 
@@ -85,28 +87,25 @@ export const useExecutiveDashboardData = () => {
       const totalCampaigns = campaigns?.length || 0;
       const activeCampaigns = campaigns?.filter(c => c.status === 'active').length || 0;
       
+      // Manually join data using foreign keys
       const totalRevenue = campaigns?.reduce((sum, campaign) => {
-        const submission = campaign.campaign_submissions?.[0];
+        const submission = submissions?.find(s => s.id === campaign.submission_id);
         return sum + (submission?.price_paid || 0);
       }, 0) || 0;
 
       const campaignsWithROI = Array.isArray(campaigns) ? campaigns.filter(campaign => {
-        const submission = campaign.campaign_submissions?.[0];
-        const performance = Array.isArray(campaign.campaign_allocations_performance) 
-          ? campaign.campaign_allocations_performance 
-          : [];
+        const submission = submissions?.find(s => s.id === campaign.submission_id);
+        const performance = performanceData?.filter(p => p.campaign_id === campaign.id) || [];
         const totalCost = performance.reduce((sum, p) => sum + ((p.cost_per_stream || 0) * (p.actual_streams || 0)), 0);
         return submission?.price_paid && totalCost > 0;
       }) : [];
 
       const averageROI = campaignsWithROI.length > 0 
         ? campaignsWithROI.reduce((sum, campaign) => {
-            const submission = campaign.campaign_submissions?.[0];
-            const performance = Array.isArray(campaign.campaign_allocations_performance) 
-              ? campaign.campaign_allocations_performance 
-              : [];
+            const submission = submissions?.find(s => s.id === campaign.submission_id);
+            const performance = performanceData?.filter(p => p.campaign_id === campaign.id) || [];
             const totalCost = performance.reduce((sum, p) => sum + ((p.cost_per_stream || 0) * (p.actual_streams || 0)), 0);
-            const roi = totalCost > 0 ? ((submission.price_paid - totalCost) / totalCost) * 100 : 0;
+            const roi = totalCost > 0 ? ((submission?.price_paid - totalCost) / totalCost) * 100 : 0;
             return sum + roi;
           }, 0) / campaignsWithROI.length
         : 0;
@@ -117,9 +116,7 @@ export const useExecutiveDashboardData = () => {
         
       const totalActualStreams = Array.isArray(campaigns) 
         ? campaigns.reduce((sum, campaign) => {
-            const performance = Array.isArray(campaign.campaign_allocations_performance) 
-              ? campaign.campaign_allocations_performance 
-              : [];
+            const performance = performanceData?.filter(p => p.campaign_id === campaign.id) || [];
             return sum + performance.reduce((pSum, p) => pSum + (p.actual_streams || 0), 0);
           }, 0) 
         : 0;
@@ -128,9 +125,7 @@ export const useExecutiveDashboardData = () => {
 
       const totalCostPerStreamData = Array.isArray(campaigns) 
         ? campaigns.reduce((acc, campaign) => {
-            const performance = Array.isArray(campaign.campaign_allocations_performance) 
-              ? campaign.campaign_allocations_performance 
-              : [];
+            const performance = performanceData?.filter(p => p.campaign_id === campaign.id) || [];
             performance.forEach(p => {
               if (p.cost_per_stream && p.actual_streams) {
                 acc.totalCost += p.cost_per_stream * p.actual_streams;
@@ -148,9 +143,7 @@ export const useExecutiveDashboardData = () => {
       // Calculate top performing vendors
       const topPerformingVendors = Array.isArray(vendorPerformance) 
         ? vendorPerformance.map(vendor => {
-            const performances = Array.isArray(vendor.campaign_allocations_performance) 
-              ? vendor.campaign_allocations_performance 
-              : [];
+            const performances = performanceData?.filter(p => p.vendor_id === vendor.id) || [];
             const avgPerformance = performances.length > 0
               ? performances.reduce((sum, p) => sum + (p.performance_score || 0), 0) / performances.length
               : 0;
