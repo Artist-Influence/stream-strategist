@@ -561,6 +561,53 @@ export type Database = {
           },
         ]
       }
+      client_report_settings: {
+        Row: {
+          branding_settings: Json | null
+          client_id: string | null
+          created_at: string
+          custom_kpis: Json | null
+          default_template: string | null
+          id: string
+          include_benchmarks: boolean | null
+          include_predictions: boolean | null
+          preferred_format: string | null
+          updated_at: string
+        }
+        Insert: {
+          branding_settings?: Json | null
+          client_id?: string | null
+          created_at?: string
+          custom_kpis?: Json | null
+          default_template?: string | null
+          id?: string
+          include_benchmarks?: boolean | null
+          include_predictions?: boolean | null
+          preferred_format?: string | null
+          updated_at?: string
+        }
+        Update: {
+          branding_settings?: Json | null
+          client_id?: string | null
+          created_at?: string
+          custom_kpis?: Json | null
+          default_template?: string | null
+          id?: string
+          include_benchmarks?: boolean | null
+          include_predictions?: boolean | null
+          preferred_format?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_report_settings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           contact_person: string | null
@@ -657,6 +704,42 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_configs: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          is_default: boolean | null
+          is_shared: boolean | null
+          name: string
+          shared_with: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          config: Json
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          is_shared?: boolean | null
+          name: string
+          shared_with?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          is_shared?: boolean | null
+          name?: string
+          shared_with?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       genre_correlation_matrix: {
         Row: {
           avg_performance_lift: number | null
@@ -689,6 +772,60 @@ export type Database = {
           success_rate?: number | null
         }
         Relationships: []
+      }
+      performance_alerts: {
+        Row: {
+          alert_type: string
+          campaign_id: string | null
+          created_at: string
+          current_value: number | null
+          id: string
+          is_resolved: boolean | null
+          message: string
+          resolved_at: string | null
+          severity: string
+          threshold_value: number | null
+        }
+        Insert: {
+          alert_type: string
+          campaign_id?: string | null
+          created_at?: string
+          current_value?: number | null
+          id?: string
+          is_resolved?: boolean | null
+          message: string
+          resolved_at?: string | null
+          severity: string
+          threshold_value?: number | null
+        }
+        Update: {
+          alert_type?: string
+          campaign_id?: string | null
+          created_at?: string
+          current_value?: number | null
+          id?: string
+          is_resolved?: boolean | null
+          message?: string
+          resolved_at?: string | null
+          severity?: string
+          threshold_value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_alerts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_alerts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "public_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       performance_entries: {
         Row: {
@@ -868,6 +1005,140 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "campaign_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_exports: {
+        Row: {
+          campaign_id: string | null
+          client_id: string | null
+          created_at: string
+          download_count: number | null
+          expires_at: string | null
+          file_url: string | null
+          format: string
+          generated_at: string
+          generated_by: string | null
+          id: string
+          report_type: string
+          settings: Json | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          download_count?: number | null
+          expires_at?: string | null
+          file_url?: string | null
+          format: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          report_type: string
+          settings?: Json | null
+        }
+        Update: {
+          campaign_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          download_count?: number | null
+          expires_at?: string | null
+          file_url?: string | null
+          format?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          report_type?: string
+          settings?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_exports_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_exports_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "public_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_exports_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_schedules: {
+        Row: {
+          campaign_id: string | null
+          client_id: string | null
+          created_at: string
+          frequency: string
+          id: string
+          is_active: boolean | null
+          last_sent_at: string | null
+          next_send_at: string | null
+          recipients: string[]
+          report_type: string
+          template_settings: Json | null
+          updated_at: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          frequency: string
+          id?: string
+          is_active?: boolean | null
+          last_sent_at?: string | null
+          next_send_at?: string | null
+          recipients?: string[]
+          report_type: string
+          template_settings?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          frequency?: string
+          id?: string
+          is_active?: boolean | null
+          last_sent_at?: string | null
+          next_send_at?: string | null
+          recipients?: string[]
+          report_type?: string
+          template_settings?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_schedules_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_schedules_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "public_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_schedules_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
