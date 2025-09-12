@@ -193,12 +193,11 @@ export default function Layout({ children }: LayoutProps) {
             {/* Left: Brand */}
             <div className="flex items-center space-x-8">
               <Link to="/" className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded bg-gradient-primary flex items-center justify-center">
-                  <Music className="w-4 h-4 text-white" />
-                </div>
-                <span className="text-xl font-bold text-foreground">
-                  ARTIST <span className="text-primary">INFLUENCE</span>
-                </span>
+                <img 
+                  src="/src/assets/artist-influence-logo.png" 
+                  alt="Artist Influence Logo" 
+                  className="h-8 w-auto"
+                />
               </Link>
               
               {/* Project Identifier */}
