@@ -90,7 +90,13 @@ export function useSalespersonCommissionStats() {
 
       const { data: campaigns, error } = await supabase
         .from('campaigns')
-        .select('budget, status')
+        .select(`
+          budget, 
+          status,
+          campaign_submissions!inner(
+            price_paid
+          )
+        `)
         .eq('salesperson', user.email);
 
       if (error) throw error;
@@ -99,25 +105,17 @@ export function useSalespersonCommissionStats() {
         return sum + ((campaign.budget || 0) * 0.2);
       }, 0);
 
-      const approvedCommission = campaigns
-        .filter(c => ['active', 'completed'].includes(c.status))
-        .reduce((sum, campaign) => {
-          return sum + ((campaign.budget || 0) * 0.2);
-        }, 0);
+      const totalSales = campaigns.reduce((sum, campaign) => {
+        return sum + (campaign.campaign_submissions?.price_paid || 0);
+      }, 0);
 
-      const pendingCommission = campaigns
-        .filter(c => ['draft', 'built', 'unreleased'].includes(c.status))
-        .reduce((sum, campaign) => {
-          return sum + ((campaign.budget || 0) * 0.2);
-        }, 0);
+      const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
 
       return {
         totalCommission,
-        approvedCommission,
-        pendingCommission,
+        totalSales,
+        activeCampaigns,
         totalCampaigns: campaigns.length,
-        approvedCampaigns: campaigns.filter(c => ['active', 'completed'].includes(c.status)).length,
-        pendingCampaigns: campaigns.filter(c => ['draft', 'built', 'unreleased'].includes(c.status)).length,
       };
     },
     enabled: !!user?.email,
