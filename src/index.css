@@ -16,13 +16,13 @@
     --popover: 222 14% 12%;
     --popover-foreground: 0 0% 95%;
 
-    /* Coral Red Primary (matching Artist Influence) */
-    --primary: 11 93% 60%;
+    /* Spotify Green Primary */
+    --primary: 141 76% 48%;
     --primary-foreground: 0 0% 98%;
-    --primary-glow: 11 100% 70%;
+    --primary-glow: 141 76% 58%;
 
-    /* Muted Red Secondary */
-    --secondary: 11 50% 45%;
+    /* Muted Green Secondary */
+    --secondary: 141 50% 35%;
     --secondary-foreground: 0 0% 98%;
 
     /* Dark Muted Tones */
@@ -44,7 +44,7 @@
     /* Borders & Inputs */
     --border: 222 14% 25%;
     --input: 222 14% 18%;
-    --ring: 11 93% 60%;
+    --ring: 141 76% 48%;
 
     --radius: 0.5rem;
 
@@ -64,12 +64,12 @@
     /* Sidebar (consistent with theme) */
     --sidebar-background: 222 14% 8%;
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 11 93% 60%;
+    --sidebar-primary: 141 76% 48%;
     --sidebar-primary-foreground: 0 0% 98%;
     --sidebar-accent: 222 14% 20%;
     --sidebar-accent-foreground: 0 0% 95%;
     --sidebar-border: 222 14% 25%;
-    --sidebar-ring: 11 93% 60%;
+    --sidebar-ring: 141 76% 48%;
   }
 
   .dark {
@@ -80,9 +80,9 @@
     --card-foreground: 0 0% 95%;
     --popover: 222 14% 12%;
     --popover-foreground: 0 0% 95%;
-    --primary: 11 93% 60%;
+    --primary: 141 76% 48%;
     --primary-foreground: 0 0% 98%;
-    --secondary: 11 50% 45%;
+    --secondary: 141 50% 35%;
     --secondary-foreground: 0 0% 98%;
     --muted: 222 14% 20%;
     --muted-foreground: 0 0% 65%;
@@ -92,15 +92,15 @@
     --destructive-foreground: 0 0% 98%;
     --border: 222 14% 25%;
     --input: 222 14% 18%;
-    --ring: 11 93% 60%;
+    --ring: 141 76% 48%;
     --sidebar-background: 222 14% 8%;
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 11 93% 60%;
+    --sidebar-primary: 141 76% 48%;
     --sidebar-primary-foreground: 0 0% 98%;
     --sidebar-accent: 222 14% 20%;
     --sidebar-accent-foreground: 0 0% 95%;
     --sidebar-border: 222 14% 25%;
-    --sidebar-ring: 11 93% 60%;
+    --sidebar-ring: 141 76% 48%;
   }
 }
 
@@ -183,7 +183,7 @@
 /* Calendar styling for dark theme */
 .rdp-root {
   --rdp-cell-size: 36px;
-  --rdp-accent-color: hsl(11 93% 60%);
+  --rdp-accent-color: hsl(141 76% 48%);
   --rdp-background-color: hsl(222 14% 8%);
 }
 

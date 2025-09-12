@@ -333,10 +333,10 @@ export function ReadOnlyCampaignDetailsModal({ campaign, open, onClose }: ReadOn
           )}
           
           {/* Notes Section for Salesperson */}
-          <div className="p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800">
+          <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
             <div className="flex items-center gap-2 mb-3">
-              <MessageSquare className="h-4 w-4 text-orange-600" />
-              <Label className="text-orange-800 dark:text-orange-200 font-medium">
+              <MessageSquare className="h-4 w-4 text-primary" />
+              <Label className="text-primary font-medium">
                 Campaign Notes for Operators
               </Label>
             </div>
@@ -345,17 +345,17 @@ export function ReadOnlyCampaignDetailsModal({ campaign, open, onClose }: ReadOn
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Add notes for operators (e.g., 'Please increase daily streams for this track' or 'Client needs faster delivery')"
-                className="min-h-[100px] bg-background border-orange-200 dark:border-orange-800"
+                className="min-h-[100px] bg-background border-primary/20"
               />
               <div className="flex justify-between items-center">
-                <p className="text-sm text-orange-700 dark:text-orange-300">
+                <p className="text-sm text-muted-foreground">
                   These notes will be visible to campaign operators to help manage your campaign better.
                 </p>
                 <Button 
                   onClick={saveNotes} 
                   disabled={savingNotes}
                   size="sm"
-                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
                   <Save className="h-4 w-4 mr-2" />
                   {savingNotes ? 'Saving...' : 'Save Notes'}

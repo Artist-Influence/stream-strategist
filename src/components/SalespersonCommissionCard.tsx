@@ -64,10 +64,10 @@ export function SalespersonCommissionCard() {
           
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Activity className="h-4 w-4 text-orange-600" />
+              <Activity className="h-4 w-4 text-primary" />
               Active Campaigns
             </div>
-            <div className="text-2xl font-bold text-orange-600">
+            <div className="text-2xl font-bold text-primary">
               {stats?.activeCampaigns || 0}
             </div>
             <div className="text-xs text-muted-foreground">

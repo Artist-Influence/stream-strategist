@@ -474,7 +474,7 @@ export function ClientDetailsModal({ client, isOpen, onClose }: ClientDetailsMod
                                   isUnassigned 
                                     ? "text-green-600" 
                                     : isAssignedToOtherClient 
-                                    ? "text-orange-600" 
+                                    ? "text-primary" 
                                     : "text-muted-foreground"
                                 }
                               >
