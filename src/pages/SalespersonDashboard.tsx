@@ -21,7 +21,7 @@ export default function SalespersonDashboard() {
 
   return (
     <Layout>
-      <div className="space-y-6 -mt-6">
+      <div className="space-y-6 -mt-6" data-tour="salesperson-dashboard">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Salesperson Dashboard</h1>
@@ -29,7 +29,10 @@ export default function SalespersonDashboard() {
               Welcome back, {user?.email?.split('@')[0]}
             </p>
           </div>
-          <Button onClick={() => window.location.href = '/campaign-intake'}>
+          <Button 
+            onClick={() => window.location.href = '/campaign-intake'}
+            data-tour="submit-campaign"
+          >
             <Plus className="h-4 w-4 mr-2" />
             Submit Campaign
           </Button>
@@ -39,7 +42,9 @@ export default function SalespersonDashboard() {
         <QuickActions />
 
         {/* Commission Card - Most Important */}
-        <SalespersonCommissionCard />
+        <div data-tour="commission-tracking">
+          <SalespersonCommissionCard />
+        </div>
 
         {/* Campaign Table - Comprehensive View */}
         <SalespersonCampaignTable onViewDetails={handleViewDetails} />

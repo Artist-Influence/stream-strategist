@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { GuidedTour } from "@/components/HelpSystem";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { UserManager } from "./components/UserManager";
 import Index from "./pages/Index";
@@ -31,11 +33,12 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+    <TooltipProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
           <Routes>
             {/* Public routes */}
             <Route path="/auth" element={<AuthPage />} />
@@ -147,10 +150,13 @@ const App = () => (
             {/* Catch-all route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          
+          <GuidedTour />
         </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+      </AuthProvider>
+    </ErrorBoundary>
+  </TooltipProvider>
+</QueryClientProvider>
 );
 
 export default App;

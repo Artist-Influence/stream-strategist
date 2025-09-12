@@ -83,7 +83,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-8 -mt-6">
+    <div className="space-y-8 -mt-6" data-tour="dashboard">
       {/* Hero Section */}
       <section className="text-center pt-8 pb-6">
         <h1 className="hero-title">
@@ -98,7 +98,7 @@ export default function Dashboard() {
       </section>
 
       {/* Quick Actions Section */}
-      <section>
+      <section data-tour="quick-actions">
         <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
         <QuickActions />
       </section>

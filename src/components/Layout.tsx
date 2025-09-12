@@ -29,6 +29,9 @@ import SpotifySettingsModal from "./SpotifySettingsModal";
 import { useAuth } from "@/hooks/useAuth";
 import { GlobalSearch } from "./GlobalSearch";
 import { Breadcrumb } from "./Breadcrumb";
+import { NotificationCenter } from "./NotificationCenter";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { KeyboardShortcutsModal } from "./KeyboardShortcutsModal";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -165,6 +168,9 @@ export default function Layout({ children }: LayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSpotifySettings, setShowSpotifySettings] = useState(false);
 
+  // Enable keyboard shortcuts
+  useKeyboardShortcuts();
+
   // Handle global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -202,7 +208,7 @@ export default function Layout({ children }: LayoutProps) {
               </div>
               
               {/* Desktop Navigation */}
-              <nav className="hidden lg:flex space-x-8">
+              <nav className="hidden lg:flex space-x-8" data-tour="navigation">
                 {getNavItemsForRole(currentRole).map((item) => {
                   const Icon = item.icon;
                   const isActive = location.pathname === item.href;
@@ -229,9 +235,12 @@ export default function Layout({ children }: LayoutProps) {
             {/* Right: Search & Actions */}
             <div className="flex items-center space-x-4">
               {/* Search */}
-              <div className="hidden md:flex">
+              <div className="hidden md:flex" data-tour="search">
                 <GlobalSearch onSelect={() => setMobileMenuOpen(false)} />
               </div>
+
+              {/* Notifications */}
+              <NotificationCenter />
 
               {/* Settings */}
               <DropdownMenu>
@@ -379,6 +388,8 @@ export default function Layout({ children }: LayoutProps) {
         open={showSpotifySettings} 
         onOpenChange={setShowSpotifySettings}
       />
+      
+      <KeyboardShortcutsModal />
     </div>
   );
 }
