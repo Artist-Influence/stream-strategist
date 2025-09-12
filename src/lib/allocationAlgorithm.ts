@@ -1,7 +1,8 @@
-// Minimal allocation algorithm utilities to satisfy current usage
-// Restores deleted module and provides simple, deterministic behavior
+// Enhanced ML-Driven Allocation Algorithm
+// Integrates machine learning predictions with allocation logic
 
 import type { Playlist, Vendor } from "@/types";
+import { mlEngine, type MLPrediction } from "./mlEngine";
 
 export interface GenreMatch {
   playlist: Playlist;
@@ -54,10 +55,79 @@ export async function allocateStreams(input: AllocateStreamsInput): Promise<{
   allocations: AllocationItem[];
   genreMatches: GenreMatch[];
   insights: LearningInsights;
+  mlOptimized?: boolean;
+  mlPredictions?: Array<{ playlistId: string; prediction: MLPrediction }>;
 }> {
-  const { playlists, goal, vendorCaps, subGenre, durationDays, campaignGenres } = input;
+  const { playlists, goal, vendorCaps, subGenre, durationDays, campaignGenres, vendors, campaignBudget } = input;
 
-  // Build genre matches
+  // Try ML-optimized allocation first
+  const mlOptimizationEnabled = playlists.length > 5 && goal > 10000;
+  let mlPredictions: Array<{ playlistId: string; prediction: MLPrediction }> = [];
+  
+  if (mlOptimizationEnabled && vendors) {
+    try {
+      const campaign = {
+        genres: campaignGenres || [subGenre],
+        budget: campaignBudget || goal * 0.01, // Estimate budget if not provided
+        duration: durationDays,
+        goal
+      };
+
+      const mlAllocations = mlEngine.optimizeAllocation(playlists, campaign, vendors);
+      
+      if (mlAllocations.length > 0) {
+        // Convert ML allocations to our format
+        const allocations: AllocationItem[] = mlAllocations.map(mla => ({
+          playlist_id: mla.playlistId,
+          vendor_id: mla.vendorId,
+          allocation: mla.allocation
+        }));
+
+        // Store ML predictions for insights
+        mlPredictions = mlAllocations.map(mla => ({
+          playlistId: mla.playlistId,
+          prediction: mla.prediction
+        }));
+
+        // Calculate insights from ML results
+        const allocatedTotal = allocations.reduce((sum, a) => sum + a.allocation, 0);
+        const coverage = goal > 0 ? allocatedTotal / goal : 0;
+        const avgConfidence = mlAllocations.reduce((sum, a) => sum + a.prediction.confidence, 0) / mlAllocations.length;
+        
+        const insights: LearningInsights = {
+          confidenceScore: avgConfidence,
+          expectedPerformance: {
+            optimistic: Math.round(allocatedTotal * 1.15),
+            realistic: Math.round(allocatedTotal),
+            conservative: Math.round(allocatedTotal * 0.85),
+          },
+          recommendations: [
+            `ML optimization applied with ${(avgConfidence * 100).toFixed(1)}% confidence`,
+            ...(coverage >= 1 ? ["Target goal achievable with current allocation"] : ["Consider increasing vendor capacity or campaign duration"]),
+            ...mlAllocations.filter(a => a.prediction.performanceCategory === 'excellent').length > 0 ? 
+              [`${mlAllocations.filter(a => a.prediction.performanceCategory === 'excellent').length} playlists predicted to exceed expectations`] : []
+          ],
+          riskFactors: [
+            ...(mlAllocations.filter(a => a.prediction.riskScore > 0.7).length > 0 ? 
+              [`${mlAllocations.filter(a => a.prediction.riskScore > 0.7).length} high-risk allocations detected`] : []),
+            ...(coverage < 0.8 ? ["Goal coverage below 80% - campaign may underperform"] : [])
+          ]
+        };
+
+        // Build genre matches for consistency
+        const genreMatches: GenreMatch[] = playlists.map(p => ({
+          playlist: p,
+          relevanceScore: computeRelevance(p, subGenre, campaignGenres),
+        }));
+
+        return { allocations, genreMatches, insights, mlOptimized: true, mlPredictions };
+      }
+    } catch (error) {
+      console.warn('ML optimization failed, falling back to heuristic allocation:', error);
+    }
+  }
+
+  // Fallback to original heuristic allocation
   const genreMatches: GenreMatch[] = playlists.map(p => ({
     playlist: p,
     relevanceScore: computeRelevance(p, subGenre, campaignGenres),
@@ -125,7 +195,7 @@ export async function allocateStreams(input: AllocateStreamsInput): Promise<{
     ],
   };
 
-  return { allocations, genreMatches, insights };
+  return { allocations, genreMatches, insights, mlOptimized: false };
 }
 
 export function calculateProjections(
