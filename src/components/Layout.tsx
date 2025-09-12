@@ -208,7 +208,7 @@ export default function Layout({ children }: LayoutProps) {
               </div>
               
               {/* Desktop Navigation */}
-              <nav className="hidden lg:flex space-x-8" data-tour="navigation">
+              <nav className="hidden lg:flex space-x-3" data-tour="navigation">
                 {getNavItemsForRole(currentRole).map((item) => {
                   const Icon = item.icon;
                   const isActive = location.pathname === item.href;
@@ -218,13 +218,13 @@ export default function Layout({ children }: LayoutProps) {
                       key={item.href}
                       to={item.href}
                       className={cn(
-                        "flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-smooth",
+                        "flex items-center space-x-1 px-2 py-1.5 rounded-md text-xs font-medium transition-smooth",
                         isActive 
-                          ? "text-primary" 
-                          : "text-muted-foreground hover:text-foreground"
+                          ? "text-primary bg-primary/10" 
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                       )}
                     >
-                      <Icon className="w-4 h-4" />
+                      <Icon className="w-3.5 h-3.5" />
                       <span>{item.title}</span>
                     </Link>
                   );
