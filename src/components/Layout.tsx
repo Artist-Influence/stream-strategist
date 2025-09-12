@@ -3,14 +3,12 @@ import { useLocation, Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PROJECT_NAME, PROJECT_ID } from "@/lib/constants";
-import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { 
   Home, 
   Database, 
   Plus, 
   History, 
-  Search,
   Settings,
   Music,
   Menu,
@@ -29,6 +27,8 @@ import {
 } from "lucide-react";
 import SpotifySettingsModal from "./SpotifySettingsModal";
 import { useAuth } from "@/hooks/useAuth";
+import { GlobalSearch } from "./GlobalSearch";
+import { Breadcrumb } from "./Breadcrumb";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -162,41 +162,15 @@ export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, currentRole, signOut, hasRole } = useAuth();
-  const [searchTerm, setSearchTerm] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSpotifySettings, setShowSpotifySettings] = useState(false);
 
   // Handle global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        switch (e.key) {
-          case 'k':
-            e.preventDefault();
-            // Focus search input
-            document.getElementById('global-search')?.focus();
-            break;
-          case '1':
-            e.preventDefault();
-            window.location.href = '/';
-            break;
-          case '2':
-            e.preventDefault();
-            window.location.href = '/vendors';
-            break;
-          case '3':
-            e.preventDefault();
-            window.location.href = '/campaign/new';
-            break;
-          case '4':
-            e.preventDefault();
-            window.location.href = '/campaigns';
-            break;
-          case '5':
-            e.preventDefault();
-            window.location.href = '/clients';
-            break;
-        }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        document.getElementById('global-search')?.focus();
       }
     };
 
@@ -255,18 +229,8 @@ export default function Layout({ children }: LayoutProps) {
             {/* Right: Search & Actions */}
             <div className="flex items-center space-x-4">
               {/* Search */}
-              <div className="hidden md:flex relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="global-search"
-                  placeholder="Search"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-64 pl-10 pr-16 bg-input border-border"
-                />
-                <kbd className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                  Ctrl+K
-                </kbd>
+              <div className="hidden md:flex">
+                <GlobalSearch onSelect={() => setMobileMenuOpen(false)} />
               </div>
 
               {/* Settings */}
@@ -405,7 +369,10 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Main Content */}
       <main className="min-h-[calc(100vh-73px)]">
-        {children}
+        <div className="container mx-auto px-6 py-6">
+          <Breadcrumb />
+          {children}
+        </div>
       </main>
       
       <SpotifySettingsModal 

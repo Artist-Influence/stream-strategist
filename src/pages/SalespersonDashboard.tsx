@@ -7,6 +7,7 @@ import { SalespersonCommissionCard } from "@/components/SalespersonCommissionCar
 import { SalespersonCampaignTable } from "@/components/SalespersonCampaignTable";
 import { ReadOnlyCampaignDetailsModal } from "@/components/ReadOnlyCampaignDetailsModal";
 import { useSalespersonCampaigns } from "@/hooks/useSalespersonCampaigns";
+import { QuickActions } from "@/components/QuickActions";
 
 export default function SalespersonDashboard() {
   const { user } = useAuth();
@@ -20,7 +21,7 @@ export default function SalespersonDashboard() {
 
   return (
     <Layout>
-      <div className="container mx-auto px-6 py-6 space-y-6">
+      <div className="space-y-6 -mt-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Salesperson Dashboard</h1>
@@ -33,6 +34,9 @@ export default function SalespersonDashboard() {
             Submit Campaign
           </Button>
         </div>
+
+        {/* Quick Actions */}
+        <QuickActions />
 
         {/* Commission Card - Most Important */}
         <SalespersonCommissionCard />

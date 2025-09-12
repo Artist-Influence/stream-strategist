@@ -25,6 +25,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { SalespeopleManager } from "@/components/SalespeopleManager";
 import { ActiveVendorsCard } from "@/components/ActiveVendorsCard";
 import { ExecutiveDashboard } from "@/components/ExecutiveDashboard";
+import { QuickActions } from "@/components/QuickActions";
 
 interface DashboardStats {
   totalCampaigns: number;
@@ -82,9 +83,9 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-8 -mt-6">
       {/* Hero Section */}
-      <section className="text-center pt-16 pb-8">
+      <section className="text-center pt-8 pb-6">
         <h1 className="hero-title">
           SPOTIFY PLAYLISTING
         </h1>
@@ -96,8 +97,14 @@ export default function Dashboard() {
         </p>
       </section>
 
+      {/* Quick Actions Section */}
+      <section>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
+        <QuickActions />
+      </section>
+
       {/* Action Buttons */}
-      <section className="container mx-auto px-6">
+      <section>
         <div className="flex flex-col sm:flex-row justify-center gap-4 max-w-4xl mx-auto">
           <Button 
             className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-4 h-auto text-base font-medium glow-primary transition-smooth"
@@ -134,7 +141,7 @@ export default function Dashboard() {
       </section>
 
       {/* Feature Cards */}
-      <section className="container mx-auto px-6">
+      <section>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
           <div className="feature-card">
             <div className="flex items-center justify-center w-12 h-12 bg-primary/20 rounded-lg mb-4">
@@ -179,18 +186,17 @@ export default function Dashboard() {
       </section>
 
       {/* Executive Dashboard */}
-      <section className="container mx-auto px-6 pb-12">
+      <section>
         <ExecutiveDashboard />
       </section>
 
-
       {/* Salespeople Management Section */}
-      <section className="container mx-auto px-6 pb-12">
+      <section>
         <SalespeopleManager />
       </section>
 
       {/* Public Intake Form Link */}
-      <section className="container mx-auto px-6 pb-12">
+      <section>
         <Card className="max-w-2xl mx-auto text-center">
           <CardContent className="p-8">
             <div className="flex items-center justify-center w-16 h-16 bg-primary/20 rounded-lg mb-4 mx-auto">
