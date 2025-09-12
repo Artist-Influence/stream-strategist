@@ -50,6 +50,78 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_ab_tests: {
+        Row: {
+          algorithm_version_control: string
+          algorithm_version_test: string
+          conclusion: string | null
+          confidence_interval: Json | null
+          control_campaigns: string[] | null
+          control_metrics: Json | null
+          created_at: string
+          effect_size: number | null
+          hypothesis: string
+          id: string
+          p_value: number | null
+          sample_size_target: number | null
+          statistical_power: number | null
+          status: string
+          test_campaigns: string[] | null
+          test_end_date: string | null
+          test_metrics: Json | null
+          test_name: string
+          test_start_date: string
+          updated_at: string
+          winner: string | null
+        }
+        Insert: {
+          algorithm_version_control: string
+          algorithm_version_test: string
+          conclusion?: string | null
+          confidence_interval?: Json | null
+          control_campaigns?: string[] | null
+          control_metrics?: Json | null
+          created_at?: string
+          effect_size?: number | null
+          hypothesis: string
+          id?: string
+          p_value?: number | null
+          sample_size_target?: number | null
+          statistical_power?: number | null
+          status?: string
+          test_campaigns?: string[] | null
+          test_end_date?: string | null
+          test_metrics?: Json | null
+          test_name: string
+          test_start_date: string
+          updated_at?: string
+          winner?: string | null
+        }
+        Update: {
+          algorithm_version_control?: string
+          algorithm_version_test?: string
+          conclusion?: string | null
+          confidence_interval?: Json | null
+          control_campaigns?: string[] | null
+          control_metrics?: Json | null
+          created_at?: string
+          effect_size?: number | null
+          hypothesis?: string
+          id?: string
+          p_value?: number | null
+          sample_size_target?: number | null
+          statistical_power?: number | null
+          status?: string
+          test_campaigns?: string[] | null
+          test_end_date?: string | null
+          test_metrics?: Json | null
+          test_name?: string
+          test_start_date?: string
+          updated_at?: string
+          winner?: string | null
+        }
+        Relationships: []
+      }
       campaign_allocations_performance: {
         Row: {
           actual_cost_per_stream: number | null
@@ -728,6 +800,89 @@ export type Database = {
         }
         Relationships: []
       }
+      creator_ml_features: {
+        Row: {
+          avg_engagement_rate: number | null
+          avg_performance_vs_prediction: number | null
+          campaign_success_rate: number | null
+          consistency_score: number | null
+          content_type_distribution: Json | null
+          created_at: string
+          creator_id: string
+          engagement_trend_slope: number | null
+          engagement_volatility: number | null
+          follower_growth_rate: number | null
+          genre_affinity_scores: Json | null
+          hashtag_effectiveness: Json | null
+          id: string
+          market_trend_correlation: number | null
+          optimal_posting_times: number[] | null
+          peak_engagement_rate: number | null
+          period_end: string
+          period_start: string
+          post_frequency: number | null
+          seasonal_performance_multiplier: number | null
+          updated_at: string
+          views_growth_rate: number | null
+        }
+        Insert: {
+          avg_engagement_rate?: number | null
+          avg_performance_vs_prediction?: number | null
+          campaign_success_rate?: number | null
+          consistency_score?: number | null
+          content_type_distribution?: Json | null
+          created_at?: string
+          creator_id: string
+          engagement_trend_slope?: number | null
+          engagement_volatility?: number | null
+          follower_growth_rate?: number | null
+          genre_affinity_scores?: Json | null
+          hashtag_effectiveness?: Json | null
+          id?: string
+          market_trend_correlation?: number | null
+          optimal_posting_times?: number[] | null
+          peak_engagement_rate?: number | null
+          period_end: string
+          period_start: string
+          post_frequency?: number | null
+          seasonal_performance_multiplier?: number | null
+          updated_at?: string
+          views_growth_rate?: number | null
+        }
+        Update: {
+          avg_engagement_rate?: number | null
+          avg_performance_vs_prediction?: number | null
+          campaign_success_rate?: number | null
+          consistency_score?: number | null
+          content_type_distribution?: Json | null
+          created_at?: string
+          creator_id?: string
+          engagement_trend_slope?: number | null
+          engagement_volatility?: number | null
+          follower_growth_rate?: number | null
+          genre_affinity_scores?: Json | null
+          hashtag_effectiveness?: Json | null
+          id?: string
+          market_trend_correlation?: number | null
+          optimal_posting_times?: number[] | null
+          peak_engagement_rate?: number | null
+          period_end?: string
+          period_start?: string
+          post_frequency?: number | null
+          seasonal_performance_multiplier?: number | null
+          updated_at?: string
+          views_growth_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_ml_features_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       creators: {
         Row: {
           audience_territories: string[]
@@ -905,6 +1060,168 @@ export type Database = {
           last_updated?: string | null
           sample_size?: number | null
           success_rate?: number | null
+        }
+        Relationships: []
+      }
+      market_intelligence: {
+        Row: {
+          confidence_score: number | null
+          content: Json
+          created_at: string
+          id: string
+          intelligence_type: string
+          market_impact_score: number | null
+          period_end: string | null
+          period_start: string | null
+          related_creators: string[] | null
+          related_genres: string[] | null
+          sentiment_score: number | null
+          source: string
+          topic: string
+          trend_direction: string | null
+          updated_at: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          content?: Json
+          created_at?: string
+          id?: string
+          intelligence_type: string
+          market_impact_score?: number | null
+          period_end?: string | null
+          period_start?: string | null
+          related_creators?: string[] | null
+          related_genres?: string[] | null
+          sentiment_score?: number | null
+          source: string
+          topic: string
+          trend_direction?: string | null
+          updated_at?: string
+        }
+        Update: {
+          confidence_score?: number | null
+          content?: Json
+          created_at?: string
+          id?: string
+          intelligence_type?: string
+          market_impact_score?: number | null
+          period_end?: string | null
+          period_start?: string | null
+          related_creators?: string[] | null
+          related_genres?: string[] | null
+          sentiment_score?: number | null
+          source?: string
+          topic?: string
+          trend_direction?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ml_model_versions: {
+        Row: {
+          accuracy_score: number | null
+          control_performance: number | null
+          created_at: string
+          deployed_at: string | null
+          deprecated_at: string | null
+          f1_score: number | null
+          id: string
+          model_type: string
+          parameters: Json
+          precision_score: number | null
+          recall_score: number | null
+          statistical_significance: number | null
+          status: string
+          test_campaigns: number | null
+          test_performance: number | null
+          training_data_size: number | null
+          training_date: string
+          updated_at: string
+          version_name: string
+        }
+        Insert: {
+          accuracy_score?: number | null
+          control_performance?: number | null
+          created_at?: string
+          deployed_at?: string | null
+          deprecated_at?: string | null
+          f1_score?: number | null
+          id?: string
+          model_type: string
+          parameters?: Json
+          precision_score?: number | null
+          recall_score?: number | null
+          statistical_significance?: number | null
+          status?: string
+          test_campaigns?: number | null
+          test_performance?: number | null
+          training_data_size?: number | null
+          training_date?: string
+          updated_at?: string
+          version_name: string
+        }
+        Update: {
+          accuracy_score?: number | null
+          control_performance?: number | null
+          created_at?: string
+          deployed_at?: string | null
+          deprecated_at?: string | null
+          f1_score?: number | null
+          id?: string
+          model_type?: string
+          parameters?: Json
+          precision_score?: number | null
+          recall_score?: number | null
+          statistical_significance?: number | null
+          status?: string
+          test_campaigns?: number | null
+          test_performance?: number | null
+          training_data_size?: number | null
+          training_date?: string
+          updated_at?: string
+          version_name?: string
+        }
+        Relationships: []
+      }
+      payment_history: {
+        Row: {
+          amount: number
+          campaign_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          payment_method: string | null
+          processed_at: string
+          processed_by: string | null
+          reference_number: string | null
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          amount?: number
+          campaign_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          processed_at?: string
+          processed_by?: string | null
+          reference_number?: string | null
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          amount?: number
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          processed_at?: string
+          processed_by?: string | null
+          reference_number?: string | null
+          updated_at?: string
+          vendor_id?: string
         }
         Relationships: []
       }
@@ -1144,6 +1461,124 @@ export type Database = {
           },
         ]
       }
+      post_performance_tracking: {
+        Row: {
+          algorithm_version: string | null
+          campaign_id: string | null
+          caption_length: number | null
+          comments_total: number | null
+          conversion_rate: number | null
+          created_at: string
+          creator_id: string | null
+          engagement_rate_1h: number | null
+          engagement_rate_24h: number | null
+          engagement_rate_final: number | null
+          hashtags: string[] | null
+          id: string
+          likes_total: number | null
+          music_used: string | null
+          performance_vs_prediction: number | null
+          post_type: string
+          post_url: string
+          posted_at: string | null
+          posting_time: string | null
+          predicted_views: number | null
+          retention_rate: number | null
+          saves_total: number | null
+          shares_total: number | null
+          updated_at: string
+          views_1h: number | null
+          views_24h: number | null
+          views_7d: number | null
+          views_total: number | null
+          viral_coefficient: number | null
+        }
+        Insert: {
+          algorithm_version?: string | null
+          campaign_id?: string | null
+          caption_length?: number | null
+          comments_total?: number | null
+          conversion_rate?: number | null
+          created_at?: string
+          creator_id?: string | null
+          engagement_rate_1h?: number | null
+          engagement_rate_24h?: number | null
+          engagement_rate_final?: number | null
+          hashtags?: string[] | null
+          id?: string
+          likes_total?: number | null
+          music_used?: string | null
+          performance_vs_prediction?: number | null
+          post_type: string
+          post_url: string
+          posted_at?: string | null
+          posting_time?: string | null
+          predicted_views?: number | null
+          retention_rate?: number | null
+          saves_total?: number | null
+          shares_total?: number | null
+          updated_at?: string
+          views_1h?: number | null
+          views_24h?: number | null
+          views_7d?: number | null
+          views_total?: number | null
+          viral_coefficient?: number | null
+        }
+        Update: {
+          algorithm_version?: string | null
+          campaign_id?: string | null
+          caption_length?: number | null
+          comments_total?: number | null
+          conversion_rate?: number | null
+          created_at?: string
+          creator_id?: string | null
+          engagement_rate_1h?: number | null
+          engagement_rate_24h?: number | null
+          engagement_rate_final?: number | null
+          hashtags?: string[] | null
+          id?: string
+          likes_total?: number | null
+          music_used?: string | null
+          performance_vs_prediction?: number | null
+          post_type?: string
+          post_url?: string
+          posted_at?: string | null
+          posting_time?: string | null
+          predicted_views?: number | null
+          retention_rate?: number | null
+          saves_total?: number | null
+          shares_total?: number | null
+          updated_at?: string
+          views_1h?: number | null
+          views_24h?: number | null
+          views_7d?: number | null
+          views_total?: number | null
+          viral_coefficient?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_performance_tracking_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_performance_tracking_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "public_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_performance_tracking_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_exports: {
         Row: {
           campaign_id: string | null
@@ -1278,6 +1713,87 @@ export type Database = {
           },
         ]
       }
+      sales_goals: {
+        Row: {
+          campaigns_target: number
+          commission_target: number
+          created_at: string
+          created_by: string | null
+          goal_period_end: string
+          goal_period_start: string
+          id: string
+          is_active: boolean
+          revenue_target: number
+          salesperson_email: string
+          updated_at: string
+        }
+        Insert: {
+          campaigns_target?: number
+          commission_target?: number
+          created_at?: string
+          created_by?: string | null
+          goal_period_end: string
+          goal_period_start: string
+          id?: string
+          is_active?: boolean
+          revenue_target?: number
+          salesperson_email: string
+          updated_at?: string
+        }
+        Update: {
+          campaigns_target?: number
+          commission_target?: number
+          created_at?: string
+          created_by?: string | null
+          goal_period_end?: string
+          goal_period_start?: string
+          id?: string
+          is_active?: boolean
+          revenue_target?: number
+          salesperson_email?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sales_performance_tracking: {
+        Row: {
+          actual_campaigns: number
+          actual_commission: number
+          actual_revenue: number
+          calculated_at: string
+          created_at: string
+          id: string
+          salesperson_email: string
+          tracking_period_end: string
+          tracking_period_start: string
+          updated_at: string
+        }
+        Insert: {
+          actual_campaigns?: number
+          actual_commission?: number
+          actual_revenue?: number
+          calculated_at?: string
+          created_at?: string
+          id?: string
+          salesperson_email: string
+          tracking_period_end: string
+          tracking_period_start: string
+          updated_at?: string
+        }
+        Update: {
+          actual_campaigns?: number
+          actual_commission?: number
+          actual_revenue?: number
+          calculated_at?: string
+          created_at?: string
+          id?: string
+          salesperson_email?: string
+          tracking_period_end?: string
+          tracking_period_start?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       salespeople: {
         Row: {
           created_at: string
@@ -1335,6 +1851,48 @@ export type Database = {
           id?: string
           name?: string
           type?: string
+        }
+        Relationships: []
+      }
+      team_goals: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          current_value: number
+          goal_name: string
+          goal_period_end: string
+          goal_period_start: string
+          goal_type: string
+          id: string
+          is_active: boolean
+          target_value: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          current_value?: number
+          goal_name: string
+          goal_period_end: string
+          goal_period_start: string
+          goal_type: string
+          id?: string
+          is_active?: boolean
+          target_value?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          current_value?: number
+          goal_name?: string
+          goal_period_end?: string
+          goal_period_start?: string
+          goal_type?: string
+          id?: string
+          is_active?: boolean
+          target_value?: number
+          updated_at?: string
         }
         Relationships: []
       }

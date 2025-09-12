@@ -21,6 +21,9 @@ import VendorRequestsPage from "./pages/VendorRequestsPage";
 import MLDashboardPage from "./pages/MLDashboardPage";
 import CompliancePage from "./pages/CompliancePage";
 import ReportsPage from "./pages/ReportsPage";
+import VendorPaymentHistoryPage from "./pages/VendorPaymentHistoryPage";
+import AdminPaymentHistoryPage from "./pages/AdminPaymentHistoryPage";
+import TeamGoalsPage from "./pages/TeamGoalsPage";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 
@@ -101,6 +104,16 @@ const App = () => (
                 <ReportsPage />
               </ProtectedRoute>
             } />
+            <Route path="/payments" element={
+              <ProtectedRoute requiredRoles={['admin', 'manager']}>
+                <AdminPaymentHistoryPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/team-goals" element={
+              <ProtectedRoute requiredRoles={['admin', 'manager']}>
+                <TeamGoalsPage />
+              </ProtectedRoute>
+            } />
             
             {/* Salesperson dashboard */}
             <Route path="/salesperson" element={
@@ -123,6 +136,11 @@ const App = () => (
             <Route path="/vendor/requests" element={
               <ProtectedRoute requiredRoles={['vendor']}>
                 <VendorRequestsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/vendor/payments" element={
+              <ProtectedRoute requiredRoles={['vendor']}>
+                <VendorPaymentHistoryPage />
               </ProtectedRoute>
             } />
             

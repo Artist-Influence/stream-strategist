@@ -12,6 +12,10 @@ export interface Vendor {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  vendor_users?: Array<{
+    user_id: string;
+    vendor_id: string;
+  }>;
 }
 
 export interface CreateVendorData {
@@ -29,7 +33,10 @@ export function useVendors() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('vendors')
-        .select('*')
+        .select(`
+          *,
+          vendor_users(user_id, vendor_id)
+        `)
         .order('name');
 
       if (error) throw error;

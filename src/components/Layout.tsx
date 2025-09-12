@@ -22,7 +22,10 @@ import {
   UserPlus,
   Brain,
   Shield,
-  FileText
+  FileText,
+  DollarSign,
+  Target,
+  Receipt
 } from "lucide-react";
 import SpotifySettingsModal from "./SpotifySettingsModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -89,6 +92,18 @@ const getNavItemsForRole = (currentRole: string | null) => {
         icon: FileText,
         hotkey: "Ctrl+9"
       },
+      {
+        title: "Payments",
+        href: "/payments",
+        icon: DollarSign,
+        hotkey: "Ctrl+P"
+      },
+      {
+        title: "Team Goals",
+        href: "/team-goals",
+        icon: Target,
+        hotkey: "Ctrl+T"
+      },
       ...(currentRole === 'admin' ? [{
         title: "Users", 
         href: "/users",
@@ -130,6 +145,12 @@ const getNavItemsForRole = (currentRole: string | null) => {
         href: "/vendor/requests",
         icon: History,
         hotkey: "Ctrl+3"
+      },
+      {
+        title: "Payment History",
+        href: "/vendor/payments",
+        icon: Receipt,
+        hotkey: "Ctrl+4"
       }
     ];
   }

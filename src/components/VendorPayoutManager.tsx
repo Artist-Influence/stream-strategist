@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useVendorPayouts, useMarkPayoutPaid, useBulkMarkPayoutsPaid, VendorPayout } from '@/hooks/useVendorPayouts';
+import { useCreatePaymentRecord } from '@/hooks/usePaymentHistory';
 import { Search, Download, DollarSign, CheckCircle, Clock, Receipt, Edit, Save, X, ChevronRight, ChevronDown } from 'lucide-react';
 import Papa from 'papaparse';
 import { useToast } from '@/hooks/use-toast';
@@ -36,6 +37,7 @@ export function VendorPayoutManager() {
   const { data: vendorPayouts, isLoading } = useVendorPayouts();
   const markPayoutPaid = useMarkPayoutPaid();
   const bulkMarkPayoutsPaid = useBulkMarkPayoutsPaid();
+  const createPaymentRecord = useCreatePaymentRecord();
   const { toast } = useToast();
 
   // Filter and sort vendors by total owed
