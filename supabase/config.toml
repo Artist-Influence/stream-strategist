@@ -25,3 +25,9 @@ verify_jwt = false
 
 [functions.spotify-playlist-fetch]
 verify_jwt = false
+
+[functions.ml-processor]
+verify_jwt = false
+
+[functions.generate-report]
+verify_jwt = false

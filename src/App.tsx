@@ -18,6 +18,9 @@ import SalespersonDashboard from "./pages/SalespersonDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
 import VendorPlaylistsPage from "./pages/VendorPlaylistsPage";
 import VendorRequestsPage from "./pages/VendorRequestsPage";
+import MLDashboardPage from "./pages/MLDashboardPage";
+import CompliancePage from "./pages/CompliancePage";
+import ReportsPage from "./pages/ReportsPage";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 
@@ -81,6 +84,21 @@ const App = () => (
             <Route path="/submissions" element={
               <ProtectedRoute requiredRoles={['admin', 'manager']}>
                 <CampaignSubmissionsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/ml-dashboard" element={
+              <ProtectedRoute requiredRoles={['admin', 'manager']}>
+                <MLDashboardPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/compliance" element={
+              <ProtectedRoute requiredRoles={['admin', 'manager']}>
+                <CompliancePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/reports" element={
+              <ProtectedRoute requiredRoles={['admin', 'manager']}>
+                <ReportsPage />
               </ProtectedRoute>
             } />
             

@@ -18,7 +18,11 @@ import {
   Key,
   Users,
   LogOut,
-  UserPlus
+  User,
+  UserPlus,
+  Brain,
+  Shield,
+  FileText
 } from "lucide-react";
 import SpotifySettingsModal from "./SpotifySettingsModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -66,6 +70,24 @@ const getNavItemsForRole = (currentRole: string | null) => {
         href: "/clients",
         icon: Users,
         hotkey: "Ctrl+5"
+      },
+      {
+        title: "ML Analytics",
+        href: "/ml-dashboard",
+        icon: Brain,
+        hotkey: "Ctrl+7"
+      },
+      {
+        title: "Compliance",
+        href: "/compliance",
+        icon: Shield,
+        hotkey: "Ctrl+8"
+      },
+      {
+        title: "Reports",
+        href: "/reports",
+        icon: FileText,
+        hotkey: "Ctrl+9"
       },
       ...(currentRole === 'admin' ? [{
         title: "Users", 
