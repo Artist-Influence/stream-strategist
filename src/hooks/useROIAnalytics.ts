@@ -91,9 +91,11 @@ export const useROIAnalytics = () => {
       if (vendorsError) throw vendorsError;
 
       // Calculate campaign ROI breakdown
-      const campaignROIBreakdown = campaigns?.map(campaign => {
+      const campaignROIBreakdown = Array.isArray(campaigns) ? campaigns.map(campaign => {
         const submission = campaign.campaign_submissions?.[0];
-        const performance = campaign.campaign_allocations_performance || [];
+        const performance = Array.isArray(campaign.campaign_allocations_performance) 
+          ? campaign.campaign_allocations_performance 
+          : [];
         
         const totalCost = performance.reduce((sum, p) => 
           sum + ((p.cost_per_stream || 0) * (p.actual_streams || 0)), 0
@@ -116,7 +118,7 @@ export const useROIAnalytics = () => {
           actualStreams,
           costPerStream
         };
-      }) || [];
+      }) : [];
 
       // Calculate overall ROI
       const totalRevenue = campaignROIBreakdown.reduce((sum, c) => sum + c.revenue, 0);
@@ -124,12 +126,14 @@ export const useROIAnalytics = () => {
       const overallROI = totalCost > 0 ? ((totalRevenue - totalCost) / totalCost) * 100 : 0;
 
       // Calculate vendor cost efficiency
-      const vendorCostEfficiency = vendors?.map(vendor => {
-        const performances = vendor.campaign_allocations_performance || [];
+      const vendorCostEfficiency = Array.isArray(vendors) ? vendors.map(vendor => {
+        const performances = Array.isArray(vendor.campaign_allocations_performance) 
+          ? vendor.campaign_allocations_performance 
+          : [];
         
         // Get campaign revenue for this vendor's campaigns
         const vendorCampaigns = performances.map(p => 
-          campaigns?.find(c => c.id === p.campaign_id)
+          Array.isArray(campaigns) ? campaigns.find(c => c.id === p.campaign_id) : null
         ).filter(Boolean);
         
         const totalRevenue = vendorCampaigns.reduce((sum, campaign) => {
@@ -157,7 +161,7 @@ export const useROIAnalytics = () => {
           campaignCount: performances.length,
           efficiency: avgPerformance * 100
         };
-      }) || [];
+      }) : [];
 
       // Budget optimization analysis
       const underperformingCampaigns = campaignROIBreakdown

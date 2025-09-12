@@ -90,60 +90,78 @@ export const useExecutiveDashboardData = () => {
         return sum + (submission?.price_paid || 0);
       }, 0) || 0;
 
-      const campaignsWithROI = campaigns?.filter(campaign => {
+      const campaignsWithROI = Array.isArray(campaigns) ? campaigns.filter(campaign => {
         const submission = campaign.campaign_submissions?.[0];
-        const performance = campaign.campaign_allocations_performance || [];
-        const totalCost = performance.reduce((sum, p) => sum + (p.cost_per_stream * p.actual_streams), 0);
+        const performance = Array.isArray(campaign.campaign_allocations_performance) 
+          ? campaign.campaign_allocations_performance 
+          : [];
+        const totalCost = performance.reduce((sum, p) => sum + ((p.cost_per_stream || 0) * (p.actual_streams || 0)), 0);
         return submission?.price_paid && totalCost > 0;
-      }) || [];
+      }) : [];
 
       const averageROI = campaignsWithROI.length > 0 
         ? campaignsWithROI.reduce((sum, campaign) => {
             const submission = campaign.campaign_submissions?.[0];
-            const performance = campaign.campaign_allocations_performance || [];
-            const totalCost = performance.reduce((sum, p) => sum + (p.cost_per_stream * p.actual_streams), 0);
-            const roi = ((submission.price_paid - totalCost) / totalCost) * 100;
+            const performance = Array.isArray(campaign.campaign_allocations_performance) 
+              ? campaign.campaign_allocations_performance 
+              : [];
+            const totalCost = performance.reduce((sum, p) => sum + ((p.cost_per_stream || 0) * (p.actual_streams || 0)), 0);
+            const roi = totalCost > 0 ? ((submission.price_paid - totalCost) / totalCost) * 100 : 0;
             return sum + roi;
           }, 0) / campaignsWithROI.length
         : 0;
 
-      const totalStreamGoals = campaigns?.reduce((sum, c) => sum + (c.stream_goal || 0), 0) || 0;
-      const totalActualStreams = campaigns?.reduce((sum, campaign) => {
-        const performance = campaign.campaign_allocations_performance || [];
-        return sum + performance.reduce((pSum, p) => pSum + (p.actual_streams || 0), 0);
-      }, 0) || 0;
+      const totalStreamGoals = Array.isArray(campaigns) 
+        ? campaigns.reduce((sum, c) => sum + (c.stream_goal || 0), 0) 
+        : 0;
+        
+      const totalActualStreams = Array.isArray(campaigns) 
+        ? campaigns.reduce((sum, campaign) => {
+            const performance = Array.isArray(campaign.campaign_allocations_performance) 
+              ? campaign.campaign_allocations_performance 
+              : [];
+            return sum + performance.reduce((pSum, p) => pSum + (p.actual_streams || 0), 0);
+          }, 0) 
+        : 0;
 
       const goalCompletionRate = totalStreamGoals > 0 ? (totalActualStreams / totalStreamGoals) * 100 : 0;
 
-      const totalCostPerStreamData = campaigns?.reduce((acc, campaign) => {
-        const performance = campaign.campaign_allocations_performance || [];
-        performance.forEach(p => {
-          if (p.cost_per_stream && p.actual_streams) {
-            acc.totalCost += p.cost_per_stream * p.actual_streams;
-            acc.totalStreams += p.actual_streams;
-          }
-        });
-        return acc;
-      }, { totalCost: 0, totalStreams: 0 });
+      const totalCostPerStreamData = Array.isArray(campaigns) 
+        ? campaigns.reduce((acc, campaign) => {
+            const performance = Array.isArray(campaign.campaign_allocations_performance) 
+              ? campaign.campaign_allocations_performance 
+              : [];
+            performance.forEach(p => {
+              if (p.cost_per_stream && p.actual_streams) {
+                acc.totalCost += p.cost_per_stream * p.actual_streams;
+                acc.totalStreams += p.actual_streams;
+              }
+            });
+            return acc;
+          }, { totalCost: 0, totalStreams: 0 })
+        : { totalCost: 0, totalStreams: 0 };
 
-      const averageCostPerStream = totalCostPerStreamData?.totalStreams > 0 
+      const averageCostPerStream = totalCostPerStreamData.totalStreams > 0 
         ? totalCostPerStreamData.totalCost / totalCostPerStreamData.totalStreams 
         : 0;
 
       // Calculate top performing vendors
-      const topPerformingVendors = vendorPerformance?.map(vendor => {
-        const performances = vendor.campaign_allocations_performance || [];
-        const avgPerformance = performances.length > 0
-          ? performances.reduce((sum, p) => sum + (p.performance_score || 0), 0) / performances.length
-          : 0;
-        
-        const efficiency = performances.length > 0
-          ? performances.reduce((sum, p) => {
-              const predicted = p.predicted_streams || 1;
-              const actual = p.actual_streams || 0;
-              return sum + (actual / predicted);
-            }, 0) / performances.length
-          : 0;
+      const topPerformingVendors = Array.isArray(vendorPerformance) 
+        ? vendorPerformance.map(vendor => {
+            const performances = Array.isArray(vendor.campaign_allocations_performance) 
+              ? vendor.campaign_allocations_performance 
+              : [];
+            const avgPerformance = performances.length > 0
+              ? performances.reduce((sum, p) => sum + (p.performance_score || 0), 0) / performances.length
+              : 0;
+            
+            const efficiency = performances.length > 0
+              ? performances.reduce((sum, p) => {
+                  const predicted = p.predicted_streams || 1;
+                  const actual = p.actual_streams || 0;
+                  return sum + (actual / predicted);
+                }, 0) / performances.length
+              : 0;
 
         return {
           name: vendor.name,
@@ -151,16 +169,17 @@ export const useExecutiveDashboardData = () => {
           totalCampaigns: performances.length,
           avgPerformance: avgPerformance * 100
         };
-      }).sort((a, b) => b.efficiency - a.efficiency).slice(0, 5) || [];
+        }).sort((a, b) => b.efficiency - a.efficiency).slice(0, 5)
+        : [];
 
       // Calculate month-over-month growth
-      const currentMonthCampaigns = campaigns?.filter(c => 
+      const currentMonthCampaigns = Array.isArray(campaigns) ? campaigns.filter(c => 
         new Date(c.created_at) >= currentMonthStart && new Date(c.created_at) <= currentMonthEnd
-      ).length || 0;
+      ).length : 0;
       
-      const lastMonthCampaigns = campaigns?.filter(c => 
+      const lastMonthCampaigns = Array.isArray(campaigns) ? campaigns.filter(c => 
         new Date(c.created_at) >= lastMonthStart && new Date(c.created_at) <= lastMonthEnd
-      ).length || 0;
+      ).length : 0;
 
       const monthOverMonthGrowth = {
         campaigns: lastMonthCampaigns > 0 ? ((currentMonthCampaigns - lastMonthCampaigns) / lastMonthCampaigns) * 100 : 0,
@@ -169,13 +188,13 @@ export const useExecutiveDashboardData = () => {
       };
 
       // Calculate quarter-over-quarter growth
-      const currentQuarterCampaigns = campaigns?.filter(c => 
+      const currentQuarterCampaigns = Array.isArray(campaigns) ? campaigns.filter(c => 
         new Date(c.created_at) >= currentQuarterStart && new Date(c.created_at) <= currentQuarterEnd
-      ).length || 0;
+      ).length : 0;
       
-      const lastQuarterCampaigns = campaigns?.filter(c => 
+      const lastQuarterCampaigns = Array.isArray(campaigns) ? campaigns.filter(c => 
         new Date(c.created_at) >= lastQuarterStart && new Date(c.created_at) <= lastQuarterEnd
-      ).length || 0;
+      ).length : 0;
 
       const quarterOverQuarterGrowth = {
         campaigns: lastQuarterCampaigns > 0 ? ((currentQuarterCampaigns - lastQuarterCampaigns) / lastQuarterCampaigns) * 100 : 0,
@@ -184,10 +203,10 @@ export const useExecutiveDashboardData = () => {
       };
 
       // Campaign status distribution
-      const statusCounts = campaigns?.reduce((acc, campaign) => {
+      const statusCounts = Array.isArray(campaigns) ? campaigns.reduce((acc, campaign) => {
         acc[campaign.status] = (acc[campaign.status] || 0) + 1;
         return acc;
-      }, {} as Record<string, number>) || {};
+      }, {} as Record<string, number>) : {};
 
       const campaignStatusDistribution = Object.entries(statusCounts).map(([status, count]) => ({
         status,

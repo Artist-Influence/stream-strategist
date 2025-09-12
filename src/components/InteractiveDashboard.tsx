@@ -251,7 +251,11 @@ export const InteractiveDashboard = () => {
         
         <DrillDownChart 
           title="Performance Over Time"
-          data={data.drillDownData.timeline}
+          data={data.drillDownData.timeline.map(item => ({
+            name: item.date,
+            streams: item.streams,
+            performance: item.performance
+          }))}
         />
       </div>
 
