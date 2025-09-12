@@ -98,6 +98,45 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_compliance_checkpoints: {
+        Row: {
+          campaign_id: string
+          checkpoint_type: string
+          completed_date: string | null
+          compliance_data: Json | null
+          created_at: string
+          expected_date: string | null
+          id: string
+          notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          checkpoint_type: string
+          completed_date?: string | null
+          compliance_data?: Json | null
+          created_at?: string
+          expected_date?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          checkpoint_type?: string
+          completed_date?: string | null
+          compliance_data?: Json | null
+          created_at?: string
+          expected_date?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       campaign_creators: {
         Row: {
           approval_notes: string | null
@@ -644,6 +683,51 @@ export type Database = {
         }
         Relationships: []
       }
+      content_verification_logs: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          playlist_id: string
+          score: number | null
+          status: string
+          updated_at: string
+          verification_data: Json | null
+          verification_type: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          playlist_id: string
+          score?: number | null
+          status?: string
+          updated_at?: string
+          verification_data?: Json | null
+          verification_type: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          playlist_id?: string
+          score?: number | null
+          status?: string
+          updated_at?: string
+          verification_data?: Json | null
+          verification_type?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: []
+      }
       creators: {
         Row: {
           audience_territories: string[]
@@ -737,6 +821,57 @@ export type Database = {
           shared_with?: string[] | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      fraud_detection_alerts: {
+        Row: {
+          alert_type: string
+          campaign_id: string | null
+          confidence_score: number | null
+          created_at: string
+          detection_data: Json | null
+          id: string
+          playlist_id: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          status: string
+          updated_at: string
+          vendor_id: string | null
+        }
+        Insert: {
+          alert_type: string
+          campaign_id?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          detection_data?: Json | null
+          id?: string
+          playlist_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Update: {
+          alert_type?: string
+          campaign_id?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          detection_data?: Json | null
+          id?: string
+          playlist_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          updated_at?: string
+          vendor_id?: string | null
         }
         Relationships: []
       }
@@ -1221,6 +1356,51 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      vendor_compliance_scores: {
+        Row: {
+          campaigns_evaluated: number | null
+          content_verification_score: number | null
+          created_at: string
+          delivery_compliance_score: number | null
+          fraud_risk_score: number | null
+          id: string
+          overall_compliance_score: number | null
+          period_end: string
+          period_start: string
+          updated_at: string
+          vendor_id: string
+          violations_count: number | null
+        }
+        Insert: {
+          campaigns_evaluated?: number | null
+          content_verification_score?: number | null
+          created_at?: string
+          delivery_compliance_score?: number | null
+          fraud_risk_score?: number | null
+          id?: string
+          overall_compliance_score?: number | null
+          period_end: string
+          period_start: string
+          updated_at?: string
+          vendor_id: string
+          violations_count?: number | null
+        }
+        Update: {
+          campaigns_evaluated?: number | null
+          content_verification_score?: number | null
+          created_at?: string
+          delivery_compliance_score?: number | null
+          fraud_risk_score?: number | null
+          id?: string
+          overall_compliance_score?: number | null
+          period_end?: string
+          period_start?: string
+          updated_at?: string
+          vendor_id?: string
+          violations_count?: number | null
         }
         Relationships: []
       }
