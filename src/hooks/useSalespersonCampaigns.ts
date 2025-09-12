@@ -8,6 +8,7 @@ interface SalespersonCampaign {
   client_name: string;
   status: string;
   budget: number;
+  price_paid: number;
   stream_goal: number;
   remaining_streams: number;
   daily_streams: number;
@@ -37,19 +38,16 @@ export function useSalespersonCampaigns() {
         throw new Error('User email not available');
       }
 
-      // First get campaigns from campaign_submissions table
-      const { data: submissions, error: submissionsError } = await supabase
-        .from('campaign_submissions')
-        .select('*')
-        .eq('salesperson', user.email)
-        .eq('status', 'approved');
-
-      if (submissionsError) throw submissionsError;
-
-      // Then get actual campaigns that were created from those submissions or assigned to salesperson
+      // Get campaigns with submission data joined
       const { data: campaigns, error: campaignsError } = await supabase
         .from('campaigns')
-        .select('*')
+        .select(`
+          *,
+          campaign_submissions!inner(
+            client_name,
+            price_paid
+          )
+        `)
         .eq('salesperson', user.email)
         .in('status', ['active', 'completed', 'paused', 'draft', 'built', 'unreleased'])
         .order('created_at', { ascending: false });
@@ -69,7 +67,8 @@ export function useSalespersonCampaigns() {
           daily_streams: campaign.daily_streams || 0,
           weekly_streams: campaign.weekly_streams || 0,
           remaining_streams: campaign.remaining_streams || campaign.stream_goal,
-          client_name: campaign.client_name || campaign.client || '',
+          client_name: campaign.campaign_submissions?.client_name || campaign.client_name || campaign.client || '',
+          price_paid: campaign.campaign_submissions?.price_paid || 0,
         };
       });
 
