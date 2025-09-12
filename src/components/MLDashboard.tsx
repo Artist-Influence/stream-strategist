@@ -25,12 +25,16 @@ import {
 import { useAdvancedLearningMetrics, useDynamicAlgorithmOptimization } from "@/hooks/useAdvancedLearning";
 import { useMLModelAnalysis } from "@/hooks/useMLPerformancePredictor";
 import { useVendorAutoAdjustmentRecommendations, useApplyVendorAutoAdjustments } from "@/hooks/useVendorAutoAdjustment";
+import { useMLAlerts, useMLPerformanceTrends, useMLSystemHealth } from "@/hooks/useMLDashboardData";
 import { useState } from "react";
 
 export function MLDashboard({ className }: { className?: string }) {
   const { data: learningMetrics, isLoading: metricsLoading } = useAdvancedLearningMetrics();
   const { data: modelAnalysis, isLoading: analysisLoading } = useMLModelAnalysis();
   const { data: vendorRecommendations, isLoading: recommendationsLoading } = useVendorAutoAdjustmentRecommendations();
+  const { data: mlAlerts } = useMLAlerts();
+  const { data: performanceTrends } = useMLPerformanceTrends();
+  const { data: systemHealth } = useMLSystemHealth();
   
   const optimizeModel = useDynamicAlgorithmOptimization();
   const applyVendorAdjustments = useApplyVendorAutoAdjustments();
@@ -270,19 +274,45 @@ export function MLDashboard({ className }: { className?: string }) {
 
           {/* Model Insights */}
           <Card>
-            <CardHeader>
-              <CardTitle>Model Performance Analysis</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {modelAnalysis?.insights.map((insight, index) => (
-                  <div key={index} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                    <BarChart3 className="h-5 w-5 text-primary mt-0.5" />
-                    <p className="text-sm">{insight}</p>
+              <CardHeader>
+                <CardTitle>System Health & Alerts</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${systemHealth?.status === 'healthy' ? 'bg-success' : 'bg-warning'}`} />
+                      <span className="font-medium">System Status</span>
+                    </div>
+                    <Badge variant={systemHealth?.status === 'healthy' ? 'default' : 'secondary'}>
+                      {systemHealth?.status || 'Unknown'}
+                    </Badge>
                   </div>
-                ))}
-              </div>
-            </CardContent>
+                  
+                  {mlAlerts && mlAlerts.totalAlerts > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Active Alerts ({mlAlerts.totalAlerts})</h4>
+                      {mlAlerts.performanceAlerts.slice(0, 3).map((alert, index) => (
+                        <div key={index} className="flex items-start gap-3 p-3 border-l-4 border-l-warning bg-muted/50 rounded-lg">
+                          <AlertTriangle className="h-4 w-4 text-warning mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{alert.alert_type}</p>
+                            <p className="text-xs text-muted-foreground">{alert.message}</p>
+                          </div>
+                          <Badge variant="secondary">{alert.severity}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {modelAnalysis?.insights.slice(0, 2).map((insight, index) => (
+                    <div key={index} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+                      <BarChart3 className="h-5 w-5 text-primary mt-0.5" />
+                      <p className="text-sm">{insight}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
           </Card>
         </TabsContent>
 
