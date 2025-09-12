@@ -133,12 +133,6 @@ export function SalespersonCampaignTable({ onViewDetails }: SalespersonCampaignT
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <DollarSign className="h-4 w-4" />
-                            Price
-                          </div>
-                        </TableHead>
-                        <TableHead className="text-right">
-                          <div className="flex items-center justify-end gap-1">
                             <Target className="h-4 w-4" />
                             Progress
                           </div>
@@ -151,6 +145,12 @@ export function SalespersonCampaignTable({ onViewDetails }: SalespersonCampaignT
                         </TableHead>
                         <TableHead className="text-right">Daily Streams</TableHead>
                         <TableHead className="text-right">Weekly Streams</TableHead>
+                        <TableHead className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <DollarSign className="h-4 w-4" />
+                            Price
+                          </div>
+                        </TableHead>
                         <TableHead className="text-right">
                           <div className="flex items-center justify-end gap-1">
                             <DollarSign className="h-4 w-4" />
@@ -183,11 +183,6 @@ export function SalespersonCampaignTable({ onViewDetails }: SalespersonCampaignT
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="font-medium text-green-600">
-                              ${campaign.price_paid?.toLocaleString() || '0'}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
                             <div className="space-y-1">
                               <Progress 
                                 value={campaign.progress_percentage} 
@@ -216,6 +211,11 @@ export function SalespersonCampaignTable({ onViewDetails }: SalespersonCampaignT
                           <TableCell className="text-right">
                             <div className="font-medium">
                               {campaign.weekly_streams?.toLocaleString() || '0'}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="font-medium text-green-600">
+                              ${campaign.price_paid?.toLocaleString() || '0'}
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
