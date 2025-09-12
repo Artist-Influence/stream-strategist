@@ -89,24 +89,6 @@ const getNavItemsForRole = (currentRole: string | null) => {
         icon: Shield,
         hotkey: "Ctrl+8"
       },
-      {
-        title: "Reports",
-        href: "/reports",
-        icon: FileText,
-        hotkey: "Ctrl+9"
-      },
-      {
-        title: "Payments",
-        href: "/payments",
-        icon: DollarSign,
-        hotkey: "Ctrl+P"
-      },
-      {
-        title: "Team Goals",
-        href: "/team-goals",
-        icon: Target,
-        hotkey: "Ctrl+T"
-      },
       ...(currentRole === 'admin' ? [{
         title: "Users", 
         href: "/users",
@@ -148,12 +130,6 @@ const getNavItemsForRole = (currentRole: string | null) => {
         href: "/vendor/requests",
         icon: History,
         hotkey: "Ctrl+3"
-      },
-      {
-        title: "Payment History",
-        href: "/vendor/payments",
-        icon: Receipt,
-        hotkey: "Ctrl+4"
       }
     ];
   }
