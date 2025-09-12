@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Music, TrendingUp, Target, ExternalLink, RotateCcw, Plus, X, BarChart3 } from 'lucide-react';
+import { Music, TrendingUp, Target, ExternalLink, RotateCcw, Plus, X } from 'lucide-react';
 import { useUpdatePlaylistAllocation } from '@/hooks/useVendorCampaigns';
 import { useMyPlaylists } from '@/hooks/useVendorPlaylists';
 import { useCampaignPerformanceData, useCampaignOverallPerformance } from '@/hooks/useCampaignPerformanceData';
@@ -80,19 +79,7 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="performance" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Performance Analytics
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6">
+        <div className="space-y-6">
           {/* Performance Overview */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 border rounded-lg">
@@ -150,10 +137,10 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
             </div>
           )}
 
-            {/* Campaign Playlists - Grouped by Vendor */}
+          {/* Campaign Playlists - Grouped by Vendor */}
           <div className="border rounded-lg p-4">
             <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <Music className="h-4 w-4" />
                 <span className="font-medium">Your Campaign Playlists</span>
               </div>
@@ -262,21 +249,7 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
               </div>
             </div>
           )}
-          </TabsContent>
-
-          <TabsContent value="performance" className="space-y-6">
-            <div className="text-center py-8 border-2 border-dashed rounded-lg">
-              <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <div className="text-lg font-semibold mb-2">Your Performance Analytics</div>
-              <div className="text-sm text-muted-foreground mb-4">
-                View detailed analytics for your playlists' performance in this campaign.
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Performance data is collected through web scraping and updated weekly.
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+        </div>
 
         <div className="flex justify-end pt-4 border-t">
           <Button onClick={onClose}>
