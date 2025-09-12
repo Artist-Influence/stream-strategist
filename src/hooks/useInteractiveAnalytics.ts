@@ -38,22 +38,26 @@ export const useInteractiveAnalytics = () => {
   return useQuery({
     queryKey: ["interactive-analytics"],
     queryFn: async (): Promise<InteractiveAnalyticsData> => {
-      // Get campaign data
+      // Get campaigns data
       const { data: campaigns, error: campaignsError } = await supabase
         .from("campaigns")
-        .select(`
-          *,
-          campaign_submissions(price_paid),
-          campaign_allocations_performance(
-            vendor_id,
-            actual_streams,
-            predicted_streams,
-            performance_score,
-            cost_per_stream
-          )
-        `);
+        .select("*");
 
       if (campaignsError) throw campaignsError;
+
+      // Get campaign submissions
+      const { data: submissions, error: submissionsError } = await supabase
+        .from("campaign_submissions")
+        .select("*");
+
+      if (submissionsError) throw submissionsError;
+
+      // Get campaign allocations performance
+      const { data: performance, error: performanceError } = await supabase
+        .from("campaign_allocations_performance")
+        .select("*");
+
+      if (performanceError) throw performanceError;
 
       // Get vendor data
       const { data: vendors, error: vendorsError } = await supabase
@@ -64,17 +68,15 @@ export const useInteractiveAnalytics = () => {
 
       // Process chart data - campaign performance breakdown
       const chartData = (campaigns || []).slice(0, 10).map(campaign => {
-        const performance = Array.isArray(campaign.campaign_allocations_performance) 
-          ? campaign.campaign_allocations_performance 
-          : [];
-        const submission = campaign.campaign_submissions?.[0];
+        const campaignPerformance = performance?.filter(p => p.campaign_id === campaign.id) || [];
+        const submission = submissions?.find(s => s.id === campaign.submission_id);
         
-        const totalStreams = performance.reduce((sum, p) => sum + (p.actual_streams || 0), 0);
-        const totalCost = performance.reduce((sum, p) => sum + ((p.cost_per_stream || 0) * (p.actual_streams || 0)), 0);
+        const totalStreams = campaignPerformance.reduce((sum, p) => sum + (p.actual_streams || 0), 0);
+        const totalCost = campaignPerformance.reduce((sum, p) => sum + ((p.cost_per_stream || 0) * (p.actual_streams || 0)), 0);
         const revenue = submission?.price_paid || 0;
         const roi = totalCost > 0 ? ((revenue - totalCost) / totalCost) * 100 : 0;
-        const avgPerformance = performance.length > 0 
-          ? performance.reduce((sum, p) => sum + (p.performance_score || 0), 0) / performance.length * 100
+        const avgPerformance = campaignPerformance.length > 0 
+          ? campaignPerformance.reduce((sum, p) => sum + (p.performance_score || 0), 0) / campaignPerformance.length * 100
           : 0;
 
         return {
@@ -99,33 +101,14 @@ export const useInteractiveAnalytics = () => {
 
       // Process vendor drill-down data
       const vendorData = (vendors || []).map(vendor => {
-        const vendorCampaigns = (campaigns || []).filter(campaign => {
-          const performance = Array.isArray(campaign.campaign_allocations_performance) 
-            ? campaign.campaign_allocations_performance 
-            : [];
-          return performance.some(p => p.vendor_id === vendor.id);
-        });
+        const vendorPerformances = performance?.filter(p => p.vendor_id === vendor.id) || [];
+        const vendorCampaignIds = vendorPerformances.map(p => p.campaign_id);
+        const vendorCampaigns = campaigns?.filter(c => vendorCampaignIds.includes(c.id)) || [];
 
-        const totalStreams = vendorCampaigns.reduce((sum, campaign) => {
-          const performance = Array.isArray(campaign.campaign_allocations_performance) 
-            ? campaign.campaign_allocations_performance 
-            : [];
-          return sum + performance
-            .filter(p => p.vendor_id === vendor.id)
-            .reduce((pSum, p) => pSum + (p.actual_streams || 0), 0);
-        }, 0);
+        const totalStreams = vendorPerformances.reduce((sum, p) => sum + (p.actual_streams || 0), 0);
 
-        const avgPerformance = vendorCampaigns.length > 0 ? 
-          vendorCampaigns.reduce((sum, campaign) => {
-            const performance = Array.isArray(campaign.campaign_allocations_performance) 
-              ? campaign.campaign_allocations_performance 
-              : [];
-            const vendorPerf = performance.filter(p => p.vendor_id === vendor.id);
-            const avg = vendorPerf.length > 0 
-              ? vendorPerf.reduce((pSum, p) => pSum + (p.performance_score || 0), 0) / vendorPerf.length 
-              : 0;
-            return sum + avg;
-          }, 0) / vendorCampaigns.length * 100
+        const avgPerformance = vendorPerformances.length > 0 ? 
+          vendorPerformances.reduce((sum, p) => sum + (p.performance_score || 0), 0) / vendorPerformances.length * 100
           : 0;
 
         return {

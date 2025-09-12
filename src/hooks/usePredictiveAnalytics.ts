@@ -42,31 +42,24 @@ export const usePredictiveAnalytics = () => {
   return useQuery({
     queryKey: ["predictive-analytics"],
     queryFn: async (): Promise<PredictiveAnalyticsData> => {
-      // Get campaign data
+      // Get campaigns data
       const { data: campaigns, error: campaignsError } = await supabase
         .from("campaigns")
-        .select(`
-          *,
-          campaign_allocations_performance(
-            actual_streams,
-            predicted_streams,
-            performance_score
-          )
-        `);
+        .select("*");
 
       if (campaignsError) throw campaignsError;
+
+      // Get campaign allocations performance
+      const { data: performance, error: performanceError } = await supabase
+        .from("campaign_allocations_performance")
+        .select("*");
+
+      if (performanceError) throw performanceError;
 
       // Get vendor data for optimization recommendations
       const { data: vendors, error: vendorsError } = await supabase
         .from("vendors")
-        .select(`
-          *,
-          campaign_allocations_performance(
-            actual_streams,
-            predicted_streams,
-            performance_score
-          )
-        `);
+        .select("*");
 
       if (vendorsError) throw vendorsError;
 
@@ -87,10 +80,8 @@ export const usePredictiveAnalytics = () => {
       // Calculate completion predictions
       const activeCampaigns = campaigns?.filter(c => c.status === 'active') || [];
       const completionTimes = activeCampaigns.map(campaign => {
-        const performance = Array.isArray(campaign.campaign_allocations_performance) 
-          ? campaign.campaign_allocations_performance 
-          : [];
-        const currentStreams = performance.reduce((sum, p) => sum + (p.actual_streams || 0), 0);
+        const campaignPerformance = performance?.filter(p => p.campaign_id === campaign.id) || [];
+        const currentStreams = campaignPerformance.reduce((sum, p) => sum + (p.actual_streams || 0), 0);
         const dailyRate = currentStreams / Math.max(1, 
           Math.ceil((new Date().getTime() - new Date(campaign.start_date).getTime()) / (1000 * 60 * 60 * 24))
         );
@@ -108,10 +99,8 @@ export const usePredictiveAnalytics = () => {
 
       // Calculate goal achievement probability
       const campaignsWithProgress = activeCampaigns.map(campaign => {
-        const performance = Array.isArray(campaign.campaign_allocations_performance) 
-          ? campaign.campaign_allocations_performance 
-          : [];
-        const currentStreams = performance.reduce((sum, p) => sum + (p.actual_streams || 0), 0);
+        const campaignPerformance = performance?.filter(p => p.campaign_id === campaign.id) || [];
+        const currentStreams = campaignPerformance.reduce((sum, p) => sum + (p.actual_streams || 0), 0);
         return currentStreams / Math.max(1, campaign.stream_goal);
       });
 
@@ -123,11 +112,9 @@ export const usePredictiveAnalytics = () => {
 
       // Risk assessment
       const riskLevels = activeCampaigns.map(campaign => {
-        const performance = Array.isArray(campaign.campaign_allocations_performance) 
-          ? campaign.campaign_allocations_performance 
-          : [];
-        const avgPerformance = performance.length > 0
-          ? performance.reduce((sum, p) => sum + (p.performance_score || 0), 0) / performance.length
+        const campaignPerformance = performance?.filter(p => p.campaign_id === campaign.id) || [];
+        const avgPerformance = campaignPerformance.length > 0
+          ? campaignPerformance.reduce((sum, p) => sum + (p.performance_score || 0), 0) / campaignPerformance.length
           : 0.5;
         
         if (avgPerformance < 0.3) return 'high';
@@ -143,11 +130,9 @@ export const usePredictiveAnalytics = () => {
 
       // Budget optimization recommendations
       const budgetOptimization = activeCampaigns.slice(0, 5).map(campaign => {
-        const performance = Array.isArray(campaign.campaign_allocations_performance) 
-          ? campaign.campaign_allocations_performance 
-          : [];
-        const avgPerformance = performance.length > 0
-          ? performance.reduce((sum, p) => sum + (p.performance_score || 0), 0) / performance.length
+        const campaignPerformance = performance?.filter(p => p.campaign_id === campaign.id) || [];
+        const avgPerformance = campaignPerformance.length > 0
+          ? campaignPerformance.reduce((sum, p) => sum + (p.performance_score || 0), 0) / campaignPerformance.length
           : 0.5;
 
         if (avgPerformance > 0.8) {
@@ -179,11 +164,9 @@ export const usePredictiveAnalytics = () => {
 
       // Vendor optimization recommendations
       const vendorOptimization = (vendors || []).slice(0, 5).map(vendor => {
-        const performances = Array.isArray(vendor.campaign_allocations_performance) 
-          ? vendor.campaign_allocations_performance 
-          : [];
-        const avgPerformance = performances.length > 0
-          ? performances.reduce((sum, p) => sum + (p.performance_score || 0), 0) / performances.length
+        const vendorPerformances = performance?.filter(p => p.vendor_id === vendor.id) || [];
+        const avgPerformance = vendorPerformances.length > 0
+          ? vendorPerformances.reduce((sum, p) => sum + (p.performance_score || 0), 0) / vendorPerformances.length
           : 0.5;
 
         const predictedPerformance = Math.min(100, avgPerformance * 120); // Predict 20% improvement potential

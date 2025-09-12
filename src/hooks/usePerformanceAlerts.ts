@@ -39,10 +39,7 @@ export const usePerformanceAlerts = () => {
       // Get performance alerts
       const { data: alertsData, error: alertsError } = await supabase
         .from("performance_alerts")
-        .select(`
-          *,
-          campaigns(name)
-        `)
+        .select("*")
         .eq('is_resolved', false)
         .order('created_at', { ascending: false });
 
@@ -51,41 +48,42 @@ export const usePerformanceAlerts = () => {
       // Get campaigns for analysis
       const { data: campaigns, error: campaignsError } = await supabase
         .from("campaigns")
-        .select(`
-          *,
-          campaign_allocations_performance(
-            actual_streams,
-            predicted_streams,
-            performance_score
-          )
-        `)
+        .select("*")
         .eq('status', 'active');
 
       if (campaignsError) throw campaignsError;
 
+      // Get campaign performance data
+      const { data: performance, error: performanceError } = await supabase
+        .from("campaign_allocations_performance")
+        .select("*");
+
+      if (performanceError) throw performanceError;
+
       // Process alerts
-      const alerts = (alertsData || []).map(alert => ({
-        id: alert.id,
-        campaignId: alert.campaign_id,
-        campaignName: alert.campaigns?.name || 'Unknown Campaign',
-        alertType: alert.alert_type,
-        severity: alert.severity as 'low' | 'medium' | 'high' | 'critical',
-        message: alert.message,
-        threshold: alert.threshold_value ? alert.threshold_value.toString() : undefined,
-        currentValue: alert.current_value ? alert.current_value.toString() : undefined,
-        timeAgo: formatDistanceToNow(new Date(alert.created_at), { addSuffix: true }),
-        isResolved: alert.is_resolved
-      }));
+      const alerts = (alertsData || []).map(alert => {
+        const campaign = campaigns?.find(c => c.id === alert.campaign_id);
+        return {
+          id: alert.id,
+          campaignId: alert.campaign_id,
+          campaignName: campaign?.name || 'Unknown Campaign',
+          alertType: alert.alert_type,
+          severity: alert.severity as 'low' | 'medium' | 'high' | 'critical',
+          message: alert.message,
+          threshold: alert.threshold_value ? alert.threshold_value.toString() : undefined,
+          currentValue: alert.current_value ? alert.current_value.toString() : undefined,
+          timeAgo: formatDistanceToNow(new Date(alert.created_at), { addSuffix: true }),
+          isResolved: alert.is_resolved
+        };
+      });
 
       // Generate additional alerts based on campaign performance
       const performanceAlerts = (campaigns || []).reduce((acc, campaign) => {
-        const performance = Array.isArray(campaign.campaign_allocations_performance) 
-          ? campaign.campaign_allocations_performance 
-          : [];
+        const campaignPerformance = performance?.filter(p => p.campaign_id === campaign.id) || [];
 
         // Check for underperformance
-        const avgPerformance = performance.length > 0
-          ? performance.reduce((sum, p) => sum + (p.performance_score || 0), 0) / performance.length
+        const avgPerformance = campaignPerformance.length > 0
+          ? campaignPerformance.reduce((sum, p) => sum + (p.performance_score || 0), 0) / campaignPerformance.length
           : 1;
 
         if (avgPerformance < 0.3) {
@@ -117,7 +115,7 @@ export const usePerformanceAlerts = () => {
         }
 
         // Check budget pace
-        const totalActualStreams = performance.reduce((sum, p) => sum + (p.actual_streams || 0), 0);
+        const totalActualStreams = campaignPerformance.reduce((sum, p) => sum + (p.actual_streams || 0), 0);
         const completion = campaign.stream_goal > 0 ? totalActualStreams / campaign.stream_goal : 0;
         
         if (completion < 0.2 && new Date(campaign.start_date) < new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)) {

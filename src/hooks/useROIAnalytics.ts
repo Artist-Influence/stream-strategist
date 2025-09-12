@@ -57,52 +57,48 @@ export const useROIAnalytics = () => {
   return useQuery({
     queryKey: ["roi-analytics"],
     queryFn: async (): Promise<ROIAnalyticsData> => {
-      // Get campaign data with submissions and performance
+      // Get campaigns data
       const { data: campaigns, error: campaignsError } = await supabase
         .from("campaigns")
-        .select(`
-          *,
-          campaign_submissions(price_paid),
-          campaign_allocations_performance(
-            vendor_id,
-            actual_streams,
-            predicted_streams,
-            cost_per_stream,
-            performance_score
-          ),
-          vendors(name)
-        `);
+        .select("*");
 
       if (campaignsError) throw campaignsError;
 
-      // Get vendor data
+      // Get campaign submissions
+      const { data: submissions, error: submissionsError } = await supabase
+        .from("campaign_submissions")
+        .select("*");
+
+      if (submissionsError) throw submissionsError;
+
+      // Get campaign allocations performance
+      const { data: performance, error: performanceError } = await supabase
+        .from("campaign_allocations_performance")
+        .select("*");
+
+      if (performanceError) throw performanceError;
+
+      // Get vendors data
       const { data: vendors, error: vendorsError } = await supabase
         .from("vendors")
-        .select(`
-          *,
-          campaign_allocations_performance(
-            campaign_id,
-            actual_streams,
-            cost_per_stream,
-            performance_score
-          )
-        `);
+        .select("*");
 
       if (vendorsError) throw vendorsError;
 
       // Calculate campaign ROI breakdown
       const campaignROIBreakdown = Array.isArray(campaigns) ? campaigns.map(campaign => {
-        const submission = campaign.campaign_submissions?.[0];
-        const performance = Array.isArray(campaign.campaign_allocations_performance) 
-          ? campaign.campaign_allocations_performance 
-          : [];
+        // Find submission for this campaign
+        const submission = submissions?.find(s => s.id === campaign.submission_id);
         
-        const totalCost = performance.reduce((sum, p) => 
+        // Find performance data for this campaign
+        const campaignPerformance = performance?.filter(p => p.campaign_id === campaign.id) || [];
+        
+        const totalCost = campaignPerformance.reduce((sum, p) => 
           sum + ((p.cost_per_stream || 0) * (p.actual_streams || 0)), 0
         );
         
         const revenue = submission?.price_paid || 0;
-        const actualStreams = performance.reduce((sum, p) => sum + (p.actual_streams || 0), 0);
+        const actualStreams = campaignPerformance.reduce((sum, p) => sum + (p.actual_streams || 0), 0);
         const roi = totalCost > 0 ? ((revenue - totalCost) / totalCost) * 100 : 0;
         const profitMargin = revenue > 0 ? ((revenue - totalCost) / revenue) * 100 : 0;
         const costPerStream = actualStreams > 0 ? totalCost / actualStreams : 0;
@@ -127,29 +123,28 @@ export const useROIAnalytics = () => {
 
       // Calculate vendor cost efficiency
       const vendorCostEfficiency = Array.isArray(vendors) ? vendors.map(vendor => {
-        const performances = Array.isArray(vendor.campaign_allocations_performance) 
-          ? vendor.campaign_allocations_performance 
-          : [];
+        // Find performance data for this vendor
+        const vendorPerformances = performance?.filter(p => p.vendor_id === vendor.id) || [];
         
-        // Get campaign revenue for this vendor's campaigns
-        const vendorCampaigns = performances.map(p => 
-          Array.isArray(campaigns) ? campaigns.find(c => c.id === p.campaign_id) : null
-        ).filter(Boolean);
+        // Get campaigns for this vendor
+        const vendorCampaignIds = vendorPerformances.map(p => p.campaign_id);
+        const vendorCampaigns = campaigns?.filter(c => vendorCampaignIds.includes(c.id)) || [];
         
+        // Calculate total revenue from these campaigns
         const totalRevenue = vendorCampaigns.reduce((sum, campaign) => {
-          const submission = campaign?.campaign_submissions?.[0];
+          const submission = submissions?.find(s => s.id === campaign.submission_id);
           return sum + (submission?.price_paid || 0);
         }, 0);
         
-        const totalCost = performances.reduce((sum, p) => 
+        const totalCost = vendorPerformances.reduce((sum, p) => 
           sum + ((p.cost_per_stream || 0) * (p.actual_streams || 0)), 0
         );
         
-        const totalStreams = performances.reduce((sum, p) => sum + (p.actual_streams || 0), 0);
+        const totalStreams = vendorPerformances.reduce((sum, p) => sum + (p.actual_streams || 0), 0);
         const avgCostPerStream = totalStreams > 0 ? totalCost / totalStreams : 0;
         
-        const avgPerformance = performances.length > 0 
-          ? performances.reduce((sum, p) => sum + (p.performance_score || 0), 0) / performances.length
+        const avgPerformance = vendorPerformances.length > 0 
+          ? vendorPerformances.reduce((sum, p) => sum + (p.performance_score || 0), 0) / vendorPerformances.length
           : 0;
 
         return {
@@ -158,7 +153,7 @@ export const useROIAnalytics = () => {
           totalRevenue,
           totalCost,
           avgCostPerStream,
-          campaignCount: performances.length,
+          campaignCount: vendorPerformances.length,
           efficiency: avgPerformance * 100
         };
       }) : [];
