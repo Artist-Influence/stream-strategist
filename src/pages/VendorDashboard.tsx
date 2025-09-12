@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { QuickActions } from "@/components/QuickActions";
+
 
 export default function VendorDashboard() {
   const { user } = useAuth();
@@ -225,8 +225,6 @@ export default function VendorDashboard() {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <QuickActions />
 
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-3">

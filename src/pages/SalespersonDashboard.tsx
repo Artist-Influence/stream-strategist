@@ -7,7 +7,7 @@ import { SalespersonCommissionCard } from "@/components/SalespersonCommissionCar
 import { SalespersonCampaignTable } from "@/components/SalespersonCampaignTable";
 import { ReadOnlyCampaignDetailsModal } from "@/components/ReadOnlyCampaignDetailsModal";
 import { useSalespersonCampaigns } from "@/hooks/useSalespersonCampaigns";
-import { QuickActions } from "@/components/QuickActions";
+
 
 export default function SalespersonDashboard() {
   const { user } = useAuth();
@@ -38,8 +38,6 @@ export default function SalespersonDashboard() {
           </Button>
         </div>
 
-        {/* Quick Actions */}
-        <QuickActions />
 
         {/* Commission Card - Most Important */}
         <div data-tour="commission-tracking">
