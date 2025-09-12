@@ -291,14 +291,17 @@ export default function VendorPlaylistManager() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="streams" className="text-right">Daily Streams</Label>
-                  <Input
-                    id="streams"
-                    type="number"
-                    value={formData.avg_daily_streams}
-                    onChange={(e) => setFormData(prev => ({ ...prev, avg_daily_streams: parseInt(e.target.value) || 0 }))}
-                    className="col-span-3"
-                    placeholder="Average daily streams"
-                  />
+                  <div className="col-span-3 space-y-1">
+                    <Input
+                      id="streams"
+                      type="number"
+                      value={formData.avg_daily_streams}
+                      placeholder="Auto-calculated from Spotify"
+                      disabled
+                      className="bg-muted"
+                    />
+                    <p className="text-xs text-muted-foreground">Daily streams are automatically calculated from Spotify data</p>
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="followers" className="text-right">Followers</Label>

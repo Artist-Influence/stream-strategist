@@ -125,13 +125,16 @@ export function VendorPlaylistEditModal({ playlist, isOpen, onClose }: VendorPla
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-streams" className="text-right">Daily Streams</Label>
-                <Input
-                  id="edit-streams"
-                  type="number"
-                  value={formData.avg_daily_streams}
-                  onChange={(e) => setFormData(prev => ({ ...prev, avg_daily_streams: parseInt(e.target.value) || 0 }))}
-                  className="col-span-3"
-                />
+                <div className="col-span-3 space-y-1">
+                  <Input
+                    id="edit-streams"
+                    type="number"
+                    value={formData.avg_daily_streams}
+                    disabled
+                    className="bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground">Auto-calculated from Spotify data</p>
+                </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-followers" className="text-right">Followers</Label>

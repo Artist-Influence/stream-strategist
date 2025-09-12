@@ -257,9 +257,11 @@ export default function AddPlaylistModal({ open, onOpenChange, vendorId, editing
                 id="streams"
                 type="number"
                 value={formData.avg_daily_streams}
-                onChange={(e) => setFormData({ ...formData, avg_daily_streams: e.target.value })}
-                placeholder="e.g. 5000"
+                placeholder="Auto-calculated from Spotify"
+                disabled
+                className="bg-muted"
               />
+              <p className="text-xs text-muted-foreground">Daily streams are automatically calculated from Spotify data</p>
             </div>
             
             <div className="space-y-2">
