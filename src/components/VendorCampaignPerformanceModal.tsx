@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
-import { Music, TrendingUp, Target, ExternalLink, RotateCcw, Plus, X } from 'lucide-react';
+import { Music, TrendingUp, Target, ExternalLink, RotateCcw, Plus, X, Radio } from 'lucide-react';
 import { useUpdatePlaylistAllocation, useVendorCampaigns } from '@/hooks/useVendorCampaigns';
 import { useMyPlaylists } from '@/hooks/useVendorPlaylists';
 import { useCampaignPerformanceData, useCampaignOverallPerformance } from '@/hooks/useCampaignPerformanceData';
@@ -121,6 +121,37 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
               <span>{progressPercentage.toFixed(1)}%</span>
             </div>
             <Progress value={Math.min(progressPercentage, 100)} className="h-3" />
+          </div>
+
+          {/* External Streaming Sources */}
+          <div className="p-4 border rounded-lg">
+            <div className="flex items-center gap-2 mb-4">
+              <Radio className="h-4 w-4" />
+              <span className="font-medium">External Streaming Sources</span>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold">
+                  {(freshCampaign.radio_streams || 0).toLocaleString()}
+                </div>
+                <div className="text-sm text-muted-foreground">Radio Streams</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold">
+                  {(freshCampaign.discover_weekly_streams || 0).toLocaleString()}
+                </div>
+                <div className="text-sm text-muted-foreground">Discover Weekly</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold">
+                  {((freshCampaign.radio_streams || 0) + (freshCampaign.discover_weekly_streams || 0)).toLocaleString()}
+                </div>
+                <div className="text-sm text-muted-foreground">Total External</div>
+              </div>
+            </div>
+            <div className="text-xs text-muted-foreground mt-3 text-center">
+              Last updated: {freshCampaign.updated_at ? new Date(freshCampaign.updated_at).toLocaleDateString() : 'Not available'}
+            </div>
           </div>
 
           {/* Track Information */}
