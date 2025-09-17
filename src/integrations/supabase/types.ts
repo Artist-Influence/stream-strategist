@@ -50,6 +50,51 @@ export type Database = {
         }
         Relationships: []
       }
+      analytics_notes: {
+        Row: {
+          campaign_id: string | null
+          content: string
+          created_at: string
+          created_by: string | null
+          creator_id: string | null
+          id: string
+          is_archived: boolean
+          note_type: string
+          priority: string
+          tags: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          content: string
+          created_at?: string
+          created_by?: string | null
+          creator_id?: string | null
+          id?: string
+          is_archived?: boolean
+          note_type?: string
+          priority?: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          creator_id?: string | null
+          id?: string
+          is_archived?: boolean
+          note_type?: string
+          priority?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       campaign_ab_tests: {
         Row: {
           algorithm_version_control: string
@@ -491,7 +536,9 @@ export type Database = {
           creator_count: number
           daily_streams: number | null
           description: string | null
+          discover_weekly_streams: number | null
           duration_days: number
+          external_streaming_data: Json | null
           id: string
           music_genres: string[]
           name: string
@@ -500,6 +547,7 @@ export type Database = {
           post_types: string[]
           public_access_enabled: boolean | null
           public_token: string | null
+          radio_streams: number | null
           remaining_streams: number
           results: Json | null
           salesperson: string | null
@@ -534,7 +582,9 @@ export type Database = {
           creator_count?: number
           daily_streams?: number | null
           description?: string | null
+          discover_weekly_streams?: number | null
           duration_days?: number
+          external_streaming_data?: Json | null
           id?: string
           music_genres?: string[]
           name: string
@@ -543,6 +593,7 @@ export type Database = {
           post_types?: string[]
           public_access_enabled?: boolean | null
           public_token?: string | null
+          radio_streams?: number | null
           remaining_streams?: number
           results?: Json | null
           salesperson?: string | null
@@ -577,7 +628,9 @@ export type Database = {
           creator_count?: number
           daily_streams?: number | null
           description?: string | null
+          discover_weekly_streams?: number | null
           duration_days?: number
+          external_streaming_data?: Json | null
           id?: string
           music_genres?: string[]
           name?: string
@@ -586,6 +639,7 @@ export type Database = {
           post_types?: string[]
           public_access_enabled?: boolean | null
           public_token?: string | null
+          radio_streams?: number | null
           remaining_streams?: number
           results?: Json | null
           salesperson?: string | null
@@ -1833,6 +1887,48 @@ export type Database = {
         }
         Relationships: []
       }
+      smart_deadlines: {
+        Row: {
+          algorithm_version: string
+          calculated_deadline: string
+          calculation_factors: Json
+          campaign_id: string
+          confidence_score: number | null
+          created_at: string
+          creator_id: string | null
+          id: string
+          is_active: boolean
+          original_deadline: string | null
+          updated_at: string
+        }
+        Insert: {
+          algorithm_version?: string
+          calculated_deadline: string
+          calculation_factors?: Json
+          campaign_id: string
+          confidence_score?: number | null
+          created_at?: string
+          creator_id?: string | null
+          id?: string
+          is_active?: boolean
+          original_deadline?: string | null
+          updated_at?: string
+        }
+        Update: {
+          algorithm_version?: string
+          calculated_deadline?: string
+          calculation_factors?: Json
+          campaign_id?: string
+          confidence_score?: number | null
+          created_at?: string
+          creator_id?: string | null
+          id?: string
+          is_active?: boolean
+          original_deadline?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tags: {
         Row: {
           created_at: string
@@ -2107,6 +2203,104 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      workflow_executions: {
+        Row: {
+          action_data: Json | null
+          campaign_id: string | null
+          creator_id: string | null
+          error_message: string | null
+          executed_at: string
+          execution_result: string
+          id: string
+          trigger_data: Json | null
+          workflow_rule_id: string
+        }
+        Insert: {
+          action_data?: Json | null
+          campaign_id?: string | null
+          creator_id?: string | null
+          error_message?: string | null
+          executed_at?: string
+          execution_result: string
+          id?: string
+          trigger_data?: Json | null
+          workflow_rule_id: string
+        }
+        Update: {
+          action_data?: Json | null
+          campaign_id?: string | null
+          creator_id?: string | null
+          error_message?: string | null
+          executed_at?: string
+          execution_result?: string
+          id?: string
+          trigger_data?: Json | null
+          workflow_rule_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_executions_workflow_rule_id_fkey"
+            columns: ["workflow_rule_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_rules: {
+        Row: {
+          action_condition: string | null
+          action_field: string
+          action_value: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          execution_count: number
+          id: string
+          is_enabled: boolean
+          last_executed_at: string | null
+          name: string
+          trigger_condition: string
+          trigger_field: string
+          trigger_value: string | null
+          updated_at: string
+        }
+        Insert: {
+          action_condition?: string | null
+          action_field: string
+          action_value?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          execution_count?: number
+          id?: string
+          is_enabled?: boolean
+          last_executed_at?: string | null
+          name: string
+          trigger_condition: string
+          trigger_field: string
+          trigger_value?: string | null
+          updated_at?: string
+        }
+        Update: {
+          action_condition?: string | null
+          action_field?: string
+          action_value?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          execution_count?: number
+          id?: string
+          is_enabled?: boolean
+          last_executed_at?: string | null
+          name?: string
+          trigger_condition?: string
+          trigger_field?: string
+          trigger_value?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {

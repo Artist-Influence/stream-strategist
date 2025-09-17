@@ -18,7 +18,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ExternalLink, CheckCircle, XCircle, Clock, DollarSign, MessageSquare, Save } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { ExternalLink, CheckCircle, XCircle, Clock, DollarSign, MessageSquare, Save, Radio, Music } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCampaignVendorResponses } from '@/hooks/useCampaignVendorResponses';
 import { useToast } from '@/hooks/use-toast';
@@ -299,6 +300,45 @@ export function ReadOnlyCampaignDetailsModal({ campaign, open, onClose }: ReadOn
               <p className="font-medium">{getSalespersonName(campaignData?.salesperson)}</p>
             </div>
           </div>
+          
+          {/* External Streaming Sources */}
+          <Card className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
+            <div className="flex items-center gap-2 mb-3">
+              <Radio className="h-5 w-5 text-blue-600" />
+              <Label className="font-semibold text-lg">External Streaming Sources</Label>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center p-3 bg-white/60 dark:bg-white/5 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">
+                  {campaignData?.radio_streams?.toLocaleString() || '0'}
+                </div>
+                <div className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+                  <Radio className="h-3 w-3" />
+                  Radio Play
+                </div>
+              </div>
+              <div className="text-center p-3 bg-white/60 dark:bg-white/5 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">
+                  {campaignData?.discover_weekly_streams?.toLocaleString() || '0'}
+                </div>
+                <div className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+                  <Music className="h-3 w-3" />
+                  Discover Weekly
+                </div>
+              </div>
+              <div className="text-center p-3 bg-white/60 dark:bg-white/5 rounded-lg border-2 border-primary/20">
+                <div className="text-2xl font-bold text-primary">
+                  {((campaignData?.radio_streams || 0) + (campaignData?.discover_weekly_streams || 0)).toLocaleString()}
+                </div>
+                <div className="text-sm text-muted-foreground">Total External</div>
+              </div>
+            </div>
+            {campaignData?.external_streaming_data?.last_updated && (
+              <div className="text-xs text-muted-foreground mt-2 text-center">
+                Last updated: {formatDate(campaignData.external_streaming_data.last_updated)}
+              </div>
+            )}
+          </Card>
           
           {/* Commission Info */}
           <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
