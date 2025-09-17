@@ -104,6 +104,32 @@ export default function AuthPage() {
     }
   };
 
+  const handleDemoVendorAccess = async () => {
+    setIsLoading(true);
+    setSelectedRole('vendor');
+    
+    // Set the demo credentials
+    setFormData({
+      email: 'jared@artistinfluence.com',
+      password: 'Emperean1!',
+      confirmPassword: ''
+    });
+
+    try {
+      const { error } = await signIn('jared@artistinfluence.com', 'Emperean1!');
+      if (error) {
+        toast.error(error.message);
+      } else {
+        // Redirect to vendor dashboard
+        window.location.href = '/vendor';
+      }
+    } catch (error) {
+      toast.error('Demo login failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md">
@@ -131,6 +157,24 @@ export default function AuthPage() {
           <p className="text-xs text-muted-foreground mt-1">
             You'll be redirected to your role-specific dashboard
           </p>
+        </div>
+        
+        {/* Demo Vendor Access */}
+        <div className="px-6 pb-4">
+          <div className="border-t border-border pt-4">
+            <Button 
+              type="button"
+              variant="outline" 
+              className="w-full"
+              onClick={handleDemoVendorAccess}
+              disabled={isLoading}
+            >
+              🎵 Demo Vendor Access
+            </Button>
+            <p className="text-xs text-muted-foreground mt-1 text-center">
+              Quick access to vendor dashboard for demo purposes
+            </p>
+          </div>
         </div>
         
         {/* Sign In Form */}
