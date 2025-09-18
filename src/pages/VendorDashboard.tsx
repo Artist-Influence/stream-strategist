@@ -14,6 +14,7 @@ import { useVendorCampaigns } from "@/hooks/useVendorCampaigns";
 import { VendorPlaylistEditModal } from "@/components/VendorPlaylistEditModal";
 import { VendorCampaignRequestModal } from "@/components/VendorCampaignRequestModal";
 import { VendorCampaignPerformanceModal } from "@/components/VendorCampaignPerformanceModal";
+import { VendorPaymentSection } from "@/components/VendorPaymentSection";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -486,6 +487,9 @@ export default function VendorDashboard() {
             )}
           </CardContent>
           </Card>
+
+        {/* Payment Management Section */}
+        <VendorPaymentSection />
         </div>
 
         {/* Modals */}
