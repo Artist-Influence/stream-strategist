@@ -57,6 +57,7 @@ interface PlaylistWithStatus {
   name: string;
   url?: string;
   vendor_name?: string;
+  vendor_id?: string;
   status?: string;
   placed_date?: string;
   follower_count?: number;
@@ -145,17 +146,18 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
             const playlistIds = data.selected_playlists.filter((id): id is string => typeof id === 'string');
             const { data: playlistDetails } = await supabase
               .from('playlists')
-              .select(`*, vendor:vendors(name)`)
+              .select(`*, vendor:vendors(id, name)`)
               .in('id', playlistIds);
               
             if (playlistDetails) {
-              const playlistsWithStatus = playlistIds.map((id: string) => {
+                const playlistsWithStatus = playlistIds.map((id: string) => {
                 const playlist = playlistDetails.find(p => p.id === id);
                 return {
                   id,
                   name: playlist?.name || 'Unknown Playlist',
                   url: playlist?.url || '',
                   vendor_name: playlist?.vendor?.name || 'Unknown Vendor',
+                  vendor_id: playlist?.vendor?.id || playlist?.vendor_id || 'unknown',
                   follower_count: playlist?.follower_count || 0,
                   avg_daily_streams: playlist?.avg_daily_streams || 0,
                   status: 'Selected',
@@ -405,20 +407,27 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
     }
   };
 
-  // Group playlists by vendor with performance data
+  // Group playlists by vendor ID with performance data
   const groupedPlaylists = playlists.reduce((acc, playlist, idx) => {
+    const vendorId = playlist.vendor_id || 'unknown';
     const vendorName = playlist.vendor_name || 'Unknown Vendor';
-    if (!acc[vendorName]) {
+    
+    if (!acc[vendorId]) {
       // Get vendor notes from vendorResponses
       const vendorResponse = vendorResponses.find(vr => 
         vr.vendor?.name === vendorName
       );
       
-      acc[vendorName] = {
+      // Find performance data for this vendor by vendor_id
+      const vendorPerf = performanceData?.find(v => v.vendor_id === vendorId);
+      
+      acc[vendorId] = {
+        vendorId,
+        vendorName,
         playlists: [],
         totalAllocated: 0,
         totalActual: 0,
-        vendorPerformance: null,
+        vendorPerformance: vendorPerf,
         totalPayment: 0, // Will be calculated after processing all playlists
         paymentStatus: 'Unpaid', // Default status - can be enhanced later
         hasNotes: Boolean(vendorResponse?.response_notes?.trim()),
@@ -426,46 +435,31 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
       };
     }
     
-    // Find performance data for this playlist
-    const vendorPerf = performanceData?.find(v => 
-      v.playlists.some(p => p.id === playlist.id)
-    );
-    const playlistPerf = vendorPerf?.playlists.find(p => p.id === playlist.id);
+    // Find performance data for this specific playlist
+    const playlistPerf = acc[vendorId].vendorPerformance?.playlists?.find(p => p.id === playlist.id);
     
-    acc[vendorName].playlists.push({
+    acc[vendorId].playlists.push({
       ...playlist,
       idx,
       allocated: playlistPerf?.allocated_streams || 0,
       actual: playlistPerf?.actual_streams || 0
     });
     
-    acc[vendorName].totalAllocated += playlistPerf?.allocated_streams || 0;
-    acc[vendorName].totalActual += playlistPerf?.actual_streams || 0;
-    acc[vendorName].vendorPerformance = vendorPerf;
+    acc[vendorId].totalAllocated += playlistPerf?.allocated_streams || 0;
+    acc[vendorId].totalActual += playlistPerf?.actual_streams || 0;
     
     return acc;
   }, {} as Record<string, any>);
 
   // Calculate total payment for each vendor after processing all playlists
-  Object.keys(groupedPlaylists).forEach(vendorName => {
-    const vendorGroup = groupedPlaylists[vendorName];
-    const vendor = vendorData[vendorName];
+  Object.keys(groupedPlaylists).forEach(vendorId => {
+    const vendorGroup = groupedPlaylists[vendorId];
     
     // Calculate total payment using campaign-specific cost per stream from performance data
     vendorGroup.totalPayment = vendorGroup.playlists.reduce((total, playlist) => {
       const playlistPerf = vendorGroup.vendorPerformance?.playlists?.find(p => p.id === playlist.id);
       const allocatedStreams = playlistPerf?.allocated_streams || 0;
       const costPerStream = playlistPerf?.cost_per_stream || 0;
-      
-      // Debug logging
-      console.log('Payment calculation debug:', {
-        playlistId: playlist.id,
-        playlistName: playlist.name,
-        allocatedStreams,
-        costPerStream,
-        calculation: allocatedStreams * costPerStream,
-        playlistPerf
-      });
       
       return total + (allocatedStreams * costPerStream);
     }, 0);
@@ -477,15 +471,15 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
     vendorGroup.paymentStatus = hasUnpaidAllocations ? 'Unpaid' : 'Paid';
   });
 
-  const toggleVendor = (vendorName: string) => {
+  const toggleVendor = (vendorId: string) => {
     setExpandedVendors(prev => ({
       ...prev,
-      [vendorName]: !prev[vendorName]
+      [vendorId]: !prev[vendorId]
     }));
   };
 
-  const markVendorPaymentAsPaid = async (campaignId: string, vendorName: string, amount: number) => {
-    const paymentKey = `${campaignId}-${vendorName}`;
+  const markVendorPaymentAsPaid = async (campaignId: string, vendorId: string, vendorName: string, amount: number) => {
+    const paymentKey = `${campaignId}-${vendorId}`;
     setMarkingPaid(prev => ({ ...prev, [paymentKey]: true }));
     
     try {
@@ -500,7 +494,7 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
           updated_at: new Date().toISOString()
         })
         .eq('campaign_id', campaignId)
-        .eq('vendor_id', vendorData[vendorName]?.id);
+        .eq('vendor_id', vendorId);
 
       if (error) throw error;
       
@@ -738,15 +732,15 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
             
             {playlists.length > 0 ? (
               <div className="space-y-4">
-                {Object.entries(groupedPlaylists).map(([vendorName, vendorData]) => {
-                  const isExpanded = expandedVendors[vendorName] ?? true;
+                {Object.entries(groupedPlaylists).map(([vendorId, vendorData]) => {
+                  const isExpanded = expandedVendors[vendorId] ?? true;
                   const progress = vendorData.totalAllocated > 0 
                     ? (vendorData.totalActual / vendorData.totalAllocated) * 100 
                     : 0;
                   
                   return (
-                    <Card key={vendorName} className="overflow-hidden">
-                      <Collapsible open={isExpanded} onOpenChange={() => toggleVendor(vendorName)}>
+                    <Card key={vendorId} className="overflow-hidden">
+                      <Collapsible open={isExpanded} onOpenChange={() => toggleVendor(vendorId)}>
                          <CollapsibleTrigger asChild>
                            <div className="p-4 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
                              <div className="flex items-center justify-between">
@@ -757,7 +751,7 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
                                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
                                  )}
                                  <Badge variant="secondary" className="font-medium">
-                                   {vendorName}
+                                   {vendorData.vendorName}
                                  </Badge>
                                  <span className="text-sm text-muted-foreground">
                                    {vendorData.playlists.length} playlist{vendorData.playlists.length !== 1 ? 's' : ''}
@@ -785,12 +779,12 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
                                             variant="outline"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              markVendorPaymentAsPaid(campaignData?.id, vendorName, vendorData.totalPayment);
+                                              markVendorPaymentAsPaid(campaignData?.id, vendorId, vendorData.vendorName, vendorData.totalPayment);
                                             }}
-                                            disabled={markingPaid[`${campaignData?.id}-${vendorName}`]}
+                                            disabled={markingPaid[`${campaignData?.id}-${vendorId}`]}
                                             className="text-xs py-1 px-2 h-6"
                                           >
-                                            {markingPaid[`${campaignData?.id}-${vendorName}`] ? 'Marking...' : 'Mark Paid'}
+                                            {markingPaid[`${campaignData?.id}-${vendorId}`] ? 'Marking...' : 'Mark Paid'}
                                           </Button>
                                         )}
                                       </div>
@@ -1079,17 +1073,16 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
 
               {Object.entries(groupedPlaylists).length > 0 ? (
                 <div className="grid gap-4">
-                  {Object.entries(groupedPlaylists).map(([vendorName, vendorData]) => {
-                    const vendor = vendorData[vendorName];
+                  {Object.entries(groupedPlaylists).map(([vendorId, vendorData]) => {
                     const ratePer1k = vendorData.vendorPerformance?.cost_per_stream 
                       ? (vendorData.vendorPerformance.cost_per_stream * 1000).toFixed(2)
-                      : (vendorData[vendorName]?.cost_per_1k_streams || 0).toFixed(2);
+                      : '0.00';
                     
                     return (
-                      <Card key={vendorName} className="p-6">
+                      <Card key={vendorId} className="p-6">
                         <div className="flex items-center justify-between mb-4">
                           <div>
-                            <h4 className="text-lg font-semibold">{vendorName}</h4>
+                            <h4 className="text-lg font-semibold">{vendorData.vendorName}</h4>
                             <p className="text-sm text-muted-foreground">
                               {vendorData.playlists.length} playlist{vendorData.playlists.length !== 1 ? 's' : ''} allocated
                             </p>
@@ -1129,11 +1122,11 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
                         {vendorData.paymentStatus !== 'Paid' && canEditCampaign && (
                           <div className="flex items-center gap-4 pt-4 border-t">
                             <Button
-                              onClick={() => markVendorPaymentAsPaid(campaignData?.id, vendorName, vendorData.totalPayment)}
-                              disabled={markingPaid[`${campaignData?.id}-${vendorName}`]}
+                              onClick={() => markVendorPaymentAsPaid(campaignData?.id, vendorId, vendorData.vendorName, vendorData.totalPayment)}
+                              disabled={markingPaid[`${campaignData?.id}-${vendorId}`]}
                               className="flex items-center gap-2"
                             >
-                              {markingPaid[`${campaignData?.id}-${vendorName}`] ? (
+                              {markingPaid[`${campaignData?.id}-${vendorId}`] ? (
                                 <>Processing...</>
                               ) : (
                                 <>
@@ -1143,9 +1136,9 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
                               )}
                             </Button>
                             <div className="flex items-center gap-2">
-                              <Label htmlFor={`payment-date-${vendorName}`} className="text-sm">Payment Date:</Label>
+                              <Label htmlFor={`payment-date-${vendorId}`} className="text-sm">Payment Date:</Label>
                               <Input
-                                id={`payment-date-${vendorName}`}
+                                id={`payment-date-${vendorId}`}
                                 type="date"
                                 defaultValue={new Date().toISOString().split('T')[0]}
                                 className="w-auto"
