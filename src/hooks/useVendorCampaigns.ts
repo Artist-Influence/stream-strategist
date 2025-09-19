@@ -128,24 +128,19 @@ export function useVendorCampaigns() {
           p.campaign_id === campaign.id && vendorIds.includes(p.vendor_id)
         ) || [];
 
-        // Calculate total amount owed and determine payment status
+        // Calculate total amount owed and determine payment status based on allocated streams
         let totalAmountOwed = 0;
         let paymentStatus: 'paid' | 'unpaid' | 'pending' = 'pending';
         let hasUnpaid = false;
         let hasPaid = false;
 
-        console.log(`Payment calculation for campaign ${campaign.name}:`, {
-          campaignPayments: campaignPayments.length,
-          vendorIds
-        });
-
+        // Always calculate from campaign allocation performance records
         if (campaignPayments.length > 0) {
           for (const payment of campaignPayments) {
             const costPerStream = payment.cost_per_stream || 0;
             const allocatedStreams = payment.allocated_streams || 0;
             const paymentAmount = allocatedStreams * costPerStream;
             
-            console.log(`Payment entry: ${allocatedStreams} streams × $${costPerStream} = $${paymentAmount}`);
             totalAmountOwed += paymentAmount;
             
             if (payment.payment_status === 'paid') {
@@ -155,20 +150,12 @@ export function useVendorCampaigns() {
             }
           }
           
-          console.log(`Total amount owed: $${totalAmountOwed}`);
-          
+          // Set payment status based on actual payment records
           if (hasPaid && !hasUnpaid) {
             paymentStatus = 'paid';
-          } else if (hasUnpaid) {
+          } else if (hasUnpaid || totalAmountOwed > 0) {
             paymentStatus = 'unpaid';
           }
-        } else if (vendorStreamGoal > 0 || vendorPlaylistsInCampaign.some(p => p.is_allocated)) {
-          // Campaign has allocations but no payment records yet - calculate estimated amount
-          const vendor = vendorUsers?.find(vu => vu.vendor_id === vendorIds[0])?.vendors;
-          const costPer1k = vendor?.cost_per_1k_streams || 0;
-          totalAmountOwed = (vendorStreamGoal * costPer1k) / 1000;
-          paymentStatus = 'unpaid';
-          console.log(`Fallback calculation: ${vendorStreamGoal} streams × $${costPer1k/1000} = $${totalAmountOwed}`);
         }
 
         return {
