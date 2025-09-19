@@ -456,6 +456,17 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
       const playlistPerf = vendorGroup.vendorPerformance?.playlists?.find(p => p.id === playlist.id);
       const allocatedStreams = playlistPerf?.allocated_streams || 0;
       const costPerStream = playlistPerf?.cost_per_stream || 0;
+      
+      // Debug logging
+      console.log('Payment calculation debug:', {
+        playlistId: playlist.id,
+        playlistName: playlist.name,
+        allocatedStreams,
+        costPerStream,
+        calculation: allocatedStreams * costPerStream,
+        playlistPerf
+      });
+      
       return total + (allocatedStreams * costPerStream);
     }, 0);
     
