@@ -11,7 +11,7 @@ export interface ExecutiveDashboardData {
   totalActualStreams: number;
   totalStreamsPast30Days: number;
   campaignsAddedPast30Days: number;
-  goalCompletionRate: number;
+  campaignEfficiency: number;
   averageCostPerStream: number;
   averageCostPer1kStreams: number;
   topPerformingVendors: Array<{
@@ -125,7 +125,21 @@ export const useExecutiveDashboardData = () => {
           }, 0) 
         : 0;
 
-      const goalCompletionRate = totalStreamGoals > 0 ? (totalActualStreams / totalStreamGoals) * 100 : 0;
+      // Calculate campaign efficiency (time-based completion)
+      const campaignsWithExpectedCompletion = Array.isArray(campaigns) 
+        ? campaigns.filter(campaign => {
+            const startDate = new Date(campaign.start_date);
+            const expectedEndDate = new Date(startDate);
+            expectedEndDate.setDate(startDate.getDate() + (campaign.duration_days || 90));
+            return expectedEndDate <= currentDate; // Campaigns that should be completed by now
+          })
+        : [];
+
+      const completedOnTimeCampaigns = campaignsWithExpectedCompletion.filter(c => c.status === 'completed').length;
+      
+      const campaignEfficiency = campaignsWithExpectedCompletion.length > 0 
+        ? (completedOnTimeCampaigns / campaignsWithExpectedCompletion.length) * 100 
+        : 0;
 
       const totalCostPerStreamData = Array.isArray(campaigns) 
         ? campaigns.reduce((acc, campaign) => {
@@ -247,7 +261,7 @@ export const useExecutiveDashboardData = () => {
         totalActualStreams,
         totalStreamsPast30Days,
         campaignsAddedPast30Days,
-        goalCompletionRate,
+        campaignEfficiency,
         averageCostPerStream,
         averageCostPer1kStreams,
         topPerformingVendors,

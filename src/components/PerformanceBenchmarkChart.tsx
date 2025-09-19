@@ -66,10 +66,10 @@ export const PerformanceBenchmarkChart = () => {
       difference: data.performanceBenchmarks.industryAvgCostPerStream - data.averageCostPerStream
     },
     {
-      metric: "Goal Completion (%)",
-      ourPerformance: data.goalCompletionRate,
+      metric: "Time Completion (%)",
+      ourPerformance: data.campaignEfficiency,
       industryBenchmark: 75, // Mock industry average
-      difference: data.goalCompletionRate - 75
+      difference: data.campaignEfficiency - 75
     }
   ];
 

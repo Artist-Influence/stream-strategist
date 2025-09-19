@@ -101,14 +101,14 @@ export const ExecutiveKPICards = ({ data }: ExecutiveKPICardsProps) => {
         <CardContent>
           <div className="text-2xl font-bold">
             <Badge 
-              variant={data.goalCompletionRate >= 80 ? "default" : data.goalCompletionRate >= 60 ? "secondary" : "destructive"}
+              variant={data.campaignEfficiency >= 80 ? "default" : data.campaignEfficiency >= 60 ? "secondary" : "destructive"}
               className="text-lg font-bold px-2 py-1"
             >
-              {data.goalCompletionRate.toFixed(1)}%
+              {data.campaignEfficiency.toFixed(1)}%
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Goal completion rate
+            Campaigns completed on time
           </p>
         </CardContent>
       </Card>
