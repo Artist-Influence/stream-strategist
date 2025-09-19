@@ -53,7 +53,10 @@ import {
   Mail,
   Users,
   CreditCard,
-  Calendar
+  Calendar,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { useClients, useCreateClient } from '@/hooks/useClients';
 import { useDeleteClient } from '@/hooks/useDeleteClient';
@@ -75,11 +78,16 @@ const clientSchema = z.object({
 
 type ClientFormData = z.infer<typeof clientSchema>;
 
+type SortField = 'name' | 'emails' | 'credit_balance' | 'active_campaigns' | 'created_at';
+type SortDirection = 'asc' | 'desc';
+
 export function ClientManager() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isClientDetailsOpen, setIsClientDetailsOpen] = useState(false);
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   
   const { data: clients = [], isLoading } = useClients();
   const createClient = useCreateClient();
@@ -128,10 +136,63 @@ export function ClientManager() {
     }
   };
 
-  const filteredClients = clients.filter(client =>
-    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.emails?.some(email => email.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="ml-2 h-4 w-4" />;
+    }
+    return sortDirection === 'asc' ? 
+      <ArrowUp className="ml-2 h-4 w-4" /> : 
+      <ArrowDown className="ml-2 h-4 w-4" />;
+  };
+
+  const filteredClients = clients
+    .filter(client =>
+      client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.emails?.some(email => email.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
+    .sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortField) {
+        case 'name':
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+          break;
+        case 'emails':
+          aValue = a.emails?.length || 0;
+          bValue = b.emails?.length || 0;
+          break;
+        case 'credit_balance':
+          aValue = a.credit_balance || 0;
+          bValue = b.credit_balance || 0;
+          break;
+        case 'active_campaigns':
+          aValue = (a as any).activeCampaignsCount || 0;
+          bValue = (b as any).activeCampaignsCount || 0;
+          break;
+        case 'created_at':
+          aValue = new Date(a.created_at).getTime();
+          bValue = new Date(b.created_at).getTime();
+          break;
+        default:
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
 
   if (isLoading) {
     return <div>Loading clients...</div>;
@@ -268,11 +329,51 @@ export function ClientManager() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Client Name</TableHead>
-                  <TableHead>Emails</TableHead>
-                  <TableHead>Credit Balance</TableHead>
-                  <TableHead>Active Campaigns</TableHead>
-                  <TableHead>Created</TableHead>
+                  <TableHead 
+                    className="cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('name')}
+                  >
+                    <div className="flex items-center">
+                      Client Name
+                      {getSortIcon('name')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('emails')}
+                  >
+                    <div className="flex items-center">
+                      Emails
+                      {getSortIcon('emails')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('credit_balance')}
+                  >
+                    <div className="flex items-center">
+                      Credit Balance
+                      {getSortIcon('credit_balance')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('active_campaigns')}
+                  >
+                    <div className="flex items-center">
+                      Active Campaigns
+                      {getSortIcon('active_campaigns')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('created_at')}
+                  >
+                    <div className="flex items-center">
+                      Created
+                      {getSortIcon('created_at')}
+                    </div>
+                  </TableHead>
                   <TableHead className="w-[70px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
