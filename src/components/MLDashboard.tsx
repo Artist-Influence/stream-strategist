@@ -26,6 +26,7 @@ import { useAdvancedLearningMetrics, useDynamicAlgorithmOptimization } from "@/h
 import { useMLModelAnalysis } from "@/hooks/useMLPerformancePredictor";
 import { useVendorAutoAdjustmentRecommendations, useApplyVendorAutoAdjustments } from "@/hooks/useVendorAutoAdjustment";
 import { useMLAlerts, useMLPerformanceTrends, useMLSystemHealth } from "@/hooks/useMLDashboardData";
+import { MLMetricExplanationCards } from "@/components/MLMetricExplanationCards";
 import { useState } from "react";
 
 export function MLDashboard({ className }: { className?: string }) {
@@ -188,6 +189,9 @@ export function MLDashboard({ className }: { className?: string }) {
               </CardContent>
             </Card>
           </div>
+
+          {/* ML Metric Explanation Cards */}
+          <MLMetricExplanationCards />
 
           {/* Recent Learning Insights */}
           <Card>
