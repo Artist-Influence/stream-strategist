@@ -52,7 +52,8 @@ export function useVendorCampaigns() {
           vendor_id,
           vendors (
             id,
-            name
+            name,
+            cost_per_1k_streams
           )
         `)
         .eq('user_id', user!.id);
@@ -71,14 +72,23 @@ export function useVendorCampaigns() {
       if (playlistError) throw playlistError;
       
       const playlistIds = playlists?.map(p => p.id) || [];
-      // Note: even if vendor has no playlists, campaigns may be visible via allocations/requests
 
-      // Fetch campaigns with payment status; RLS ensures vendors see only campaigns where they have assigned playlists
+      // Fetch campaigns; RLS ensures vendors see only campaigns where they have assigned playlists
       const { data: campaigns, error: campaignError } = await supabase
         .from('campaigns')
         .select('*');
 
       if (campaignError) throw campaignError;
+
+      // Get payment data for campaigns involving this vendor
+      const campaignIds = campaigns?.map(c => c.id) || [];
+      const { data: paymentData, error: paymentError } = await supabase
+        .from('campaign_allocations_performance')
+        .select('*')
+        .in('campaign_id', campaignIds)
+        .in('vendor_id', vendorIds);
+
+      if (paymentError) throw paymentError;
 
       // Process campaigns to include vendor-specific data
       const vendorCampaigns = campaigns?.map(campaign => {
@@ -113,20 +123,53 @@ export function useVendorCampaigns() {
           }
         }
 
-        // Determine payment status (no join; default to 'pending')
-        const paymentStatus: 'paid' | 'unpaid' | 'pending' = 'pending';
+        // Get payment data for this campaign and vendor
+        const campaignPayments = paymentData?.filter(p => 
+          p.campaign_id === campaign.id && vendorIds.includes(p.vendor_id)
+        ) || [];
+
+        // Calculate total amount owed and determine payment status
+        let totalAmountOwed = 0;
+        let paymentStatus: 'paid' | 'unpaid' | 'pending' = 'pending';
+        let hasUnpaid = false;
+        let hasPaid = false;
+
+        if (campaignPayments.length > 0) {
+          for (const payment of campaignPayments) {
+            const costPerStream = payment.cost_per_stream || 0;
+            const actualStreams = payment.actual_streams || 0;
+            totalAmountOwed += actualStreams * costPerStream;
+            
+            if (payment.payment_status === 'paid') {
+              hasPaid = true;
+            } else {
+              hasUnpaid = true;
+            }
+          }
+          
+          if (hasPaid && !hasUnpaid) {
+            paymentStatus = 'paid';
+          } else if (hasUnpaid) {
+            paymentStatus = 'unpaid';
+          }
+        } else if (vendorStreamGoal > 0 || vendorPlaylistsInCampaign.some(p => p.is_allocated)) {
+          // Campaign has allocations but no payment records yet - calculate estimated amount
+          const vendor = vendorUsers?.find(vu => vu.vendor_id === vendorIds[0])?.vendors;
+          const costPer1k = vendor?.cost_per_1k_streams || 0;
+          totalAmountOwed = (vendorStreamGoal * costPer1k) / 1000;
+          paymentStatus = 'unpaid';
+        }
 
         return {
           ...campaign,
           vendor_playlists: vendorPlaylistsInCampaign,
           vendor_stream_goal: vendorStreamGoal,
           vendor_allocation: vendorAllocations[vendorIds[0]], // For simplicity, use first vendor
-          payment_status: paymentStatus
+          payment_status: paymentStatus,
+          amount_owed: totalAmountOwed
         };
       }) || [];
 
-      // Return all campaigns visible to this vendor (RLS handles the filtering)
-      // Don't filter out campaigns without allocated playlists since vendors might have requests
       return vendorCampaigns as VendorCampaign[];
     },
   });

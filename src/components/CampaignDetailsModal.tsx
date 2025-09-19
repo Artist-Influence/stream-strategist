@@ -526,13 +526,17 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
         </DialogHeader>
         
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               Campaign Details
             </TabsTrigger>
             <TabsTrigger value="performance" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Performance Analytics
+            </TabsTrigger>
+            <TabsTrigger value="payments" className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              Vendor Payments
             </TabsTrigger>
           </TabsList>
 
@@ -735,22 +739,38 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
                                  </span>
                                </div>
                                <div className="flex items-center gap-4">
-                                 {vendorData.totalPayment > 0 && (
-                                   <div className="text-right text-sm">
-                                     <div className="font-medium">
-                                       ${vendorData.totalPayment.toLocaleString(undefined, { 
-                                         minimumFractionDigits: 2, 
-                                         maximumFractionDigits: 2 
-                                       })}
-                                     </div>
-                                     <Badge 
-                                       variant={vendorData.paymentStatus === 'Paid' ? 'default' : 'destructive'}
-                                       className="text-xs"
-                                     >
-                                       {vendorData.paymentStatus}
-                                     </Badge>
-                                   </div>
-                                 )}
+                                  {vendorData.totalPayment > 0 && (
+                                    <div className="text-right text-sm">
+                                      <div className="font-medium">
+                                        ${vendorData.totalPayment.toLocaleString(undefined, { 
+                                          minimumFractionDigits: 2, 
+                                          maximumFractionDigits: 2 
+                                        })}
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Badge 
+                                          variant={vendorData.paymentStatus === 'Paid' ? 'default' : 'destructive'}
+                                          className="text-xs"
+                                        >
+                                          {vendorData.paymentStatus}
+                                        </Badge>
+                                        {canEditCampaign && vendorData.paymentStatus !== 'Paid' && (
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              markVendorPaymentAsPaid(campaignData?.id, vendorName, vendorData.totalPayment);
+                                            }}
+                                            disabled={markingPaid[`${campaignData?.id}-${vendorName}`]}
+                                            className="text-xs py-1 px-2 h-6"
+                                          >
+                                            {markingPaid[`${campaignData?.id}-${vendorName}`] ? 'Marking...' : 'Mark Paid'}
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
                                  <TooltipProvider>
                                    <Tooltip>
                                      <TooltipTrigger asChild>
@@ -1018,6 +1038,117 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
                 </Card>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="payments" className="space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <DollarSign className="h-5 w-5" />
+                  Vendor Payment Management
+                </h3>
+                <div className="text-sm text-muted-foreground">
+                  Total Campaign Budget: ${campaignData?.budget?.toLocaleString()}
+                </div>
+              </div>
+
+              {Object.entries(groupedPlaylists).length > 0 ? (
+                <div className="grid gap-4">
+                  {Object.entries(groupedPlaylists).map(([vendorName, vendorData]) => {
+                    const vendor = vendorData[vendorName];
+                    const ratePer1k = vendorData.vendorPerformance?.cost_per_stream 
+                      ? (vendorData.vendorPerformance.cost_per_stream * 1000).toFixed(2)
+                      : (vendorData[vendorName]?.cost_per_1k_streams || 0).toFixed(2);
+                    
+                    return (
+                      <Card key={vendorName} className="p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h4 className="text-lg font-semibold">{vendorName}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {vendorData.playlists.length} playlist{vendorData.playlists.length !== 1 ? 's' : ''} allocated
+                            </p>
+                          </div>
+                          <Badge 
+                            variant={vendorData.paymentStatus === 'Paid' ? 'default' : 'destructive'}
+                            className="text-sm"
+                          >
+                            {vendorData.paymentStatus}
+                          </Badge>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                          <div className="space-y-1">
+                            <Label className="text-sm text-muted-foreground">Rate per 1k streams</Label>
+                            <p className="text-lg font-semibold">${ratePer1k}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-sm text-muted-foreground">Allocated streams</Label>
+                            <p className="text-lg font-semibold">{vendorData.totalAllocated.toLocaleString()}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-sm text-muted-foreground">Actual streams delivered</Label>
+                            <p className="text-lg font-semibold text-primary">{vendorData.totalActual.toLocaleString()}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-sm text-muted-foreground">Total amount owed</Label>
+                            <p className="text-xl font-bold text-green-600">
+                              ${vendorData.totalPayment.toLocaleString(undefined, { 
+                                minimumFractionDigits: 2, 
+                                maximumFractionDigits: 2 
+                              })}
+                            </p>
+                          </div>
+                        </div>
+
+                        {vendorData.paymentStatus !== 'Paid' && canEditCampaign && (
+                          <div className="flex items-center gap-4 pt-4 border-t">
+                            <Button
+                              onClick={() => markVendorPaymentAsPaid(campaignData?.id, vendorName, vendorData.totalPayment)}
+                              disabled={markingPaid[`${campaignData?.id}-${vendorName}`]}
+                              className="flex items-center gap-2"
+                            >
+                              {markingPaid[`${campaignData?.id}-${vendorName}`] ? (
+                                <>Processing...</>
+                              ) : (
+                                <>
+                                  <DollarSign className="h-4 w-4" />
+                                  Mark as Paid
+                                </>
+                              )}
+                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Label htmlFor={`payment-date-${vendorName}`} className="text-sm">Payment Date:</Label>
+                              <Input
+                                id={`payment-date-${vendorName}`}
+                                type="date"
+                                defaultValue={new Date().toISOString().split('T')[0]}
+                                className="w-auto"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {vendorData.paymentStatus === 'Paid' && (
+                          <div className="pt-4 border-t">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Calendar className="h-4 w-4" />
+                              <span>Payment processed</span>
+                            </div>
+                          </div>
+                        )}
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center p-8 text-muted-foreground">
+                  <DollarSign className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No vendor payments to display</p>
+                  <p className="text-sm">Add playlists to generate payment information</p>
+                </div>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
 

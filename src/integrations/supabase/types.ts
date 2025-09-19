@@ -2411,6 +2411,10 @@ export type Database = {
       }
     }
     Functions: {
+      ensure_campaign_allocation_records: {
+        Args: { p_campaign_id: string }
+        Returns: undefined
+      }
       get_artist_influence_project_info: {
         Args: Record<PropertyKey, never>
         Returns: Json

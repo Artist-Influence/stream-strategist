@@ -39,12 +39,21 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
 
   if (!freshCampaign) return null;
 
-  // Get payment data for this campaign
-  const campaignPayment = payments.find(p => p.campaign_id === freshCampaign.id);
-
   const vendorStreamGoal = freshCampaign.vendor_stream_goal || 0;
   const currentStreams = freshCampaign.vendor_playlists?.reduce((sum: number, p: any) => 
     p.is_allocated ? (p.current_streams || 0) : 0, 0) || 0;
+
+  // Get payment data for this campaign - either from the payments hook or from the campaign data itself
+  const campaignPayment = payments.find(p => p.campaign_id === freshCampaign.id) || {
+    campaign_id: freshCampaign.id,
+    current_rate_per_1k: freshCampaign.vendor_allocation?.cost_per_1k_streams || 0,
+    amount_owed: freshCampaign.amount_owed || 0,
+    actual_streams: currentStreams,
+    allocated_streams: vendorStreamGoal,
+    payment_status: freshCampaign.payment_status || 'unpaid',
+    payment_date: null
+  };
+
   const progressPercentage = vendorStreamGoal > 0 ? (currentStreams / vendorStreamGoal) * 100 : 0;
 
   const getPerformanceStatus = () => {
@@ -153,8 +162,8 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
             <Progress value={Math.min(progressPercentage, 100)} className="h-3" />
           </div>
 
-          {/* Payment Information */}
-          {campaignPayment && (
+          {/* Payment Information - Always show */}
+          {(
             <div className="border rounded-lg p-4">
               <div className="flex items-center gap-2 mb-4">
                 <Music className="h-4 w-4" />
