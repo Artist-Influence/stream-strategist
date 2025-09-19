@@ -409,12 +409,6 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
   const groupedPlaylists = playlists.reduce((acc, playlist, idx) => {
     const vendorName = playlist.vendor_name || 'Unknown Vendor';
     if (!acc[vendorName]) {
-      // Get vendor cost data and calculate total payment
-      const vendor = vendorData[vendorName];
-      const vendorAllocation = campaignData?.vendor_allocations?.[vendorName] || 0;
-      const costPer1k = vendor?.cost_per_1k_streams || 0;
-      const totalPayment = (vendorAllocation * costPer1k) / 1000;
-      
       // Get vendor notes from vendorResponses
       const vendorResponse = vendorResponses.find(vr => 
         vr.vendor?.name === vendorName
@@ -425,7 +419,7 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
         totalAllocated: 0,
         totalActual: 0,
         vendorPerformance: null,
-        totalPayment,
+        totalPayment: 0, // Will be calculated after processing all playlists
         paymentStatus: 'Unpaid', // Default status - can be enhanced later
         hasNotes: Boolean(vendorResponse?.response_notes?.trim()),
         notes: vendorResponse?.response_notes || ''
@@ -451,6 +445,25 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
     
     return acc;
   }, {} as Record<string, any>);
+
+  // Calculate total payment for each vendor after processing all playlists
+  Object.keys(groupedPlaylists).forEach(vendorName => {
+    const vendorGroup = groupedPlaylists[vendorName];
+    const vendor = vendorData[vendorName];
+    
+    // Use cost per stream from performance data if available, otherwise fallback to vendor's default rate
+    const costPerStream = vendorGroup.vendorPerformance?.cost_per_stream || 
+                         (vendor?.cost_per_1k_streams ? vendor.cost_per_1k_streams / 1000 : 0);
+    
+    // Calculate total payment based on allocated streams (upfront payment)
+    vendorGroup.totalPayment = vendorGroup.totalAllocated * costPerStream;
+    
+    // Determine payment status based on performance data
+    const hasUnpaidAllocations = vendorGroup.vendorPerformance?.playlists?.some(p => 
+      p.payment_status !== 'paid'
+    ) ?? true;
+    vendorGroup.paymentStatus = hasUnpaidAllocations ? 'Unpaid' : 'Paid';
+  });
 
   const toggleVendor = (vendorName: string) => {
     setExpandedVendors(prev => ({
