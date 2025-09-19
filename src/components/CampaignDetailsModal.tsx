@@ -451,12 +451,12 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
     const vendorGroup = groupedPlaylists[vendorName];
     const vendor = vendorData[vendorName];
     
-    // Calculate total payment based on allocated streams: (allocated_streams ÷ 1000) × cost_per_1k_streams
+    // Calculate total payment using campaign-specific cost per stream from performance data
     vendorGroup.totalPayment = vendorGroup.playlists.reduce((total, playlist) => {
       const playlistPerf = vendorGroup.vendorPerformance?.playlists?.find(p => p.id === playlist.id);
       const allocatedStreams = playlistPerf?.allocated_streams || 0;
-      const costPer1kStreams = vendor?.cost_per_1k_streams || 0;
-      return total + ((allocatedStreams / 1000) * costPer1kStreams);
+      const costPerStream = playlistPerf?.cost_per_stream || 0;
+      return total + (allocatedStreams * costPerStream);
     }, 0);
     
     // Determine payment status based on performance data
