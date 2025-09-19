@@ -14,7 +14,6 @@ import { useVendorCampaigns } from "@/hooks/useVendorCampaigns";
 import { VendorPlaylistEditModal } from "@/components/VendorPlaylistEditModal";
 import { VendorCampaignRequestModal } from "@/components/VendorCampaignRequestModal";
 import { VendorCampaignPerformanceModal } from "@/components/VendorCampaignPerformanceModal";
-import { VendorPaymentSection } from "@/components/VendorPaymentSection";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -330,12 +329,17 @@ export default function VendorDashboard() {
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between mb-3">
                           <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-semibold">{campaign.name}</h3>
-                              <Badge variant={campaign.payment_status === 'paid' ? 'default' : campaign.payment_status === 'pending' ? 'secondary' : 'outline'}>
-                                {campaign.payment_status === 'paid' ? 'Paid ✓' : campaign.payment_status === 'pending' ? 'Pending' : 'Unpaid'}
-                              </Badge>
-                            </div>
+                           <div className="flex items-center gap-2">
+                             <h3 className="font-semibold">{campaign.name}</h3>
+                             <Badge variant={campaign.payment_status === 'paid' ? 'default' : campaign.payment_status === 'pending' ? 'secondary' : 'outline'}>
+                               {campaign.payment_status === 'paid' ? 'Paid ✓' : campaign.payment_status === 'pending' ? 'Pending' : 'Unpaid'}
+                             </Badge>
+                           </div>
+                           {campaign.amount_owed && (
+                             <div className="text-sm text-muted-foreground">
+                               Amount owed: <span className="font-medium text-green-600">${campaign.amount_owed.toFixed(2)}</span>
+                             </div>
+                           )}
                             {campaign.brand_name && (
                               <p className="text-sm text-muted-foreground">{campaign.brand_name}</p>
                             )}
@@ -488,8 +492,6 @@ export default function VendorDashboard() {
           </CardContent>
           </Card>
 
-        {/* Payment Management Section */}
-        <VendorPaymentSection />
         </div>
 
         {/* Modals */}

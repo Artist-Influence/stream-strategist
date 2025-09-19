@@ -38,7 +38,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Trash2, Plus, ExternalLink, CheckCircle, XCircle, Clock, BarChart3, ChevronDown, ChevronRight, MessageCircle, Radio, Music } from 'lucide-react';
+import { Trash2, Plus, ExternalLink, CheckCircle, XCircle, Clock, BarChart3, ChevronDown, ChevronRight, MessageCircle, Radio, Music, DollarSign, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PlaylistSelector } from './PlaylistSelector';
@@ -50,6 +50,7 @@ import { VendorGroupedPlaylistView } from '@/components/VendorGroupedPlaylistVie
 import { VendorPerformanceChart } from '@/components/VendorPerformanceChart';
 import { useCampaignPerformanceData, useCampaignOverallPerformance } from '@/hooks/useCampaignPerformanceData';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useVendorPaymentData } from '@/hooks/useVendorPayments';
 
 interface PlaylistWithStatus {
   id: string;
@@ -83,6 +84,7 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
   const [showPlaylistSelector, setShowPlaylistSelector] = useState(false);
   const [expandedVendors, setExpandedVendors] = useState<Record<string, boolean>>({});
   const [vendorData, setVendorData] = useState<Record<string, any>>({});
+  const [markingPaid, setMarkingPaid] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
   
   // Fetch vendor responses for this campaign
@@ -90,6 +92,7 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
   const { data: isVendorManager = false } = useIsVendorManager();
   const { hasRole } = useAuth();
   const { data: salespeople = [] } = useSalespeople();
+  const { data: payments = [] } = useVendorPaymentData();
   
   // Fetch performance data for admin view
   const { data: performanceData, isLoading: performanceLoading } = useCampaignPerformanceData(campaign?.id);
@@ -454,6 +457,45 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
       ...prev,
       [vendorName]: !prev[vendorName]
     }));
+  };
+
+  const markVendorPaymentAsPaid = async (campaignId: string, vendorName: string, amount: number) => {
+    const paymentKey = `${campaignId}-${vendorName}`;
+    setMarkingPaid(prev => ({ ...prev, [paymentKey]: true }));
+    
+    try {
+      // Update campaign_allocations_performance for this vendor
+      const { error } = await supabase
+        .from('campaign_allocations_performance')
+        .update({
+          payment_status: 'paid',
+          paid_amount: amount,
+          paid_date: new Date().toISOString(),
+          payment_method: 'manual',
+          updated_at: new Date().toISOString()
+        })
+        .eq('campaign_id', campaignId)
+        .eq('vendor_id', vendorData[vendorName]?.id);
+
+      if (error) throw error;
+      
+      // Refresh campaign details to show updated payment status
+      await fetchCampaignDetails();
+      
+      toast({
+        title: "Payment Marked as Paid",
+        description: `Payment of $${amount.toFixed(2)} to ${vendorName} has been marked as paid`,
+      });
+    } catch (error) {
+      console.error('Failed to mark payment as paid:', error);
+      toast({
+        title: "Error",
+        description: "Failed to mark payment as paid",
+        variant: "destructive",
+      });
+    } finally {
+      setMarkingPaid(prev => ({ ...prev, [paymentKey]: false }));
+    }
   };
 
   if (loading) {

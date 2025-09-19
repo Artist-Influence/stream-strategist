@@ -177,6 +177,11 @@ export type Database = {
           cost_per_stream: number | null
           created_at: string
           id: string
+          paid_amount: number | null
+          paid_date: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          payment_status: string | null
           performance_score: number | null
           playlist_id: string
           predicted_streams: number
@@ -192,6 +197,11 @@ export type Database = {
           cost_per_stream?: number | null
           created_at?: string
           id?: string
+          paid_amount?: number | null
+          paid_date?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          payment_status?: string | null
           performance_score?: number | null
           playlist_id: string
           predicted_streams: number
@@ -207,6 +217,11 @@ export type Database = {
           cost_per_stream?: number | null
           created_at?: string
           id?: string
+          paid_amount?: number | null
+          paid_date?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          payment_status?: string | null
           performance_score?: number | null
           playlist_id?: string
           predicted_streams?: number

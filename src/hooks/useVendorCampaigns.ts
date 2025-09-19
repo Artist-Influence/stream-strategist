@@ -23,6 +23,7 @@ export interface VendorCampaign {
   selected_playlists: string[];
   vendor_allocations: Record<string, any>;
   payment_status: 'paid' | 'unpaid' | 'pending';
+  amount_owed?: number;
   // Vendor-specific data
   vendor_playlists?: Array<{
     id: string;

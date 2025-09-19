@@ -4,13 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
-import { Music, TrendingUp, Target, ExternalLink, RotateCcw, Plus, X, Radio } from 'lucide-react';
+import { Music, TrendingUp, Target, ExternalLink, RotateCcw, Plus, X, Radio, Edit } from 'lucide-react';
 import { useUpdatePlaylistAllocation, useVendorCampaigns } from '@/hooks/useVendorCampaigns';
 import { useMyPlaylists } from '@/hooks/useVendorPlaylists';
 import { useCampaignPerformanceData, useCampaignOverallPerformance } from '@/hooks/useCampaignPerformanceData';
 import { VendorPerformanceChart } from '@/components/VendorPerformanceChart';
 import { VendorOwnPlaylistView } from '@/components/VendorOwnPlaylistView';
 import AddPlaylistModal from '@/components/AddPlaylistModal';
+import { useVendorPaymentData, useUpdateVendorCampaignRate } from '@/hooks/useVendorPayments';
 
 interface VendorCampaignPerformanceModalProps {
   campaign: any;
@@ -21,8 +22,12 @@ interface VendorCampaignPerformanceModalProps {
 export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: VendorCampaignPerformanceModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddPlaylistModal, setShowAddPlaylistModal] = useState(false);
+  const [editingRate, setEditingRate] = useState(false);
+  const [pendingRate, setPendingRate] = useState<number>(0);
   
   const updatePlaylistAllocation = useUpdatePlaylistAllocation();
+  const { data: payments = [] } = useVendorPaymentData();
+  const updateRate = useUpdateVendorCampaignRate();
   const { data: myPlaylists } = useMyPlaylists();
   const { data: vendorCampaigns } = useVendorCampaigns();
   
@@ -33,6 +38,9 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
   const { data: overallPerformance } = useCampaignOverallPerformance(freshCampaign?.id);
 
   if (!freshCampaign) return null;
+
+  // Get payment data for this campaign
+  const campaignPayment = payments.find(p => p.campaign_id === freshCampaign.id);
 
   const vendorStreamGoal = freshCampaign.vendor_stream_goal || 0;
   const currentStreams = freshCampaign.vendor_playlists?.reduce((sum: number, p: any) => 
@@ -66,6 +74,28 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
   const handleAddPlaylist = (playlistId: string) => {
     handlePlaylistToggle(playlistId, false);
     setSearchQuery('');
+  };
+
+  const handleEditRate = () => {
+    if (campaignPayment) {
+      setPendingRate(campaignPayment.current_rate_per_1k);
+      setEditingRate(true);
+    }
+  };
+
+  const handleSaveRate = () => {
+    if (freshCampaign?.id && pendingRate > 0) {
+      updateRate.mutate({ 
+        campaignId: freshCampaign.id, 
+        newRatePer1k: pendingRate 
+      });
+      setEditingRate(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingRate(false);
+    setPendingRate(0);
   };
 
   return (
@@ -122,6 +152,75 @@ export function VendorCampaignPerformanceModal({ campaign, isOpen, onClose }: Ve
             </div>
             <Progress value={Math.min(progressPercentage, 100)} className="h-3" />
           </div>
+
+          {/* Payment Information */}
+          {campaignPayment && (
+            <div className="border rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Music className="h-4 w-4" />
+                <span className="font-medium">Payment Information</span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">Rate per 1k streams</div>
+                  {editingRate ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={pendingRate}
+                        onChange={(e) => setPendingRate(parseFloat(e.target.value) || 0)}
+                        className="w-24"
+                      />
+                      <Button size="sm" onClick={handleSaveRate} disabled={updateRate.isPending}>
+                        Save
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-semibold">${campaignPayment.current_rate_per_1k.toFixed(2)}</span>
+                      <Button size="sm" variant="ghost" onClick={handleEditRate}>
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">Total earned</div>
+                  <div className="text-lg font-semibold text-green-600">${campaignPayment.amount_owed.toFixed(2)}</div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">Streams delivered</div>
+                  <div className="text-lg font-semibold">{campaignPayment.actual_streams.toLocaleString()}</div>
+                  <div className="text-xs text-muted-foreground">
+                    of {campaignPayment.allocated_streams.toLocaleString()} allocated
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">Payment status</div>
+                  <Badge 
+                    variant={campaignPayment.payment_status === 'paid' ? 'default' : 'outline'}
+                    className={campaignPayment.payment_status === 'paid' ? 'bg-green-100 text-green-800' : ''}
+                  >
+                    {campaignPayment.payment_status === 'paid' ? 'Paid ✓' : 'Unpaid'}
+                  </Badge>
+                  {campaignPayment.payment_date && (
+                    <div className="text-xs text-muted-foreground">
+                      Paid: {new Date(campaignPayment.payment_date).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* External Streaming Sources */}
           <div className="p-4 border rounded-lg">
