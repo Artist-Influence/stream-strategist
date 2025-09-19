@@ -134,11 +134,19 @@ export function useVendorCampaigns() {
         let hasUnpaid = false;
         let hasPaid = false;
 
+        console.log(`Payment calculation for campaign ${campaign.name}:`, {
+          campaignPayments: campaignPayments.length,
+          vendorIds
+        });
+
         if (campaignPayments.length > 0) {
           for (const payment of campaignPayments) {
             const costPerStream = payment.cost_per_stream || 0;
             const allocatedStreams = payment.allocated_streams || 0;
-            totalAmountOwed += allocatedStreams * costPerStream;
+            const paymentAmount = allocatedStreams * costPerStream;
+            
+            console.log(`Payment entry: ${allocatedStreams} streams × $${costPerStream} = $${paymentAmount}`);
+            totalAmountOwed += paymentAmount;
             
             if (payment.payment_status === 'paid') {
               hasPaid = true;
@@ -146,6 +154,8 @@ export function useVendorCampaigns() {
               hasUnpaid = true;
             }
           }
+          
+          console.log(`Total amount owed: $${totalAmountOwed}`);
           
           if (hasPaid && !hasUnpaid) {
             paymentStatus = 'paid';
@@ -158,6 +168,7 @@ export function useVendorCampaigns() {
           const costPer1k = vendor?.cost_per_1k_streams || 0;
           totalAmountOwed = (vendorStreamGoal * costPer1k) / 1000;
           paymentStatus = 'unpaid';
+          console.log(`Fallback calculation: ${vendorStreamGoal} streams × $${costPer1k/1000} = $${totalAmountOwed}`);
         }
 
         return {
