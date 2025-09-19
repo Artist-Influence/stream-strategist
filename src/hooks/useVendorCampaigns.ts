@@ -137,8 +137,8 @@ export function useVendorCampaigns() {
         if (campaignPayments.length > 0) {
           for (const payment of campaignPayments) {
             const costPerStream = payment.cost_per_stream || 0;
-            const actualStreams = payment.actual_streams || 0;
-            totalAmountOwed += actualStreams * costPerStream;
+            const allocatedStreams = payment.allocated_streams || 0;
+            totalAmountOwed += allocatedStreams * costPerStream;
             
             if (payment.payment_status === 'paid') {
               hasPaid = true;

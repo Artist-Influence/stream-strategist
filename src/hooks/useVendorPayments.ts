@@ -75,7 +75,7 @@ export const useVendorPaymentData = () => {
         
         const invoice = invoiceMap.get(allocation.campaign_id);
         const costPerStream = allocation.cost_per_stream || (vendor.cost_per_1k_streams / 1000);
-        const amountOwed = allocation.actual_streams * costPerStream;
+        const amountOwed = allocation.allocated_streams * costPerStream;
 
         // Calculate completion date
         const startDate = new Date(campaign.start_date);
