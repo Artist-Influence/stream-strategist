@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ExecutiveDashboardData } from "@/hooks/useExecutiveDashboardData";
-import { TrendingUp, TrendingDown, Activity, DollarSign, Target, Users } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, DollarSign, Target, Users, Calendar, Plus } from "lucide-react";
 
 interface ExecutiveKPICardsProps {
   data: ExecutiveDashboardData;
@@ -30,23 +30,7 @@ export const ExecutiveKPICards = ({ data }: ExecutiveKPICardsProps) => {
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(data.totalRevenue)}</div>
-          <p className="text-xs text-muted-foreground flex items-center mt-1">
-            {getTrendIcon(data.monthOverMonthGrowth.revenue)}
-            <span className={`ml-1 ${getTrendColor(data.monthOverMonthGrowth.revenue)}`}>
-              {data.monthOverMonthGrowth.revenue >= 0 ? '+' : ''}{data.monthOverMonthGrowth.revenue.toFixed(1)}% from last month
-            </span>
-          </p>
-        </CardContent>
-      </Card>
-
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Campaigns</CardTitle>
@@ -55,12 +39,7 @@ export const ExecutiveKPICards = ({ data }: ExecutiveKPICardsProps) => {
         <CardContent>
           <div className="text-2xl font-bold">{data.totalCampaigns}</div>
           <div className="flex items-center justify-between mt-1">
-            <p className="text-xs text-muted-foreground flex items-center">
-              {getTrendIcon(data.monthOverMonthGrowth.campaigns)}
-              <span className={`ml-1 ${getTrendColor(data.monthOverMonthGrowth.campaigns)}`}>
-                {data.monthOverMonthGrowth.campaigns >= 0 ? '+' : ''}{data.monthOverMonthGrowth.campaigns.toFixed(1)}% MoM
-              </span>
-            </p>
+            <p className="text-xs text-muted-foreground">All campaigns</p>
             <Badge variant="secondary" className="text-xs">
               {data.activeCampaigns} active
             </Badge>
@@ -70,38 +49,79 @@ export const ExecutiveKPICards = ({ data }: ExecutiveKPICardsProps) => {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Stream Performance</CardTitle>
-          <Target className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium">Streams Past 30 Days</CardTitle>
+          <Calendar className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(data.totalActualStreams)}</div>
-          <div className="flex items-center justify-between mt-1">
-            <p className="text-xs text-muted-foreground">
-              of {formatNumber(data.totalStreamGoals)} goal
-            </p>
-            <Badge 
-              variant={data.goalCompletionRate >= 80 ? "default" : data.goalCompletionRate >= 60 ? "secondary" : "destructive"}
-              className="text-xs"
-            >
-              {data.goalCompletionRate.toFixed(1)}%
-            </Badge>
-          </div>
+          <div className="text-2xl font-bold">{formatNumber(data.totalStreamsPast30Days)}</div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Total streams driven
+          </p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Average ROI</CardTitle>
-          <Activity className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium">Campaigns Added (30d)</CardTitle>
+          <Plus className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{data.campaignsAddedPast30Days}</div>
+          <p className="text-xs text-muted-foreground mt-1">
+            New campaigns this month
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Campaign Growth MoM</CardTitle>
+          <TrendingUp className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            <span className={data.averageROI >= 0 ? 'text-green-600' : 'text-red-600'}>
-              {data.averageROI >= 0 ? '+' : ''}{data.averageROI.toFixed(1)}%
+            <span className={`flex items-center ${getTrendColor(data.monthOverMonthGrowth.campaigns)}`}>
+              {getTrendIcon(data.monthOverMonthGrowth.campaigns)}
+              <span className="ml-1">
+                {data.monthOverMonthGrowth.campaigns >= 0 ? '+' : ''}{data.monthOverMonthGrowth.campaigns.toFixed(1)}%
+              </span>
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Industry avg: {data.performanceBenchmarks.industryAvgROI}%
+            Campaign count growth
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Campaign Efficiency</CardTitle>
+          <Target className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            <Badge 
+              variant={data.goalCompletionRate >= 80 ? "default" : data.goalCompletionRate >= 60 ? "secondary" : "destructive"}
+              className="text-lg font-bold px-2 py-1"
+            >
+              {data.goalCompletionRate.toFixed(1)}%
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Goal completion rate
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Avg Cost per 1K Streams</CardTitle>
+          <DollarSign className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">${data.averageCostPer1kStreams.toFixed(2)}</div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Average campaign cost
           </p>
         </CardContent>
       </Card>

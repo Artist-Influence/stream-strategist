@@ -9,8 +9,11 @@ export interface ExecutiveDashboardData {
   averageROI: number;
   totalStreamGoals: number;
   totalActualStreams: number;
+  totalStreamsPast30Days: number;
+  campaignsAddedPast30Days: number;
   goalCompletionRate: number;
   averageCostPerStream: number;
+  averageCostPer1kStreams: number;
   topPerformingVendors: Array<{
     name: string;
     efficiency: number;
@@ -45,6 +48,7 @@ export const useExecutiveDashboardData = () => {
     queryKey: ["executive-dashboard"],
     queryFn: async (): Promise<ExecutiveDashboardData> => {
       const currentDate = new Date();
+      const past30Days = new Date(currentDate.getTime() - 30 * 24 * 60 * 60 * 1000);
       const currentMonthStart = startOfMonth(currentDate);
       const currentMonthEnd = endOfMonth(currentDate);
       const lastMonthStart = startOfMonth(subMonths(currentDate, 1));
@@ -140,6 +144,25 @@ export const useExecutiveDashboardData = () => {
         ? totalCostPerStreamData.totalCost / totalCostPerStreamData.totalStreams 
         : 0;
 
+      // Calculate streams from past 30 days
+      const totalStreamsPast30Days = Array.isArray(campaigns) 
+        ? campaigns.reduce((sum, campaign) => {
+            const performance = performanceData?.filter(p => 
+              p.campaign_id === campaign.id && 
+              new Date(campaign.created_at) >= past30Days
+            ) || [];
+            return sum + performance.reduce((pSum, p) => pSum + (p.actual_streams || 0), 0);
+          }, 0) 
+        : 0;
+
+      // Calculate campaigns added in past 30 days
+      const campaignsAddedPast30Days = Array.isArray(campaigns) 
+        ? campaigns.filter(c => new Date(c.created_at) >= past30Days).length 
+        : 0;
+
+      // Calculate average cost per 1k streams
+      const averageCostPer1kStreams = averageCostPerStream * 1000;
+
       // Calculate top performing vendors
       const topPerformingVendors = Array.isArray(vendorPerformance) 
         ? vendorPerformance.map(vendor => {
@@ -222,8 +245,11 @@ export const useExecutiveDashboardData = () => {
         averageROI,
         totalStreamGoals,
         totalActualStreams,
+        totalStreamsPast30Days,
+        campaignsAddedPast30Days,
         goalCompletionRate,
         averageCostPerStream,
+        averageCostPer1kStreams,
         topPerformingVendors,
         monthOverMonthGrowth,
         quarterOverQuarterGrowth,
