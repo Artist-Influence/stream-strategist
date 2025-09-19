@@ -435,11 +435,11 @@ export function CampaignDetailsModal({ campaign, open, onClose }: CampaignDetail
     acc[vendorName].playlists.push({
       ...playlist,
       idx,
-      allocated: playlistPerf?.allocated_streams || playlist.avg_daily_streams || 0,
+      allocated: playlistPerf?.allocated_streams || 0,
       actual: playlistPerf?.actual_streams || 0
     });
     
-    acc[vendorName].totalAllocated += playlistPerf?.allocated_streams || playlist.avg_daily_streams || 0;
+    acc[vendorName].totalAllocated += playlistPerf?.allocated_streams || 0;
     acc[vendorName].totalActual += playlistPerf?.actual_streams || 0;
     acc[vendorName].vendorPerformance = vendorPerf;
     
