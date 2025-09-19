@@ -14,6 +14,8 @@ interface CampaignPerformanceData {
     name: string;
     allocated_streams: number;
     actual_streams: number;
+    cost_per_stream: number;
+    payment_status: string;
     daily_data: Array<{
       date: string;
       streams: number;
@@ -96,6 +98,8 @@ export function useCampaignPerformanceData(campaignId: string) {
           name: playlist?.name || 'Unknown Playlist',
           allocated_streams: allocation.allocated_streams,
           actual_streams: allocation.actual_streams,
+          cost_per_stream: allocation.cost_per_stream || 0,
+          payment_status: allocation.payment_status || 'unpaid',
           daily_data: dailyData?.map(entry => ({
             date: entry.date_recorded,
             streams: entry.daily_streams
