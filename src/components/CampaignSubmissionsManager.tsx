@@ -85,100 +85,91 @@ export function CampaignSubmissionsManager({ highlightSubmissionId }: CampaignSu
         </div>
       </div>
 
-      <div className="space-y-4">
-        <div className="grid gap-4">
+      <div className="space-y-3">
+        <div className="grid gap-3">
           {submissions.map((submission) => {
             const isHighlighted = highlightSubmissionId === submission.id;
             return (
               <Card 
                 key={submission.id} 
                 data-submission-id={submission.id}
-                className={`hover:shadow-lg transition-all duration-300 ${
+                className={`hover:shadow-md transition-all duration-200 border-l-4 border-l-transparent ${
                   isHighlighted 
-                    ? 'ring-2 ring-primary bg-primary/5 shadow-lg' 
-                    : ''
+                    ? 'ring-1 ring-primary/50 bg-primary/5 border-l-primary' 
+                    : 'hover:border-l-primary/30'
                 }`}
               >
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <CardTitle className="text-lg">{submission.campaign_name}</CardTitle>
-                      <p className="text-sm text-muted-foreground">
-                        Client: {submission.client_name} • Salesperson: {submission.salesperson}
-                      </p>
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <CardTitle className="text-base leading-tight">{submission.campaign_name}</CardTitle>
+                      <Badge variant={getStatusColor(submission.status) as any} className="text-xs">
+                        {getStatusLabel(submission.status)}
+                      </Badge>
                     </div>
-                    <Badge variant={getStatusColor(submission.status) as any}>
-                      {getStatusLabel(submission.status)}
-                    </Badge>
+                    <div className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(submission.created_at), { addSuffix: true })}
+                    </div>
                   </div>
+                  <p className="text-xs text-muted-foreground leading-tight">
+                    Client: {submission.client_name} • Salesperson: {submission.salesperson}
+                  </p>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Campaign Details */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <CardContent className="space-y-2">
+                  {/* Compact Campaign Details */}
+                  <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-xs leading-tight">
                     <div>
-                      <span className="font-medium">Budget:</span>
-                      <div>${submission.price_paid.toLocaleString()}</div>
+                      <span className="font-medium text-muted-foreground">Budget</span>
+                      <div className="text-sm font-medium">${submission.price_paid.toLocaleString()}</div>
                     </div>
                     <div>
-                      <span className="font-medium">Stream Goal:</span>
-                      <div>{submission.stream_goal.toLocaleString()}</div>
+                      <span className="font-medium text-muted-foreground">Stream Goal</span>
+                      <div className="text-sm font-medium">{submission.stream_goal.toLocaleString()}</div>
                     </div>
                     <div>
-                      <span className="font-medium">Start Date:</span>
-                      <div>{new Date(submission.start_date).toLocaleDateString()}</div>
+                      <span className="font-medium text-muted-foreground">Start Date</span>
+                      <div className="text-sm font-medium">{new Date(submission.start_date).toLocaleDateString()}</div>
+                    </div>
+                    <div className="col-span-2 md:col-span-2">
+                      <span className="font-medium text-muted-foreground">Client Emails</span>
+                      <div className="text-sm text-muted-foreground truncate">{submission.client_emails.join(', ')}</div>
                     </div>
                     <div>
-                      <span className="font-medium">Submitted:</span>
-                      <div>{formatDistanceToNow(new Date(submission.created_at), { addSuffix: true })}</div>
+                      <span className="font-medium text-muted-foreground">Track</span>
+                      <div className="text-sm">
+                        <a 
+                          href={submission.track_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline truncate block"
+                        >
+                          View Track
+                        </a>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Client Emails */}
-                  <div className="text-sm">
-                    <span className="font-medium">Client Emails:</span>
-                    <div className="text-muted-foreground">
-                      {submission.client_emails.join(', ')}
-                    </div>
-                  </div>
-
-                  {/* Track URL */}
-                  <div className="text-sm">
-                    <span className="font-medium">Track URL:</span>
-                    <div className="text-muted-foreground break-all">
-                      <a 
-                        href={submission.track_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        {submission.track_url}
-                      </a>
-                    </div>
-                  </div>
-
-                  {/* Notes */}
+                  {/* Notes - Compact */}
                   {submission.notes && (
-                    <div className="text-sm">
-                      <span className="font-medium">Notes:</span>
-                      <div className="text-muted-foreground">{submission.notes}</div>
+                    <div className="text-xs bg-muted/50 p-2 rounded">
+                      <span className="font-medium">Notes:</span> {submission.notes}
                     </div>
                   )}
 
-                  {/* Rejection Reason */}
+                  {/* Rejection Reason - Compact */}
                   {submission.status === 'rejected' && submission.rejection_reason && (
-                    <div className="text-sm p-3 bg-destructive/10 rounded-md">
-                      <span className="font-medium text-destructive">Rejection Reason:</span>
-                      <div className="text-destructive/80">{submission.rejection_reason}</div>
+                    <div className="text-xs p-2 bg-destructive/10 rounded">
+                      <span className="font-medium text-destructive">Rejected:</span> {submission.rejection_reason}
                     </div>
                   )}
 
-                  {/* Action Buttons */}
+                  {/* Inline Action Buttons */}
                   {submission.status === 'pending_approval' && (
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex gap-2 pt-1">
                        <Button
                          onClick={() => navigate(`/campaign-builder/review/${submission.id}`)}
                          size="sm"
-                         className="bg-primary hover:bg-primary/90"
+                         className="bg-primary hover:bg-primary/90 text-xs h-7"
                        >
                          Review & Approve
                        </Button>
@@ -188,6 +179,7 @@ export function CampaignSubmissionsManager({ highlightSubmissionId }: CampaignSu
                           <Button
                             variant="outline"
                             size="sm"
+                            className="text-xs h-7"
                             onClick={() => setSelectedSubmission(submission.id)}
                           >
                             Reject
@@ -230,9 +222,9 @@ export function CampaignSubmissionsManager({ highlightSubmissionId }: CampaignSu
                         </DialogContent>
                       </Dialog>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                   )}
+                 </CardContent>
+               </Card>
             );
           })}
 
