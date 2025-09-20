@@ -19,7 +19,6 @@ import {
   User,
   UserPlus,
   Brain,
-  Shield,
   FileText,
   DollarSign,
   Target,
@@ -82,12 +81,6 @@ const getNavItemsForRole = (currentRole: string | null) => {
         href: "/ml-dashboard",
         icon: Brain,
         hotkey: "Ctrl+7"
-      },
-      {
-        title: "Compliance",
-        href: "/compliance",
-        icon: Shield,
-        hotkey: "Ctrl+8"
       },
       ...(currentRole === 'admin' ? [{
         title: "Users", 

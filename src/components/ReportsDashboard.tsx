@@ -20,8 +20,7 @@ import {
   AlertCircle,
   BarChart3,
   Users,
-  Target,
-  Shield
+  Target
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,7 +44,6 @@ const ReportsDashboard = () => {
     { value: "campaign-performance", label: "Campaign Performance", icon: Target },
     { value: "executive-summary", label: "Executive Summary", icon: BarChart3 },
     { value: "vendor-performance", label: "Vendor Performance", icon: Users },
-    { value: "compliance-audit", label: "Compliance Audit", icon: Shield },
     { value: "raw-data-export", label: "Raw Data Export", icon: FileText }
   ];
 

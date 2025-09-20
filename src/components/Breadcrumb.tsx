@@ -37,9 +37,6 @@ const getBreadcrumbItems = (pathname: string): BreadcrumbItem[] => {
     case 'ml-dashboard':
       items.push({ label: "ML Analytics", href: "/ml-dashboard", current: true });
       break;
-    case 'compliance':
-      items.push({ label: "Compliance Monitoring", href: "/compliance", current: true });
-      break;
     case 'payments':
       items.push({ label: "Payment History", href: "/payments", current: true });
       break;
