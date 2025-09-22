@@ -46,7 +46,9 @@ interface CampaignReviewProps {
   };
   allocationsData: {
     selectedPlaylists: any[];
+    selectedVendors?: any[];
     allocations: any[];
+    vendorAllocations?: any[];
     totalProjectedStreams: number;
     totalCost: number;
   };
@@ -224,18 +226,43 @@ export default function CampaignReview({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Selected Playlists</p>
-                  <p className="text-2xl font-bold">{allocationsData.selectedPlaylists.length}</p>
+                  <p className="text-2xl font-bold">{allocationsData.selectedPlaylists?.length || 0}</p>
                 </div>
                 <div>
+                  <p className="text-sm text-muted-foreground">Selected Vendors</p>
+                  <p className="text-2xl font-bold">{allocationsData.selectedVendors?.length || 0}</p>
+                </div>
+                <div className="col-span-2">
                   <p className="text-sm text-muted-foreground">Projected Streams</p>
                   <p className="text-2xl font-bold">{totalProjectedStreams.toLocaleString()}</p>
                 </div>
               </div>
               
+              {/* Direct Vendor Allocations */}
+              {allocationsData.vendorAllocations && allocationsData.vendorAllocations.length > 0 && (
+                <div className="space-y-3 border-t pt-3">
+                  <p className="text-sm font-medium text-muted-foreground">Direct Vendor Allocations:</p>
+                  <div className="space-y-2">
+                    {allocationsData.vendorAllocations.map((va: any) => (
+                      <div key={va.vendor_id} className="flex justify-between items-center p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div>
+                          <p className="font-medium text-sm">Vendor Direct Allocation</p>
+                          <p className="text-xs text-muted-foreground">Vendor ID: {va.vendor_id}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold">{va.allocation.toLocaleString()} streams</p>
+                          <p className="text-xs text-muted-foreground">${(va.allocation * 0.001).toFixed(2)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               {/* Vendor-Grouped Playlist Breakdown */}
               {allocationsData.selectedPlaylists && allocationsData.selectedPlaylists.length > 0 && (
                 <div className="space-y-3 border-t pt-3">
-                  <p className="text-sm font-medium text-muted-foreground">Vendor Breakdown:</p>
+                  <p className="text-sm font-medium text-muted-foreground">Playlist Breakdown by Vendor:</p>
                   <div className="space-y-4 max-h-64 overflow-y-auto">
                      {(() => {
                        // Group playlists by vendor - properly fetch and display vendor information

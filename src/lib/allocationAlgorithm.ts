@@ -32,9 +32,16 @@ interface AllocateStreamsInput {
   campaignGenres?: string[];
 }
 
-// Output allocation item
+// Output allocation item - supports both playlist and vendor-only allocations
 interface AllocationItem {
-  playlist_id: string;
+  playlist_id?: string; // Optional for vendor-only allocations
+  vendor_id: string;
+  allocation: number;
+  allocation_type?: 'playlist' | 'vendor'; // Track the allocation type
+}
+
+// Vendor allocation for direct vendor assignment
+interface VendorAllocation {
   vendor_id: string;
   allocation: number;
 }
@@ -200,15 +207,33 @@ export async function allocateStreams(input: AllocateStreamsInput): Promise<{
 
 export function calculateProjections(
   selectedAllocations: AllocationItem[],
-  playlists: Playlist[]
-): { totalStreams: number; byPlaylist: Record<string, number> } {
-  // In this minimal version, projections equal requested allocations
+  playlists: Playlist[],
+  vendorAllocations: VendorAllocation[] = []
+): { totalStreams: number; byPlaylist: Record<string, number>; byVendor: Record<string, number> } {
+  // Calculate playlist-based projections
   const byPlaylist: Record<string, number> = {};
   for (const a of selectedAllocations) {
-    byPlaylist[a.playlist_id] = (byPlaylist[a.playlist_id] || 0) + a.allocation;
+    if (a.playlist_id) {
+      byPlaylist[a.playlist_id] = (byPlaylist[a.playlist_id] || 0) + a.allocation;
+    }
   }
-  const totalStreams = Object.values(byPlaylist).reduce((s, n) => s + n, 0);
-  return { totalStreams, byPlaylist };
+  
+  // Calculate vendor-based projections
+  const byVendor: Record<string, number> = {};
+  for (const a of selectedAllocations) {
+    byVendor[a.vendor_id] = (byVendor[a.vendor_id] || 0) + a.allocation;
+  }
+  
+  // Add direct vendor allocations
+  for (const va of vendorAllocations) {
+    byVendor[va.vendor_id] = (byVendor[va.vendor_id] || 0) + va.allocation;
+  }
+  
+  const playlistStreams = Object.values(byPlaylist).reduce((s, n) => s + n, 0);
+  const vendorStreams = vendorAllocations.reduce((s, va) => s + va.allocation, 0);
+  const totalStreams = playlistStreams + vendorStreams;
+  
+  return { totalStreams, byPlaylist, byVendor };
 }
 
 export function validateAllocations(
@@ -216,7 +241,8 @@ export function validateAllocations(
   vendorCaps: Record<string, number>,
   playlists: Playlist[],
   durationDays: number,
-  vendors: Vendor[] = []
+  vendors: Vendor[] = [],
+  vendorAllocations: VendorAllocation[] = []
 ): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
 
@@ -230,30 +256,46 @@ export function validateAllocations(
 
   // Per-vendor totals
   const byVendor: Record<string, number> = {};
+  
+  // Process playlist allocations
   for (const a of selectedAllocations) {
-    const playlist = playlistMap.get(a.playlist_id);
-    if (!playlist) {
-      errors.push(`Unknown playlist in allocation: ${a.playlist_id}`);
-      continue;
-    }
+    if (a.playlist_id) {
+      const playlist = playlistMap.get(a.playlist_id);
+      if (!playlist) {
+        errors.push(`Unknown playlist in allocation: ${a.playlist_id}`);
+        continue;
+      }
 
-    if (a.allocation < 0 || !Number.isFinite(a.allocation)) {
-      errors.push(`Invalid allocation amount for playlist "${playlist.name}"`);
-    }
+      if (a.allocation < 0 || !Number.isFinite(a.allocation)) {
+        errors.push(`Invalid allocation amount for playlist "${playlist.name}"`);
+      }
 
-    // Check per-playlist capacity with same fallback logic
-    let cap = Math.max(0, Math.floor((playlist.avg_daily_streams || 0) * durationDays));
-    if (cap === 0) {
-      const followerBased = Math.floor((playlist.follower_count || 0) * 0.01 * durationDays);
-      const minimumCapacity = Math.floor(100 * durationDays);
-      cap = Math.max(followerBased, minimumCapacity);
-    }
-    if (a.allocation > cap) {
-      errors.push(`Allocation for playlist "${playlist.name}" exceeds its capacity (${cap.toLocaleString()} streams over campaign duration).`);
-    }
+      // Check per-playlist capacity with same fallback logic
+      let cap = Math.max(0, Math.floor((playlist.avg_daily_streams || 0) * durationDays));
+      if (cap === 0) {
+        const followerBased = Math.floor((playlist.follower_count || 0) * 0.01 * durationDays);
+        const minimumCapacity = Math.floor(100 * durationDays);
+        cap = Math.max(followerBased, minimumCapacity);
+      }
+      if (a.allocation > cap) {
+        errors.push(`Allocation for playlist "${playlist.name}" exceeds its capacity (${cap.toLocaleString()} streams over campaign duration).`);
+      }
 
-    const vendorId = playlist.vendor_id;
-    byVendor[vendorId] = (byVendor[vendorId] || 0) + a.allocation;
+      const vendorId = playlist.vendor_id;
+      byVendor[vendorId] = (byVendor[vendorId] || 0) + a.allocation;
+    } else {
+      // Vendor-only allocation
+      byVendor[a.vendor_id] = (byVendor[a.vendor_id] || 0) + a.allocation;
+    }
+  }
+  
+  // Add direct vendor allocations
+  for (const va of vendorAllocations) {
+    if (va.allocation < 0 || !Number.isFinite(va.allocation)) {
+      const vendorName = vendorMap.get(va.vendor_id) || `Vendor ${va.vendor_id}`;
+      errors.push(`Invalid allocation amount for vendor "${vendorName}"`);
+    }
+    byVendor[va.vendor_id] = (byVendor[va.vendor_id] || 0) + va.allocation;
   }
 
   // Check vendor caps - treat zero or missing caps as unlimited
@@ -267,3 +309,6 @@ export function validateAllocations(
 
   return { isValid: errors.length === 0, errors };
 }
+
+// Export the VendorAllocation type for use in components
+export type { VendorAllocation };

@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Vendor, Playlist } from "@/types";
-import { allocateStreams, calculateProjections, GenreMatch, validateAllocations } from "@/lib/allocationAlgorithm";
+import { allocateStreams, calculateProjections, GenreMatch, validateAllocations, VendorAllocation } from "@/lib/allocationAlgorithm";
 
 interface AIRecommendationsProps {
   campaignData: {
@@ -56,6 +56,8 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
   const [isAllocating, setIsAllocating] = useState(false);
   const [genreMatches, setGenreMatches] = useState<GenreMatch[]>([]);
   const [manualAllocations, setManualAllocations] = useState<Record<string, number>>({});
+  const [vendorAllocations, setVendorAllocations] = useState<VendorAllocation[]>([]);
+  const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
   const [showOnlySelected, setShowOnlySelected] = useState(false);
   const [expandedVendors, setExpandedVendors] = useState<Set<string>>(new Set());
@@ -169,6 +171,35 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
     }));
   };
 
+  const toggleVendor = (vendorId: string) => {
+    const newSelected = new Set(selectedVendors);
+    if (newSelected.has(vendorId)) {
+      newSelected.delete(vendorId);
+      // Remove vendor allocation when deselected
+      setVendorAllocations(prev => prev.filter(va => va.vendor_id !== vendorId));
+    } else {
+      newSelected.add(vendorId);
+      // Add default vendor allocation
+      const vendor = vendors?.find(v => v.id === vendorId);
+      if (vendor) {
+        const defaultAllocation = Math.min(10000, campaignData.stream_goal * 0.1); // 10% of goal or 10k, whichever is smaller
+        setVendorAllocations(prev => [...prev, { vendor_id: vendorId, allocation: defaultAllocation }]);
+      }
+    }
+    setSelectedVendors(newSelected);
+  };
+
+  const updateVendorAllocation = (vendorId: string, dailyStreams: number) => {
+    const campaignTotal = dailyStreams * campaignData.duration_days;
+    setVendorAllocations(prev => 
+      prev.map(va => 
+        va.vendor_id === vendorId 
+          ? { ...va, allocation: campaignTotal }
+          : va
+      )
+    );
+  };
+
   // Create allocations for selected playlists (including manual ones)
   const selectedAllocations = Array.from(selectedPlaylists).map(playlistId => {
     const existingAllocation = allocations.find(a => a.playlist_id === playlistId);
@@ -188,7 +219,8 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
       allocation: manualAllocations[playlistId] || defaultCampaignTotal
     };
   }).filter(a => a.vendor_id); // Filter out invalid allocations
-  const projections = calculateProjections(selectedAllocations, playlists || []);
+  
+  const projections = calculateProjections(selectedAllocations, playlists || [], vendorAllocations);
   const validation = validateAllocations(
     selectedAllocations, 
     vendors?.reduce((acc, v) => ({ 
@@ -197,7 +229,8 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
     }), {}) || {},
     playlists || [],
     campaignData.duration_days,
-    vendors || []
+    vendors || [],
+    vendorAllocations
   );
 
   const handleContinue = () => {
@@ -215,8 +248,10 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
     
     onNext({
       allocations: finalAllocations,
+      vendorAllocations,
       projections,
       selectedPlaylists: Array.from(selectedPlaylists),
+      selectedVendors: Array.from(selectedVendors),
       totalProjectedStreams: projections.totalStreams,
       totalCost: projections.totalStreams * 0.001 // Estimated cost per stream
     });
@@ -389,7 +424,7 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12">Select</TableHead>
-                    <TableHead>Playlist</TableHead>
+                    <TableHead>Vendor/Playlist</TableHead>
                     <TableHead>Genres</TableHead>
                     <TableHead>Followers</TableHead>
                     <TableHead>Match Score</TableHead>
@@ -402,7 +437,7 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                               <Info className="w-3 h-3 text-muted-foreground" />
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Average daily streams for this playlist</p>
+                              <p>Average daily streams for this playlist/vendor</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -423,6 +458,7 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                         </TooltipProvider>
                       </div>
                     </TableHead>
+                    <TableHead>Vendor Total</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -470,10 +506,11 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                       
                       return (
                         <React.Fragment key={vendorId}>
-                          {/* Vendor Header Row - Collapsible */}
+                           {/* Vendor Header Row - Collapsible with vendor allocation controls */}
                           <TableRow 
                             className="bg-muted/50 cursor-pointer hover:bg-muted/70"
-                            onClick={() => {
+                          >
+                            <TableCell onClick={() => {
                               const newExpanded = new Set(expandedVendors);
                               if (isExpanded) {
                                 newExpanded.delete(vendorId);
@@ -481,13 +518,64 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                                 newExpanded.add(vendorId);
                               }
                               setExpandedVendors(newExpanded);
-                            }}
-                          >
-                            <TableCell colSpan={8} className="font-semibold text-primary">
+                            }}>
+                              <span className="text-xs">{isExpanded ? '▼' : '▶'}</span>
+                            </TableCell>
+                            <TableCell onClick={() => {
+                              const newExpanded = new Set(expandedVendors);
+                              if (isExpanded) {
+                                newExpanded.delete(vendorId);
+                              } else {
+                                newExpanded.add(vendorId);
+                              }
+                              setExpandedVendors(newExpanded);
+                            }} className="font-semibold text-primary">
                               <div className="flex items-center justify-between">
-                                <span>{vendorName} - {matches.length} playlists {selectedCount > 0 && `(${selectedCount} selected)`}</span>
-                                <span className="text-xs">{isExpanded ? '▼' : '▶'}</span>
+                                <span>{vendorName}</span>
+                                <span className="text-xs">{matches.length} playlists {selectedCount > 0 && `(${selectedCount} selected)`}</span>
                               </div>
+                            </TableCell>
+                            <TableCell colSpan={3}>
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={selectedVendors.has(vendorId)}
+                                  onCheckedChange={() => toggleVendor(vendorId)}
+                                />
+                                <Label className="text-xs">Allocate to Vendor</Label>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {selectedVendors.has(vendorId) && (
+                                <Input
+                                  type="number"
+                                  value={Math.round((vendorAllocations.find(va => va.vendor_id === vendorId)?.allocation || 0) / campaignData.duration_days)}
+                                  onChange={(e) => updateVendorAllocation(vendorId, parseInt(e.target.value) || 0)}
+                                  className="w-20 h-8 text-xs"
+                                  placeholder="Daily"
+                                />
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {selectedVendors.has(vendorId) && (
+                                <span className="text-sm font-mono">
+                                  {(vendorAllocations.find(va => va.vendor_id === vendorId)?.allocation || 0).toLocaleString()}
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm font-mono">
+                              {(projections.byVendor[vendorId] || 0).toLocaleString()}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleVendor(vendorId);
+                                }}
+                              >
+                                {selectedVendors.has(vendorId) ? 'Remove' : 'Add Vendor'}
+                              </Button>
                             </TableCell>
                           </TableRow>
                           
@@ -574,6 +662,9 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                             </span>
                           )}
                         </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          <span className="text-xs">Part of vendor total</span>
+                        </TableCell>
                         <TableCell>
                           <Button variant="ghost" size="sm" asChild>
                             <a href={playlist.url} target="_blank" rel="noopener noreferrer">
@@ -612,29 +703,66 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                 
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Projected Total</span>
-                  <span className="font-mono text-sm text-primary">
-                    {projections.totalStreams.toLocaleString()}
-                  </span>
+                  <span className="font-mono text-sm">{projections.totalStreams.toLocaleString()}</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">From Playlists</span>
+                  <span className="font-mono text-sm">{Object.values(projections.byPlaylist).reduce((sum, val) => sum + val, 0).toLocaleString()}</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">From Vendors</span>
+                  <span className="font-mono text-sm">{vendorAllocations.reduce((sum, va) => sum + va.allocation, 0).toLocaleString()}</span>
+                </div>
+
+                <div className="border-t pt-2">
+                  <div className="flex justify-between font-semibold">
+                    <span className="text-sm">Coverage</span>
+                    <span className="font-mono text-sm">
+                      {((projections.totalStreams / campaignData.stream_goal) * 100).toFixed(1)}%
+                    </span>
+                  </div>
                 </div>
                 
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Daily Average</span>
-                  <span className="font-mono text-sm text-muted-foreground">
-                    {Math.round(projections.totalStreams / campaignData.duration_days).toLocaleString()}
-                  </span>
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium">Selected Items</h4>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <div>Playlists: {selectedPlaylists.size}</div>
+                    <div>Vendors: {selectedVendors.size}</div>
+                  </div>
                 </div>
-                
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Coverage</span>
-                  <span className="font-mono text-sm">
-                    {((projections.totalStreams / campaignData.stream_goal) * 100).toFixed(1)}%
-                  </span>
-                </div>
-                
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Playlists</span>
-                  <span className="font-mono text-sm">{selectedPlaylists.size}</span>
-                </div>
+
+                {vendorAllocations.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Vendor Allocations</h4>
+                    <div className="space-y-1">
+                      {vendorAllocations.map(va => {
+                        const vendor = vendors?.find(v => v.id === va.vendor_id);
+                        return (
+                          <div key={va.vendor_id} className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">{vendor?.name}</span>
+                            <span className="font-mono">{va.allocation.toLocaleString()}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {validation.errors.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-destructive">Validation Errors</h4>
+                    <div className="space-y-1">
+                      {validation.errors.slice(0, 3).map((error, idx) => (
+                        <p key={idx} className="text-xs text-destructive">{error}</p>
+                      ))}
+                      {validation.errors.length > 3 && (
+                        <p className="text-xs text-muted-foreground">+{validation.errors.length - 3} more errors</p>
+                      )}
+                    </div>
+                  </div>
+                )}
                 
                 <Progress 
                   value={Math.min((projections.totalStreams / campaignData.stream_goal) * 100, 100)} 
@@ -642,19 +770,14 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                 />
               </div>
 
-              {!validation.isValid && (
-                <div className="bg-destructive/20 border border-destructive/40 rounded-lg p-3">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <AlertTriangle className="w-4 h-4 text-destructive" />
-                    <span className="text-sm font-medium text-destructive">Validation Errors</span>
-                  </div>
-                  <ul className="text-xs text-destructive space-y-1">
-                    {validation.errors.map((error, i) => (
-                      <li key={i}>• {error}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              <Button 
+                onClick={handleContinue}
+                disabled={selectedPlaylists.size === 0 && selectedVendors.size === 0 || !validation.isValid}
+                className="w-full"
+              >
+                <ArrowRight className="w-4 h-4 mr-2" />
+                Continue to Review
+              </Button>
             </CardContent>
           </Card>
         </div>
@@ -670,7 +793,7 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
         <Button 
           onClick={handleContinue}
           className="bg-gradient-primary hover:opacity-80 shadow-glow"
-          disabled={selectedPlaylists.size === 0 || !validation.isValid}
+          disabled={selectedPlaylists.size === 0 && selectedVendors.size === 0 || !validation.isValid}
         >
           Continue to Review
           <ArrowRight className="w-4 h-4 ml-2" />

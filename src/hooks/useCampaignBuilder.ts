@@ -156,7 +156,27 @@ export function useCampaignBuilder() {
         duration_days: data.duration_days,
         status,
         selected_playlists: allocationsData?.selectedPlaylists || allocationsData?.allocations?.map((a: any) => a.playlistId) || [],
-        vendor_allocations: allocationsData.allocations || {},
+        vendor_allocations: {
+          // Create vendor allocations object from both playlist and direct vendor allocations
+          ...allocationsData?.allocations?.reduce((acc: any, allocation: any) => {
+            if (allocation.vendor_id && allocation.playlist_id) {
+              // Playlist-based allocation
+              if (!acc[allocation.vendor_id]) {
+                acc[allocation.vendor_id] = { playlists: {} };
+              }
+              acc[allocation.vendor_id].playlists[allocation.playlist_id] = allocation.allocation;
+            }
+            return acc;
+          }, {}),
+          // Add direct vendor allocations
+          ...allocationsData?.vendorAllocations?.reduce((acc: any, va: any) => {
+            if (!acc[va.vendor_id]) {
+              acc[va.vendor_id] = { playlists: {} };
+            }
+            acc[va.vendor_id].direct_allocation = va.allocation;
+            return acc;
+          }, {})
+        },
         totals: {
           projected_streams: allocationsData.totalProjectedStreams || 0
         },
@@ -234,7 +254,27 @@ export function useCampaignBuilder() {
         duration_days: data.duration_days,
         status: 'active',
         selected_playlists: allocationsData?.selectedPlaylists || allocationsData?.allocations?.map((a: any) => a.playlistId) || [],
-        vendor_allocations: allocationsData.allocations || {},
+        vendor_allocations: {
+          // Create vendor allocations object from both playlist and direct vendor allocations
+          ...allocationsData?.allocations?.reduce((acc: any, allocation: any) => {
+            if (allocation.vendor_id && allocation.playlist_id) {
+              // Playlist-based allocation
+              if (!acc[allocation.vendor_id]) {
+                acc[allocation.vendor_id] = { playlists: {} };
+              }
+              acc[allocation.vendor_id].playlists[allocation.playlist_id] = allocation.allocation;
+            }
+            return acc;
+          }, {}),
+          // Add direct vendor allocations
+          ...allocationsData?.vendorAllocations?.reduce((acc: any, va: any) => {
+            if (!acc[va.vendor_id]) {
+              acc[va.vendor_id] = { playlists: {} };
+            }
+            acc[va.vendor_id].direct_allocation = va.allocation;
+            return acc;
+          }, {})
+        },
         totals: {
           projected_streams: allocationsData.totalProjectedStreams || 0
         },
