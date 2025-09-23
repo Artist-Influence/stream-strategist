@@ -563,7 +563,24 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                               )}
                             </TableCell>
                             <TableCell className="text-sm font-mono">
-                              {(projections.byVendor[vendorId] || 0).toLocaleString()}
+                              {(() => {
+                                // Calculate vendor total: sum of playlist allocations + direct vendor allocation
+                                const playlistTotal = matches
+                                  .filter(m => selectedPlaylists.has(m.playlist.id))
+                                  .reduce((sum, match) => {
+                                    const playlistId = match.playlist.id;
+                                    const allocation = allocations.find(a => a.playlist_id === playlistId);
+                                    const campaignTotal = manualAllocations[playlistId] || 
+                                      (allocation?.allocation) || 
+                                      Math.min(1000 * campaignData.duration_days, (match.playlist.avg_daily_streams || 100) * campaignData.duration_days);
+                                    return sum + campaignTotal;
+                                  }, 0);
+                                
+                                const directVendorTotal = vendorAllocations.find(va => va.vendor_id === vendorId)?.allocation || 0;
+                                const vendorTotal = playlistTotal + directVendorTotal;
+                                
+                                return vendorTotal.toLocaleString();
+                              })()}
                             </TableCell>
                             <TableCell>
                               <Button
