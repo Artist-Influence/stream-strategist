@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +32,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Vendor, Playlist } from "@/types";
 import { allocateStreams, calculateProjections, GenreMatch, validateAllocations, VendorAllocation } from "@/lib/allocationAlgorithm";
+import { useVendorCampaignCounts } from "@/hooks/useVendorCampaignCounts";
 
 interface AIRecommendationsProps {
   campaignData: {
@@ -76,6 +77,9 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
       return data || [];
     }
   });
+
+  // Fetch vendor campaign counts for capacity validation
+  const { data: vendorCampaignCounts } = useVendorCampaignCounts();
 
   const { data: playlists, isLoading: playlistsLoading } = useQuery({
     queryKey: ['playlists-for-campaign', 'active-vendors'],
@@ -200,38 +204,78 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
     );
   };
 
-  // Create allocations for selected playlists (including manual ones)
-  const selectedAllocations = Array.from(selectedPlaylists).map(playlistId => {
-    const existingAllocation = allocations.find(a => a.playlist_id === playlistId);
-    const playlist = playlists?.find(p => p.id === playlistId);
-    const vendor = vendors?.find(v => v.id === playlist?.vendor_id);
-    
-    if (existingAllocation) {
-      return existingAllocation;
-    }
-    
-    // Create manual allocation for selected playlists without automatic allocation
-    // Default allocation should be campaign total (daily streams * duration)
-    const defaultCampaignTotal = Math.min(1000 * campaignData.duration_days, (playlist?.avg_daily_streams || 100) * campaignData.duration_days);
-    return {
-      playlist_id: playlistId,
-      vendor_id: vendor?.id || '',
-      allocation: manualAllocations[playlistId] || defaultCampaignTotal
-    };
-  }).filter(a => a.vendor_id); // Filter out invalid allocations
+  // Create allocations for selected playlists (including manual ones) - memoized for performance
+  const selectedAllocations = useMemo(() => {
+    return Array.from(selectedPlaylists).map(playlistId => {
+      const existingAllocation = allocations.find(a => a.playlist_id === playlistId);
+      const playlist = playlists?.find(p => p.id === playlistId);
+      const vendor = vendors?.find(v => v.id === playlist?.vendor_id);
+      
+      // Always use manual allocation if available, otherwise fall back to existing or default
+      const campaignTotal = manualAllocations[playlistId] || 
+        existingAllocation?.allocation || 
+        Math.min(1000 * campaignData.duration_days, (playlist?.avg_daily_streams || 100) * campaignData.duration_days);
+      
+      return {
+        playlist_id: playlistId,
+        vendor_id: vendor?.id || '',
+        allocation: campaignTotal
+      };
+    }).filter(a => a.vendor_id); // Filter out invalid allocations
+  }, [selectedPlaylists, allocations, playlists, vendors, manualAllocations, campaignData.duration_days]);
   
-  const projections = calculateProjections(selectedAllocations, playlists || [], vendorAllocations);
-  const validation = validateAllocations(
-    selectedAllocations, 
-    vendors?.reduce((acc, v) => ({ 
+  // Memoized projections that update when allocations change
+  const projections = useMemo(() => {
+    return calculateProjections(selectedAllocations, playlists || [], vendorAllocations);
+  }, [selectedAllocations, playlists, vendorAllocations]);
+  // Memoized validation with campaign capacity checks
+  const validation = useMemo(() => {
+    const vendorCaps = vendors?.reduce((acc, v) => ({ 
       ...acc, 
       [v.id]: (v.max_daily_streams && v.max_daily_streams > 0) ? v.max_daily_streams * campaignData.duration_days : Infinity 
-    }), {}) || {},
-    playlists || [],
-    campaignData.duration_days,
-    vendors || [],
-    vendorAllocations
-  );
+    }), {}) || {};
+
+    const baseValidation = validateAllocations(
+      selectedAllocations, 
+      vendorCaps,
+      playlists || [],
+      campaignData.duration_days,
+      vendors || [],
+      vendorAllocations
+    );
+
+    // Add campaign capacity validation
+    const capacityErrors: string[] = [];
+    
+    if (vendorCampaignCounts) {
+      // Check vendor allocations
+      vendorAllocations.forEach(va => {
+        const counts = vendorCampaignCounts[va.vendor_id];
+        if (counts && counts.active_campaigns >= counts.max_concurrent_campaigns) {
+          const vendor = vendors?.find(v => v.id === va.vendor_id);
+          capacityErrors.push(`${vendor?.name || 'Vendor'} is at capacity (${counts.active_campaigns}/${counts.max_concurrent_campaigns} campaigns)`);
+        }
+      });
+
+      // Check playlist allocations by vendor
+      const vendorsWithPlaylists = new Set(
+        selectedAllocations.map(a => a.vendor_id).filter(Boolean)
+      );
+
+      vendorsWithPlaylists.forEach(vendorId => {
+        const counts = vendorCampaignCounts[vendorId];
+        if (counts && counts.active_campaigns >= counts.max_concurrent_campaigns) {
+          const vendor = vendors?.find(v => v.id === vendorId);
+          capacityErrors.push(`${vendor?.name || 'Vendor'} is at capacity (${counts.active_campaigns}/${counts.max_concurrent_campaigns} campaigns)`);
+        }
+      });
+    }
+
+    return {
+      isValid: baseValidation.isValid && capacityErrors.length === 0,
+      errors: [...baseValidation.errors, ...capacityErrors]
+    };
+  }, [selectedAllocations, vendors, playlists, vendorAllocations, campaignData.duration_days, vendorCampaignCounts]);
 
   const handleContinue = () => {
     const finalAllocations = selectedAllocations.map(allocation => {
@@ -521,29 +565,54 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                             }}>
                               <span className="text-xs">{isExpanded ? '▼' : '▶'}</span>
                             </TableCell>
-                            <TableCell onClick={() => {
-                              const newExpanded = new Set(expandedVendors);
-                              if (isExpanded) {
-                                newExpanded.delete(vendorId);
-                              } else {
-                                newExpanded.add(vendorId);
-                              }
-                              setExpandedVendors(newExpanded);
-                            }} className="font-semibold text-primary">
-                              <div className="flex items-center justify-between">
-                                <span>{vendorName}</span>
-                                <span className="text-xs">{matches.length} playlists {selectedCount > 0 && `(${selectedCount} selected)`}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell colSpan={3}>
-                              <div className="flex items-center space-x-2">
-                                <Switch
-                                  checked={selectedVendors.has(vendorId)}
-                                  onCheckedChange={() => toggleVendor(vendorId)}
-                                />
-                                <Label className="text-xs">Allocate to Vendor</Label>
-                              </div>
-                            </TableCell>
+                             <TableCell onClick={() => {
+                               const newExpanded = new Set(expandedVendors);
+                               if (isExpanded) {
+                                 newExpanded.delete(vendorId);
+                               } else {
+                                 newExpanded.add(vendorId);
+                               }
+                               setExpandedVendors(newExpanded);
+                             }} className="font-semibold text-primary">
+                               <div className="flex items-center justify-between">
+                                 <div className="flex items-center space-x-2">
+                                   <span>{vendorName}</span>
+                                   {vendorCampaignCounts && vendorCampaignCounts[vendorId] && (
+                                     <Badge 
+                                       variant={
+                                         vendorCampaignCounts[vendorId].active_campaigns >= vendorCampaignCounts[vendorId].max_concurrent_campaigns 
+                                           ? "destructive" 
+                                           : vendorCampaignCounts[vendorId].active_campaigns >= vendorCampaignCounts[vendorId].max_concurrent_campaigns * 0.8
+                                             ? "secondary"
+                                             : "outline"
+                                       }
+                                       className="text-xs"
+                                     >
+                                       {vendorCampaignCounts[vendorId].active_campaigns}/{vendorCampaignCounts[vendorId].max_concurrent_campaigns}
+                                     </Badge>
+                                   )}
+                                 </div>
+                                 <span className="text-xs">{matches.length} playlists {selectedCount > 0 && `(${selectedCount} selected)`}</span>
+                               </div>
+                             </TableCell>
+                             <TableCell colSpan={3}>
+                               <div className="flex items-center space-x-2">
+                                 <Switch
+                                   checked={selectedVendors.has(vendorId)}
+                                   onCheckedChange={() => toggleVendor(vendorId)}
+                                   disabled={
+                                     !selectedVendors.has(vendorId) && 
+                                     vendorCampaignCounts?.[vendorId]?.active_campaigns >= vendorCampaignCounts?.[vendorId]?.max_concurrent_campaigns
+                                   }
+                                 />
+                                 <Label className="text-xs">
+                                   {vendorCampaignCounts?.[vendorId]?.active_campaigns >= vendorCampaignCounts?.[vendorId]?.max_concurrent_campaigns && !selectedVendors.has(vendorId)
+                                     ? "At Capacity" 
+                                     : "Allocate to Vendor"
+                                   }
+                                 </Label>
+                               </div>
+                             </TableCell>
                             <TableCell>
                               {selectedVendors.has(vendorId) && (
                                 <Input
@@ -607,12 +676,16 @@ export default function AIRecommendations({ campaignData, onNext, onBack }: AIRe
                                 key={playlist.id} 
                                 className={`${isSelected ? 'bg-primary/10 border-primary/30' : ''} hover:bg-accent/20`}
                               >
-                        <TableCell>
-                          <Switch
-                            checked={isSelected}
-                            onCheckedChange={() => togglePlaylist(playlist.id)}
-                          />
-                        </TableCell>
+                         <TableCell>
+                           <Switch
+                             checked={isSelected}
+                             onCheckedChange={() => togglePlaylist(playlist.id)}
+                             disabled={
+                               !isSelected && 
+                               vendorCampaignCounts?.[playlist.vendor_id]?.active_campaigns >= vendorCampaignCounts?.[playlist.vendor_id]?.max_concurrent_campaigns
+                             }
+                           />
+                         </TableCell>
                         <TableCell>
                           <div>
                             <p className="font-medium">{playlist.name}</p>
