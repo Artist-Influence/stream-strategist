@@ -26,6 +26,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -57,7 +64,11 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  FileText
+  FileText,
+  Activity,
+  Music,
+  List,
+  X
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Papa from "papaparse";
@@ -630,169 +641,105 @@ export default function CampaignHistory() {
           </TabsList>
           
           <TabsContent value="campaigns" className="space-y-6">
-            {/* Filter Buttons */}
-            <div className="space-y-4 mb-6">
-              {/* Status Filters */}
-              <div>
-                <p className="text-sm font-medium mb-2">Status Filters</p>
-                <div className="flex gap-2 flex-wrap">
-                  <Button
-                    variant={statusFilter === 'all' ? 'default' : 'outline'}
-                    onClick={() => setStatusFilter('all')}
-                    size="sm"
-                  >
-                    All ({getStatusCount('all')})
-                  </Button>
-                  <Button
-                    variant={statusFilter === 'active' ? 'default' : 'outline'}
-                    onClick={() => setStatusFilter('active')}
-                    size="sm"
-                  >
-                    Active ({getStatusCount('active')})
-                  </Button>
-                  <Button
-                    variant={statusFilter === 'draft' ? 'default' : 'outline'}
-                    onClick={() => setStatusFilter('draft')}
-                    size="sm"
-                    className="bg-amber-500/20 text-amber-600 hover:bg-amber-500/30 border-amber-500/50"
-                  >
-                    Pending Review ({getStatusCount('draft')})
-                  </Button>
-                  <Button
-                    variant={statusFilter === 'paused' ? 'default' : 'outline'}
-                    onClick={() => setStatusFilter('paused')}
-                    size="sm"
-                  >
-                    Paused ({getStatusCount('paused')})
-                  </Button>
-                  <Button
-                    variant={statusFilter === 'completed' ? 'default' : 'outline'}
-                    onClick={() => setStatusFilter('completed')}
-                    size="sm"
-                  >
-                    Completed ({getStatusCount('completed')})
-                  </Button>
+            {/* Compact Filter Bar */}
+            <div className="border border-border rounded-lg p-4 mb-6">
+              <div className="flex flex-wrap items-center gap-4">
+                {/* Search */}
+                <div className="flex items-center gap-2">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search campaigns..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-64"
+                  />
                 </div>
-              </div>
+                
+                {/* Status Filter */}
+                <div className="flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All ({getStatusCount('all')})</SelectItem>
+                      <SelectItem value="active">Active ({getStatusCount('active')})</SelectItem>
+                      <SelectItem value="draft">Pending ({getStatusCount('draft')})</SelectItem>
+                      <SelectItem value="paused">Paused ({getStatusCount('paused')})</SelectItem>
+                      <SelectItem value="completed">Completed ({getStatusCount('completed')})</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              {/* SFA Status Filters */}
-              <div>
-                <p className="text-sm font-medium mb-2">SFA Status</p>
-                <div className="flex gap-2 flex-wrap">
-                  <Button
-                    variant={sfaFilter === 'all' ? 'default' : 'outline'}
-                    onClick={() => setSfaFilter('all')}
-                    size="sm"
-                  >
-                    All ({getSFACount('all')})
-                  </Button>
-                  <Button
-                    variant={sfaFilter === 'connected' ? 'default' : 'outline'}
-                    onClick={() => setSfaFilter('connected')}
-                    size="sm"
-                    className="bg-green-500/20 text-green-600 hover:bg-green-500/30 border-green-500/50"
-                  >
-                    SFA Connected ({getSFACount('connected')})
-                  </Button>
-                  <Button
-                    variant={sfaFilter === 'no_access' ? 'default' : 'outline'}
-                    onClick={() => setSfaFilter('no_access')}
-                    size="sm"
-                    className="bg-red-500/20 text-red-600 hover:bg-red-500/30 border-red-500/50"
-                  >
-                    No SFA Access ({getSFACount('no_access')})
-                  </Button>
-                  <Button
-                    variant={sfaFilter === 'pending' ? 'default' : 'outline'}
-                    onClick={() => setSfaFilter('pending')}
-                    size="sm"
-                    className="bg-orange-500/20 text-orange-600 hover:bg-orange-500/30 border-orange-500/50"
-                  >
-                    SFA Pending ({getSFACount('pending')})
-                  </Button>
+                {/* SFA Status Filter */}
+                <div className="flex items-center gap-2">
+                  <Music className="h-4 w-4 text-muted-foreground" />
+                  <Select value={sfaFilter} onValueChange={setSfaFilter}>
+                    <SelectTrigger className="w-44">
+                      <SelectValue placeholder="SFA Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All SFA ({getSFACount('all')})</SelectItem>
+                      <SelectItem value="connected">Connected ({getSFACount('connected')})</SelectItem>
+                      <SelectItem value="no_access">No Access ({getSFACount('no_access')})</SelectItem>
+                      <SelectItem value="pending">Pending ({getSFACount('pending')})</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
 
-              {/* Playlist Status Filters */}
-              <div>
-                <p className="text-sm font-medium mb-2">Playlist Status</p>
-                <div className="flex gap-2 flex-wrap">
-                  <Button
-                    variant={playlistFilter === 'all' ? 'default' : 'outline'}
-                    onClick={() => setPlaylistFilter('all')}
-                    size="sm"
-                  >
-                    All ({getPlaylistCount('all')})
-                  </Button>
-                  <Button
-                    variant={playlistFilter === 'has_playlists' ? 'default' : 'outline'}
-                    onClick={() => setPlaylistFilter('has_playlists')}
-                    size="sm"
-                    className="bg-blue-500/20 text-blue-600 hover:bg-blue-500/30 border-blue-500/50"
-                  >
-                    Has Active Playlists ({getPlaylistCount('has_playlists')})
-                  </Button>
-                  <Button
-                    variant={playlistFilter === 'no_playlists' ? 'default' : 'outline'}
-                    onClick={() => setPlaylistFilter('no_playlists')}
-                    size="sm"
-                    className="bg-red-500/20 text-red-600 hover:bg-red-500/30 border-red-500/50"
-                  >
-                    No Playlists ({getPlaylistCount('no_playlists')})
-                  </Button>
+                {/* Playlist Status Filter */}
+                <div className="flex items-center gap-2">
+                  <List className="h-4 w-4 text-muted-foreground" />
+                  <Select value={playlistFilter} onValueChange={setPlaylistFilter}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Playlists" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All ({getPlaylistCount('all')})</SelectItem>
+                      <SelectItem value="has_playlists">Has Playlists ({getPlaylistCount('has_playlists')})</SelectItem>
+                      <SelectItem value="no_playlists">No Playlists ({getPlaylistCount('no_playlists')})</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
 
-              {/* Enhanced Performance Filters */}
-              <div>
-                <p className="text-sm font-medium mb-2">Performance Status</p>
-                <div className="flex gap-2 flex-wrap">
-                  <Button
-                    variant={enhancedPerformanceFilter === 'all' ? 'default' : 'outline'}
-                    onClick={() => setEnhancedPerformanceFilter('all')}
-                    size="sm"
-                  >
-                    All Active ({getEnhancedPerformanceCount('all')})
-                  </Button>
-                  <Button
-                    variant={enhancedPerformanceFilter === 'overperforming' ? 'default' : 'outline'}
-                    onClick={() => setEnhancedPerformanceFilter('overperforming')}
-                    size="sm"
-                    className="bg-green-500/20 text-green-600 hover:bg-green-500/30 border-green-500/50"
-                  >
-                    Overperforming ({getEnhancedPerformanceCount('overperforming')})
-                  </Button>
-                  <Button
-                    variant={enhancedPerformanceFilter === 'on_track' ? 'default' : 'outline'}
-                    onClick={() => setEnhancedPerformanceFilter('on_track')}
-                    size="sm"
-                    className="bg-blue-500/20 text-blue-600 hover:bg-blue-500/30 border-blue-500/50"
-                  >
-                    On Track ({getEnhancedPerformanceCount('on_track')})
-                  </Button>
-                  <Button
-                    variant={enhancedPerformanceFilter === 'underperforming' ? 'default' : 'outline'}
-                    onClick={() => setEnhancedPerformanceFilter('underperforming')}
-                    size="sm"
-                    className="bg-red-500/20 text-red-600 hover:bg-red-500/30 border-red-500/50"
-                  >
-                    Underperforming ({getEnhancedPerformanceCount('underperforming')})
-                  </Button>
+                {/* Performance Filter */}
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  <Select value={enhancedPerformanceFilter} onValueChange={setEnhancedPerformanceFilter}>
+                    <SelectTrigger className="w-44">
+                      <SelectValue placeholder="Performance" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Active ({getEnhancedPerformanceCount('all')})</SelectItem>
+                      <SelectItem value="overperforming">Overperforming ({getEnhancedPerformanceCount('overperforming')})</SelectItem>
+                      <SelectItem value="on_track">On Track ({getEnhancedPerformanceCount('on_track')})</SelectItem>
+                      <SelectItem value="underperforming">Underperforming ({getEnhancedPerformanceCount('underperforming')})</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+
+                {/* Clear Filters */}
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setStatusFilter('all');
+                    setSfaFilter('all');
+                    setPlaylistFilter('all');
+                    setEnhancedPerformanceFilter('all');
+                    setSearchTerm('');
+                  }}
+                  className="ml-auto"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Clear All
+                </Button>
               </div>
             </div>
 
-            {/* Search and Actions */}
-            <div className="flex gap-4 items-center justify-between">
-              <div className="flex-1">
-                <Input
-                  placeholder="Search campaigns..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="max-w-sm"
-                />
-              </div>
-              <div className="flex gap-2">
+            {/* Actions */}
+            <div className="flex gap-2 items-center justify-end mb-4">
                 {selectedCampaigns.size > 0 && (
                   <Button
                     onClick={handleBulkDelete}
@@ -823,7 +770,6 @@ export default function CampaignHistory() {
                   Import Campaigns
                 </Button>
               </div>
-            </div>
 
             {/* Campaigns Table */}
             {isLoading ? (
