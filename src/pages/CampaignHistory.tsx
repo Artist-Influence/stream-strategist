@@ -101,6 +101,8 @@ interface Campaign {
   invoice_status?: string;
   performance_status?: string;
   progress_percentage?: number;
+  sfa_status?: 'connected' | 'no_access' | 'pending';
+  playlist_status?: 'has_playlists' | 'no_playlists' | 'pending';
 }
 
 type SortField = 'name' | 'client' | 'budget' | 'stream_goal' | 'daily_streams' | 'weekly_streams' | 'remaining_streams' | 'start_date' | 'progress' | 'status' | 'invoice_status' | 'performance_status';
@@ -117,6 +119,9 @@ export default function CampaignHistory() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [performanceFilter, setPerformanceFilter] = useState<string>("all");
+  const [sfaFilter, setSfaFilter] = useState<string>("all");
+  const [playlistFilter, setPlaylistFilter] = useState<string>("all");
+  const [enhancedPerformanceFilter, setEnhancedPerformanceFilter] = useState<string>("all");
 
   // Initialize filter from URL parameters
   useEffect(() => {
@@ -251,7 +256,17 @@ export default function CampaignHistory() {
       const matchesStatus = statusFilter === "all" || 
                            campaign.status.toLowerCase() === statusFilter.toLowerCase();
       
-      // Performance filtering
+      // SFA Status filtering
+      const matchesSFA = sfaFilter === "all" || getSFAStatus(campaign) === sfaFilter;
+      
+      // Playlist Status filtering
+      const matchesPlaylist = playlistFilter === "all" || getPlaylistStatus(campaign) === playlistFilter;
+      
+      // Enhanced Performance filtering
+      const matchesEnhancedPerformance = enhancedPerformanceFilter === "all" || 
+                                       getEnhancedPerformanceStatus(campaign) === enhancedPerformanceFilter;
+      
+      // Legacy Performance filtering (keeping for backward compatibility)
       let matchesPerformance = true;
       if (performanceFilter !== "all" && campaign.status === 'active') {
         const startDate = new Date(campaign.start_date);
@@ -269,7 +284,8 @@ export default function CampaignHistory() {
         matchesPerformance = false; // Only active campaigns can have performance metrics
       }
       
-      return matchesSearch && matchesStatus && matchesPerformance;
+      return matchesSearch && matchesStatus && matchesSFA && matchesPlaylist && 
+             matchesEnhancedPerformance && matchesPerformance;
     }) || [];
 
     // Sort campaigns
@@ -302,12 +318,70 @@ export default function CampaignHistory() {
     });
   })();
 
+  // Helper functions for status determination
+  const getSFAStatus = (campaign: Campaign): 'connected' | 'no_access' | 'pending' => {
+    // Check if campaign has valid playlists with Spotify URLs that can be monitored
+    if (!campaign.selected_playlists || Array.isArray(campaign.selected_playlists) && campaign.selected_playlists.length === 0) {
+      return 'no_access';
+    }
+    
+    // For now, assume campaigns with playlists have SFA access
+    // This will be enhanced when Spotify for Artists integration is added
+    const hasSpotifyUrls = Array.isArray(campaign.selected_playlists) && campaign.selected_playlists.length > 0;
+    return hasSpotifyUrls ? 'connected' : 'pending';
+  };
+
+  const getPlaylistStatus = (campaign: Campaign): 'has_playlists' | 'no_playlists' | 'pending' => {
+    if (!campaign.selected_playlists) return 'no_playlists';
+    
+    if (Array.isArray(campaign.selected_playlists)) {
+      return campaign.selected_playlists.length > 0 ? 'has_playlists' : 'no_playlists';
+    }
+    
+    // Handle object format
+    return Object.keys(campaign.selected_playlists).length > 0 ? 'has_playlists' : 'no_playlists';
+  };
+
+  const getEnhancedPerformanceStatus = (campaign: Campaign): 'underperforming' | 'on_track' | 'overperforming' | 'pending' => {
+    if (campaign.status !== 'active') return 'pending';
+    
+    const startDate = new Date(campaign.start_date);
+    const today = new Date();
+    const daysElapsed = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysElapsed <= 0) return 'pending';
+    
+    const streamsCompleted = campaign.stream_goal - campaign.remaining_streams;
+    const progressPercent = (streamsCompleted / campaign.stream_goal) * 100;
+    const expectedProgressPercent = (daysElapsed / campaign.duration_days) * 100;
+    const performanceRatio = progressPercent / Math.max(expectedProgressPercent, 1);
+    
+    if (performanceRatio >= 1.2) return 'overperforming';
+    if (performanceRatio >= 0.8) return 'on_track';
+    return 'underperforming';
+  };
+
   // Helper function for status counts
   const getStatusCount = (status: string) => {
     if (status === 'all') return campaigns?.length || 0;
     return campaigns?.filter(c => 
       c.status.toLowerCase() === status.toLowerCase()
     ).length || 0;
+  };
+
+  const getSFACount = (status: string) => {
+    if (status === 'all') return campaigns?.length || 0;
+    return campaigns?.filter(c => getSFAStatus(c) === status).length || 0;
+  };
+
+  const getPlaylistCount = (status: string) => {
+    if (status === 'all') return campaigns?.length || 0;
+    return campaigns?.filter(c => getPlaylistStatus(c) === status).length || 0;
+  };
+
+  const getEnhancedPerformanceCount = (status: string) => {
+    if (status === 'all') return campaigns?.filter(c => c.status === 'active').length || 0;
+    return campaigns?.filter(c => getEnhancedPerformanceStatus(c) === status).length || 0;
   };
 
   const handleStatusChange = (campaignId: string, newStatus: Campaign['status']) => {
@@ -597,6 +671,112 @@ export default function CampaignHistory() {
                     size="sm"
                   >
                     Completed ({getStatusCount('completed')})
+                  </Button>
+                </div>
+              </div>
+
+              {/* SFA Status Filters */}
+              <div>
+                <p className="text-sm font-medium mb-2">SFA Status</p>
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    variant={sfaFilter === 'all' ? 'default' : 'outline'}
+                    onClick={() => setSfaFilter('all')}
+                    size="sm"
+                  >
+                    All ({getSFACount('all')})
+                  </Button>
+                  <Button
+                    variant={sfaFilter === 'connected' ? 'default' : 'outline'}
+                    onClick={() => setSfaFilter('connected')}
+                    size="sm"
+                    className="bg-green-500/20 text-green-600 hover:bg-green-500/30 border-green-500/50"
+                  >
+                    SFA Connected ({getSFACount('connected')})
+                  </Button>
+                  <Button
+                    variant={sfaFilter === 'no_access' ? 'default' : 'outline'}
+                    onClick={() => setSfaFilter('no_access')}
+                    size="sm"
+                    className="bg-red-500/20 text-red-600 hover:bg-red-500/30 border-red-500/50"
+                  >
+                    No SFA Access ({getSFACount('no_access')})
+                  </Button>
+                  <Button
+                    variant={sfaFilter === 'pending' ? 'default' : 'outline'}
+                    onClick={() => setSfaFilter('pending')}
+                    size="sm"
+                    className="bg-orange-500/20 text-orange-600 hover:bg-orange-500/30 border-orange-500/50"
+                  >
+                    SFA Pending ({getSFACount('pending')})
+                  </Button>
+                </div>
+              </div>
+
+              {/* Playlist Status Filters */}
+              <div>
+                <p className="text-sm font-medium mb-2">Playlist Status</p>
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    variant={playlistFilter === 'all' ? 'default' : 'outline'}
+                    onClick={() => setPlaylistFilter('all')}
+                    size="sm"
+                  >
+                    All ({getPlaylistCount('all')})
+                  </Button>
+                  <Button
+                    variant={playlistFilter === 'has_playlists' ? 'default' : 'outline'}
+                    onClick={() => setPlaylistFilter('has_playlists')}
+                    size="sm"
+                    className="bg-blue-500/20 text-blue-600 hover:bg-blue-500/30 border-blue-500/50"
+                  >
+                    Has Active Playlists ({getPlaylistCount('has_playlists')})
+                  </Button>
+                  <Button
+                    variant={playlistFilter === 'no_playlists' ? 'default' : 'outline'}
+                    onClick={() => setPlaylistFilter('no_playlists')}
+                    size="sm"
+                    className="bg-red-500/20 text-red-600 hover:bg-red-500/30 border-red-500/50"
+                  >
+                    No Playlists ({getPlaylistCount('no_playlists')})
+                  </Button>
+                </div>
+              </div>
+
+              {/* Enhanced Performance Filters */}
+              <div>
+                <p className="text-sm font-medium mb-2">Performance Status</p>
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    variant={enhancedPerformanceFilter === 'all' ? 'default' : 'outline'}
+                    onClick={() => setEnhancedPerformanceFilter('all')}
+                    size="sm"
+                  >
+                    All Active ({getEnhancedPerformanceCount('all')})
+                  </Button>
+                  <Button
+                    variant={enhancedPerformanceFilter === 'overperforming' ? 'default' : 'outline'}
+                    onClick={() => setEnhancedPerformanceFilter('overperforming')}
+                    size="sm"
+                    className="bg-green-500/20 text-green-600 hover:bg-green-500/30 border-green-500/50"
+                  >
+                    Overperforming ({getEnhancedPerformanceCount('overperforming')})
+                  </Button>
+                  <Button
+                    variant={enhancedPerformanceFilter === 'on_track' ? 'default' : 'outline'}
+                    onClick={() => setEnhancedPerformanceFilter('on_track')}
+                    size="sm"
+                    className="bg-blue-500/20 text-blue-600 hover:bg-blue-500/30 border-blue-500/50"
+                  >
+                    On Track ({getEnhancedPerformanceCount('on_track')})
+                  </Button>
+                  <Button
+                    variant={enhancedPerformanceFilter === 'underperforming' ? 'default' : 'outline'}
+                    onClick={() => setEnhancedPerformanceFilter('underperforming')}
+                    size="sm"
+                    className="bg-red-500/20 text-red-600 hover:bg-red-500/30 border-red-500/50"
+                  >
+                    Underperforming ({getEnhancedPerformanceCount('underperforming')})
                   </Button>
                 </div>
               </div>
