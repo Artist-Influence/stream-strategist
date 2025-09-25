@@ -343,14 +343,42 @@ export default function CampaignHistory() {
   };
 
   const getPlaylistStatus = (campaign: Campaign): 'has_playlists' | 'no_playlists' | 'pending' => {
-    if (!campaign.selected_playlists) return 'no_playlists';
-    
-    if (Array.isArray(campaign.selected_playlists)) {
-      return campaign.selected_playlists.length > 0 ? 'has_playlists' : 'no_playlists';
+    try {
+      // Handle null, undefined, or falsy values
+      if (!campaign.selected_playlists) return 'no_playlists';
+      
+      // Handle array format
+      if (Array.isArray(campaign.selected_playlists)) {
+        return campaign.selected_playlists.length > 0 ? 'has_playlists' : 'no_playlists';
+      }
+      
+      // Handle object format (ensure it's actually an object)
+      if (typeof campaign.selected_playlists === 'object' && campaign.selected_playlists !== null) {
+        return Object.keys(campaign.selected_playlists).length > 0 ? 'has_playlists' : 'no_playlists';
+      }
+      
+      // Handle string format (might be JSON string)
+      if (typeof campaign.selected_playlists === 'string') {
+        try {
+          const parsed = JSON.parse(campaign.selected_playlists);
+          if (Array.isArray(parsed)) {
+            return parsed.length > 0 ? 'has_playlists' : 'no_playlists';
+          }
+          if (typeof parsed === 'object' && parsed !== null) {
+            return Object.keys(parsed).length > 0 ? 'has_playlists' : 'no_playlists';
+          }
+        } catch {
+          // If JSON parse fails, treat as single playlist
+          return campaign.selected_playlists.length > 0 ? 'has_playlists' : 'no_playlists';
+        }
+      }
+      
+      // Default fallback
+      return 'no_playlists';
+    } catch (error) {
+      console.error('Error in getPlaylistStatus:', error, campaign);
+      return 'no_playlists';
     }
-    
-    // Handle object format
-    return Object.keys(campaign.selected_playlists).length > 0 ? 'has_playlists' : 'no_playlists';
   };
 
   const getEnhancedPerformanceStatus = (campaign: Campaign): 'underperforming' | 'on_track' | 'overperforming' | 'pending' => {
